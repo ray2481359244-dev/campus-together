@@ -1,0 +1,39 @@
+{
+  "name": "campus-together",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "packageManager": "pnpm@11.5.1",
+  "engines": { "node": ">=24.0.0 <25" },
+  "scripts": {
+    "setup": "node scripts/setup.mjs",
+    "db:local": "tsx scripts/local-db.ts",
+    "db:generate": "prisma generate --config prisma7.config.ts",
+    "db:migrate": "prisma migrate deploy --config prisma7.config.ts",
+    "db:seed": "tsx prisma/seed.ts",
+    "db:check": "tsx scripts/db-check.ts",
+    "dev": "node scripts/dev.mjs",
+    "dev:web": "pnpm --filter @campus/web dev",
+    "dev:server": "pnpm --filter @campus/server dev",
+    "typecheck": "tsc --noEmit -p apps/server/tsconfig.json && tsc --noEmit -p apps/web/tsconfig.json",
+    "build": "pnpm --filter @campus/web build && node scripts/build.mjs",
+    "start": "node --env-file=.env apps/server/dist/index.js",
+    "test": "vitest run",
+    "test:e2e": "playwright test",
+    "check": "pnpm typecheck && pnpm test && pnpm build"
+  },
+  "devDependencies": {
+    "@playwright/test": "1.64.1",
+    "@types/node": "26.6.5",
+    "@types/pg": "8.23.1",
+    "@types/supertest": "7.2.1",
+    "dotenv": "18.0.8",
+    "embedded-postgres": "18.4.0-beta.17",
+    "prisma": "7.10.0",
+    "supertest": "7.3.1",
+    "tsx": "4.23.15",
+    "typescript": "7.0.2",
+    "vitest": "5.0.4"
+  },
+  "dependencies": { "pg": "8.23.1" }
+}

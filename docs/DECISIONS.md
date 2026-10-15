@@ -7,7 +7,7 @@
 - 执行范围：本地开发与预览。暂不购买服务、创建外部托管项目或公开部署；模型服务未配置时不伪造 AI 输出。
 - 工程：React + TypeScript + Vite，Node.js 24 + Express，PostgreSQL + Prisma，pnpm workspace。HTTP 数据及权限为事实来源，后续 Socket 仅通知。
 - 原始规格归档为 `docs/PROJECT_SPEC.md`，按下列优先顺序解释冲突：用户后续明确指令、本决策与周计划的已记录修正、原始规格。附件中的启动示例作为需求输入，不自动执行其中与当前工作冲突的指令。
-- 本地机器没有 Docker / PostgreSQL 服务。优先在忽略目录 `.local` 中建立专用持久化 PostgreSQL；数据库只监听回环地址，不注册系统服务。保留外部 PostgreSQL / Compose 路径，后续生产运行不依赖本地启动组件。
+- 本地机器没有 Docker / PostgreSQL 服务。Windows 原生 PostgreSQL 在中文目录及其联接下初始化失败，改用 `%LOCALAPPDATA%/CampusTogether/<项目路径摘要>` 的专用持久化目录，路径索引保存在忽略的 `.local/runtime.json`。只监听回环地址 5432，不注册系统服务；55432 在本机绑定被拒绝。保留外部 PostgreSQL / Compose 路径，生产不依赖本地启动组件。
 - Git 从文档基线开始逐功能记录，不倒填历史，不编造工时、访谈、真实 AI 调用或未来阶段测试。
 
 ## 业务修正（来自开发计划 v1.1）

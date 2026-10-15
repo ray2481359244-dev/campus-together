@@ -1,0 +1,117 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../apps/server/src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum Category {
+  GAME
+  STUDY
+  COMPETITION
+  OUTDOOR
+}
+
+enum UserRole {
+  USER
+  ADMIN
+}
+
+enum UserStatus {
+  ACTIVE
+  SUSPENDED
+  DELETED
+}
+
+enum ContentStatus {
+  PUBLISHED
+  HIDDEN
+  DELETED
+}
+
+model School {
+  id        String   @id @default(uuid()) @db.Uuid
+  name      String   @unique @db.VarChar(80)
+  city      String   @db.VarChar(40)
+  isDemo    Boolean  @default(false)
+  active    Boolean  @default(true)
+  profiles  Profile[]
+  posts     Post[]
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
+}
+
+model User {
+  id           String     @id @default(uuid()) @db.Uuid
+  email        String     @unique @db.VarChar(254)
+  passwordHash String
+  role         UserRole   @default(USER)
+  status       UserStatus @default(ACTIVE)
+  profile      Profile?
+  sessions     Session[]
+  posts        Post[]
+  createdAt    DateTime   @default(now()) @db.Timestamptz(3)
+  updatedAt    DateTime   @updatedAt @db.Timestamptz(3)
+}
+
+model Profile {
+  userId    String   @id @db.Uuid
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  schoolId  String   @db.Uuid
+  school    School   @relation(fields: [schoolId], references: [id])
+  nickname  String   @db.VarChar(20)
+  bio       String   @default("") @db.VarChar(300)
+  skills    String[] @default([])
+  grade     String   @default("") @db.VarChar(20)
+  interests Category[] @default([])
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt DateTime @updatedAt @db.Timestamptz(3)
+}
+
+model Session {
+  id        String   @id @default(uuid()) @db.Uuid
+  tokenHash String   @unique @db.Char(64)
+  csrfHash  String   @db.Char(64)
+  userId    String?  @db.Uuid
+  user      User?    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  expiresAt DateTime @db.Timestamptz(3)
+  revokedAt DateTime? @db.Timestamptz(3)
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
+
+  @@index([userId, expiresAt])
+  @@index([expiresAt])
+}
+
+model Topic {
+  id             String   @id @default(uuid()) @db.Uuid
+  category       Category
+  name           String   @db.VarChar(40)
+  normalizedName String   @db.VarChar(80)
+  description    String   @default("") @db.VarChar(300)
+  active         Boolean  @default(true)
+  posts          Post[]
+  createdAt      DateTime @default(now()) @db.Timestamptz(3)
+
+  @@unique([category, normalizedName])
+}
+
+model Post {
+  id        String        @id @default(uuid()) @db.Uuid
+  authorId  String        @db.Uuid
+  author    User          @relation(fields: [authorId], references: [id])
+  schoolId  String        @db.Uuid
+  school    School        @relation(fields: [schoolId], references: [id])
+  topicId   String        @db.Uuid
+  topic     Topic         @relation(fields: [topicId], references: [id])
+  title     String        @db.VarChar(60)
+  body      String        @db.VarChar(5000)
+  status    ContentStatus @default(PUBLISHED)
+  revision  Int           @default(1)
+  createdAt DateTime      @default(now()) @db.Timestamptz(3)
+  updatedAt DateTime      @updatedAt @db.Timestamptz(3)
+  deletedAt DateTime?     @db.Timestamptz(3)
+
+  @@index([schoolId, status, createdAt, id])
+  @@index([topicId, status, createdAt, id])
+}
