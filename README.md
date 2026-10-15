@@ -4,6 +4,17 @@
 
 核心视觉暂定 **新粗野主义**：奶油白、黑边框、硬阴影、明亮分区色。设计原型见 design/campus-brutal-concept.html；原型内数据不计为应用功能。
 
+记录入口：[持续开发日志](DEVELOPMENT_LOG.md) · [2026-10-15 详细记录](docs/development/2026-10-15.md) · [参赛材料核对表](docs/competition/SUBMISSION_CHECKLIST.md) · [AI 证据索引](docs/ai/README.md)。
+
+获取代码（仓库建立并上传后可用）：
+
+```powershell
+git clone https://github.com/ray2481359244-dev/campus-together.git
+Set-Location campus-together
+```
+
+下文 `E:\比赛项目` 是当前开发电脑的位置；克隆后在你自己的仓库根目录执行相同命令即可。
+
 ## 环境与启动（Windows PowerShell）
 
 需要 Node.js **24 LTS** 与 pnpm **11.5.1**。依赖已经锁定，首次下载速度取决于网络；尚未完成干净环境 10 分钟复现测试。
@@ -70,4 +81,4 @@ pnpm.cmd test:e2e
 
 按 docs/DEVELOPMENT_PLAN_v1.1.md 的每周 30—40 小时滚动推进，第 7 天填写真实总结并制定下一周。当前 Git 提交按实际功能节点产生，不重写为虚构历史。
 
-docs/ai 下的记录是过程摘要，完整 Prompt 链仍需从本会话实际导出或录屏。访谈、真实 AI 调用、同学试用、性能数据及比赛视频均不伪造。暂不公开部署、不购买资源。
+docs/ai 包含过程摘要和真实可见文本对话快照，两者均明确范围；至少三条完整核心迭代 Prompt 链仍需继续真实积累和归档。访谈、真实 AI 调用、同学试用、性能数据及比赛视频均不伪造。GitHub 源码归档与应用公开部署分别记录；当前不公开部署应用、不购买资源。

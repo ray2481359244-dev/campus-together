@@ -63,3 +63,9 @@
 - Git 和过程摘要已保留；完整 AI 对话导出、实际访谈、同学试用、比赛视频与技术 PDF 待真实开展。
 
 本周逐项验收见 `docs/weekly/WEEK_01_ACCEPTANCE.md`；工作记录见 `WEEK_01_WORKLOG.md`。第 7 天仍按原计划复盘，不因核心代码提前完成就提前编造周总结或锁定第二周容量。
+
+## 2026-10-15 追加：持续日志与 GitHub 归档
+
+用户已授权新建 GitHub 仓库上传。新增 [开发日志入口](../DEVELOPMENT_LOG.md)、[当日日志](development/2026-10-15.md)、日记模板、[AI 证据索引](ai/README.md) 与 [参赛核对表](competition/SUBMISSION_CHECKLIST.md)。本会话可见文本快照由实际记录导出，明确不含工具全文和附件。
+
+上传结果以参赛核对表的真实归档记录为准。上述为过程材料整理，不增加应用功能；完整 Prompt 链、干净环境 10 分钟复现、视频、PDF 和官网提交仍待完成。

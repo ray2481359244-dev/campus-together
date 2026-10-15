@@ -1,0 +1,26 @@
+{
+  "formatVersion": 1,
+  "exportedAt": "2026-10-15T09:34:13.330Z",
+  "source": "Current project Codex session; local original not published",
+  "range": {
+    "firstMessage": "2026-10-15T02:58:03.848Z",
+    "lastMessage": "2026-10-15T09:19:11.016Z",
+    "exclusiveNextTurn": "2026-10-15T09:26:18.061Z"
+  },
+  "timezone": "Asia/Shanghai",
+  "messages": 43,
+  "userMessages": 10,
+  "assistantMessages": 33,
+  "removedBrowserContexts": 1,
+  "excluded": [
+    "system/developer messages",
+    "reasoning",
+    "tools and outputs",
+    "environment messages",
+    "images/attachments"
+  ],
+  "textReconstruction": false,
+  "outputFile": "2026-10-15-visible-conversation.md",
+  "sha256": "51010a70c2a40f7e3ed0878c1ab89f80b2a39422bcf1d0acf81274db33198116",
+  "limitations": "Visible conversation text only; not a claim of three complete core iteration chains."
+}
