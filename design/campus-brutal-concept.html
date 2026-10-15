@@ -1,0 +1,191 @@
+<div id="campus-brutal" aria-label="碰个头 · 新粗野主义交互概念">
+  <style>
+    #campus-brutal{--cp-lime:#fff9ef;--cp-ink:#20201e;--cp-coral:#c3b3ff;--cp-cyan:#a7dfed;--cp-yellow:#f5ff62;--cp-purple:#b7edaa;--cp-pink:#ffb3cf;--cp-radius:5px;--cp-line:3px;--cp-shadow:5px;color-scheme:light;color:var(--cp-ink);font-family:"PingFang SC","Microsoft YaHei",system-ui,sans-serif;font-size:15px;line-height:1.55;width:100%;background:transparent}
+    #campus-brutal *{box-sizing:border-box}
+    #campus-brutal [hidden]{display:none!important}
+    #campus-brutal h1,#campus-brutal h2,#campus-brutal h3,#campus-brutal p{margin:0}
+    #campus-brutal button,#campus-brutal input,#campus-brutal textarea{font:inherit;color:inherit;-webkit-tap-highlight-color:transparent}
+    #campus-brutal button{touch-action:manipulation}
+    #campus-brutal button:focus-visible,#campus-brutal input:focus-visible,#campus-brutal textarea:focus-visible{outline:3px dashed #20201e;outline-offset:5px}
+    #campus-brutal button:disabled{opacity:.45;box-shadow:none}
+    #campus-brutal svg{width:21px;height:21px;stroke-width:2.4;flex-shrink:0}
+    #campus-brutal .cp-app{max-width:540px;margin:auto;background:var(--cp-lime);border:var(--cp-line) solid var(--cp-ink);padding:19px 18px 15px;position:relative;isolation:isolate;overflow:hidden}
+    #campus-brutal .cp-header{display:flex;align-items:center;justify-content:space-between;gap:10px;padding-bottom:17px;border-bottom:3px solid var(--cp-ink)}
+    #campus-brutal .cp-brand{display:flex;align-items:center;gap:10px;font-size:24px;font-weight:950;letter-spacing:-1px;line-height:1.2}
+    #campus-brutal .cp-logo{display:grid;place-items:center;width:43px;height:43px;background:var(--cp-ink);color:var(--cp-yellow);font-size:30px;line-height:1;font-weight:950;rotate:-6deg}
+    #campus-brutal .cp-brand small{display:block;letter-spacing:1.3px;font-family:ui-monospace,monospace;font-size:9px;font-weight:700;margin-top:6px}
+    #campus-brutal .cp-icon,#campus-brutal .cp-back{display:grid;place-items:center;width:43px;height:43px;border:var(--cp-line) solid var(--cp-ink);border-radius:var(--cp-radius);background:var(--cp-yellow);box-shadow:3px 3px 0 var(--cp-ink);flex-shrink:0;transition:transform .2s cubic-bezier(.2,.8,.2,1),box-shadow .2s ease}
+    #campus-brutal .cp-icon:active,#campus-brutal .cp-back:active{transform:translate(3px,3px);box-shadow:0 0 0 var(--cp-ink)}
+    #campus-brutal .cp-stage{display:grid;position:relative;overflow:hidden;isolation:isolate;margin:0 -18px}
+    #campus-brutal .cp-home,#campus-brutal .cp-panel{grid-area:1/1;min-width:0;padding:0 18px}
+    #campus-brutal .cp-scene{position:relative;height:282px;margin:0 -3px;background-image:radial-gradient(#20201e19 1px,transparent 1px);background-size:12px 12px;background-position:0 190px}
+    #campus-brutal .cp-hero-kicker{position:absolute;left:3px;top:19px;font-size:10px;letter-spacing:2px;font-family:ui-monospace,monospace;font-weight:750;background:var(--cp-lime)}
+    #campus-brutal .cp-scene h1{position:absolute;top:43px;left:0;font-size:48px;line-height:1.17;letter-spacing:-2px;font-weight:950;background:var(--cp-lime)}
+    #campus-brutal .cp-scene h1 span{display:inline-block;background:var(--cp-yellow);padding:0 5px 3px;box-shadow:3px 3px 0 var(--cp-ink);border:2px solid var(--cp-ink);margin-top:4px;rotate:-2deg}
+    #campus-brutal .cp-hero-note{position:absolute;left:3px;top:172px;background:var(--cp-lime);font-size:12px;font-weight:650}
+    #campus-brutal .cp-arrow-art{position:absolute;right:11px;top:60px;width:79px;height:79px;background:var(--cp-pink);border:3px solid var(--cp-ink);box-shadow:5px 5px 0 var(--cp-ink);rotate:8deg;display:grid;place-items:center}
+    #campus-brutal .cp-arrow-art svg{width:61px;height:61px;stroke-width:2.6;transform:scale(3.4)}
+    #campus-brutal .cp-dragger{position:absolute;z-index:2;padding:9px 10px;min-height:45px;border:var(--cp-line) solid var(--cp-ink);border-radius:var(--cp-radius);display:flex;align-items:center;justify-content:center;gap:5px;touch-action:none;user-select:none;will-change:transform;cursor:grab;box-shadow:4px 4px 0 var(--cp-ink);font-size:12px;font-weight:900;white-space:nowrap;background:var(--cp-yellow)}
+    #campus-brutal .cp-dragger:active{cursor:grabbing}
+    #campus-brutal .cp-dragger svg{width:16px;height:16px}
+    #campus-brutal .cp-dragger[data-mascot="competition"]{left:2%;top:211px;rotate:-7deg;background:var(--cp-coral)}
+    #campus-brutal .cp-dragger[data-mascot="study"]{left:36%;top:223px;rotate:5deg;background:var(--cp-cyan)}
+    #campus-brutal .cp-dragger[data-mascot="outdoor"]{right:1%;top:205px;rotate:-5deg;background:var(--cp-purple)}
+    #campus-brutal .cp-heading{display:flex;align-items:center;justify-content:space-between;gap:10px;border-top:3px solid var(--cp-ink);padding-top:16px;margin:0 0 15px}
+    #campus-brutal .cp-heading h2{font-weight:950;font-size:21px;letter-spacing:-.7px;line-height:1.3}
+    #campus-brutal .cp-index{font-family:ui-monospace,monospace;font-size:11px;font-weight:750;letter-spacing:1px}
+    #campus-brutal .cp-bento{display:grid;grid-template-columns:1fr 1fr;gap:16px 14px;padding:0 5px 5px 0}
+    #campus-brutal .cp-tile{display:flex;flex-direction:column;align-items:flex-start;justify-content:flex-start;text-align:left;position:relative;min-width:0;min-height:164px;border:var(--cp-line) solid var(--cp-ink);border-radius:var(--cp-radius);padding:13px 13px 12px;box-shadow:var(--cp-shadow) var(--cp-shadow) 0 var(--cp-ink);transition:transform .24s cubic-bezier(.2,.8,.2,1),box-shadow .24s cubic-bezier(.2,.8,.2,1);overflow:hidden}
+    #campus-brutal .cp-tile:hover{transform:translate(-2px,-3px);box-shadow:calc(var(--cp-shadow) + 2px) calc(var(--cp-shadow) + 3px) 0 var(--cp-ink)}
+    #campus-brutal .cp-tile:active{transform:translate(var(--cp-shadow),var(--cp-shadow));box-shadow:0 0 0 var(--cp-ink)}
+    #campus-brutal .cp-tile-competition{background:var(--cp-coral)}
+    #campus-brutal .cp-tile-study{background:var(--cp-cyan)}
+    #campus-brutal .cp-tile-game{background:var(--cp-yellow)}
+    #campus-brutal .cp-tile-outdoor{background:var(--cp-purple)}
+    #campus-brutal .cp-tile-top{display:flex;align-items:center;justify-content:space-between;width:100%;margin-bottom:12px}
+    #campus-brutal .cp-tile-number{font:750 11px ui-monospace,monospace;letter-spacing:1px}
+    #campus-brutal .cp-tile-symbol{display:grid;place-items:center;border:2px solid var(--cp-ink);width:31px;height:31px;background:#fff9ef;rotate:7deg}
+    #campus-brutal .cp-tile-symbol svg{width:19px;height:19px}
+    #campus-brutal .cp-tile-title{font-size:24px;font-weight:950;letter-spacing:-.8px;line-height:1.2}
+    #campus-brutal .cp-tile-sub{font-size:11px;font-weight:600;margin-top:7px}
+    #campus-brutal .cp-tile-link{display:flex;align-items:center;gap:5px;font-size:11px;font-weight:900;border-top:2px solid var(--cp-ink);width:100%;margin-top:14px;padding-top:8px}
+    #campus-brutal .cp-tile-link svg{width:15px;height:15px;margin-left:auto}
+    #campus-brutal .cp-launch{display:flex;align-items:center;justify-content:space-between;gap:12px;border:3px solid var(--cp-ink);border-radius:var(--cp-radius);background:var(--cp-pink);box-shadow:var(--cp-shadow) var(--cp-shadow) 0 var(--cp-ink);width:calc(100% - 5px);padding:15px 14px;margin-top:19px;text-align:left;transition:transform .22s ease,box-shadow .22s ease}
+    #campus-brutal .cp-launch strong{font-size:18px;letter-spacing:-.5px;font-weight:950;display:block}
+    #campus-brutal .cp-launch small{font-size:11px;margin-top:3px;display:block}
+    #campus-brutal .cp-launch>svg{width:32px;height:32px}
+    #campus-brutal .cp-launch:active{transform:translate(5px,5px);box-shadow:0 0 0 var(--cp-ink)}
+    #campus-brutal .cp-row-heading{display:flex;align-items:center;justify-content:space-between;margin:27px 0 13px;gap:8px}
+    #campus-brutal .cp-row-heading h2{font-size:20px;font-weight:950;letter-spacing:-.5px}
+    #campus-brutal .cp-text-btn{display:flex;align-items:center;gap:3px;border:0;border-bottom:1px solid var(--cp-ink);background:none;font-size:11px;font-weight:750;padding:6px 0}
+    #campus-brutal .cp-text-btn svg{width:14px;height:14px}
+    #campus-brutal .cp-team{display:flex;align-items:center;gap:11px;background:#fffdf7;border:3px solid var(--cp-ink);border-radius:var(--cp-radius);padding:14px 12px;width:calc(100% - 5px);box-shadow:5px 5px 0 var(--cp-ink);text-align:left;transition:transform .22s ease,box-shadow .22s ease}
+    #campus-brutal .cp-team:active{transform:translate(5px,5px);box-shadow:0 0 0 var(--cp-ink)}
+    #campus-brutal .cp-avatar{display:grid;place-items:center;width:40px;height:40px;background:var(--cp-coral);border:2px solid var(--cp-ink);font-weight:900;flex-shrink:0;rotate:-5deg}
+    #campus-brutal .cp-team-copy{min-width:0;flex:1}
+    #campus-brutal .cp-team-copy strong{font-size:13px;line-height:1.7;font-weight:900;display:block}
+    #campus-brutal .cp-team-copy small{font-size:11px;display:block;margin-top:4px}
+    #campus-brutal .cp-team>svg{width:23px;height:23px}
+    #campus-brutal .cp-nav{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));position:relative;background:#fffdf7;border:3px solid var(--cp-ink);border-radius:var(--cp-radius);margin-top:25px;padding:10px 8px 8px;gap:4px;box-shadow:4px 4px 0 var(--cp-ink)}
+    #campus-brutal .cp-nav button{position:relative;z-index:1;border:0;background:none;min-width:0;min-height:53px;border-radius:2px;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:4px;font-size:11px;font-weight:800;transition:transform .2s ease}
+    #campus-brutal .cp-nav button:active{transform:translateY(2px)}
+    #campus-brutal .cp-nav svg{width:22px;height:22px}
+    #campus-brutal .cp-nav-indicator{position:absolute;left:8px;top:10px;bottom:8px;background:var(--cp-yellow);border:2px solid var(--cp-ink);pointer-events:none;will-change:transform}
+    #campus-brutal .cp-nav-plus{display:grid;place-items:center;background:var(--cp-ink);color:var(--cp-lime);width:32px;height:27px;rotate:-4deg}
+    #campus-brutal .cp-footnote{font-size:10px;text-align:center;margin-top:17px;color:#54544b}
+    #campus-brutal .cp-panel{z-index:5;position:relative;background:var(--cp-lime);will-change:transform;touch-action:pan-y;padding-bottom:7px}
+    #campus-brutal .cp-panel-top{display:flex;align-items:center;gap:11px;margin:20px 0 22px}
+    #campus-brutal .cp-panel-top h1{font-size:25px;font-weight:950;letter-spacing:-1px}
+    #campus-brutal .cp-panel-tag{margin-left:auto;font-size:10px;font-weight:700}
+    #campus-brutal .cp-feature{background:var(--cp-coral);padding:22px 17px;position:relative;overflow:hidden;border:3px solid var(--cp-ink);border-radius:var(--cp-radius);box-shadow:5px 5px 0 var(--cp-ink);margin-right:5px;min-height:160px}
+    #campus-brutal .cp-feature h2{font-size:30px;font-weight:950;line-height:1.3;max-width:78%;letter-spacing:-1px}
+    #campus-brutal .cp-feature p{font-size:12px;margin-top:14px;max-width:78%}
+    #campus-brutal .cp-emblem{display:grid;place-items:center;width:53px;height:53px;border:3px solid var(--cp-ink);background:var(--cp-yellow);box-shadow:4px 4px 0 var(--cp-ink);rotate:8deg;flex-shrink:0}
+    #campus-brutal .cp-emblem svg{width:32px;height:32px;transform:scale(1.5)}
+    #campus-brutal .cp-feature .cp-emblem{position:absolute;right:17px;bottom:19px}
+    #campus-brutal .cp-section-title{font-weight:950;font-size:20px;margin:27px 0 13px;letter-spacing:-.7px}
+    #campus-brutal .cp-filter{display:flex;flex-wrap:wrap;gap:9px;margin:14px 0 19px}
+    #campus-brutal .cp-filter button{border:2px solid var(--cp-ink);border-radius:var(--cp-radius);box-shadow:2px 2px 0 var(--cp-ink);padding:9px 10px;font-size:11px;font-weight:850;background:#fffdf7;transition:transform .2s ease,box-shadow .2s ease}
+    #campus-brutal .cp-filter button[aria-pressed="true"]{background:var(--cp-ink);color:var(--cp-yellow);box-shadow:2px 2px 0 var(--cp-coral)}
+    #campus-brutal .cp-filter button:active{transform:translate(2px,2px);box-shadow:none}
+    #campus-brutal .cp-paper{border:3px solid var(--cp-ink);border-radius:var(--cp-radius);background:#fffdf7;padding:19px 16px;margin:17px 5px 0 0;box-shadow:5px 5px 0 var(--cp-ink)}
+    #campus-brutal .cp-label{display:inline-block;background:var(--cp-yellow);border:1.5px solid var(--cp-ink);padding:3px 7px;font-size:10px;font-weight:800;margin-bottom:13px}
+    #campus-brutal .cp-paper h2{font-weight:900;font-size:20px;line-height:1.55;letter-spacing:-.5px}
+    #campus-brutal .cp-description{font-size:12px;color:#55554d;margin-top:10px!important;line-height:1.85}
+    #campus-brutal .cp-tags{display:flex;flex-wrap:wrap;gap:7px;margin:15px 0 19px}
+    #campus-brutal .cp-tags span{border:1.5px solid var(--cp-ink);background:#e4ddff;padding:3px 7px;font-size:11px;font-weight:700}
+    #campus-brutal .cp-specs{display:grid;gap:13px;font-size:12px;margin:0}
+    #campus-brutal .cp-specs>div{display:grid;grid-template-columns:65px 1fr;gap:7px}
+    #campus-brutal .cp-specs dt{color:#626257}
+    #campus-brutal .cp-specs dd{margin:0;font-weight:750}
+    #campus-brutal .cp-reason{padding:14px;border-left:4px solid var(--cp-ink);background:#edf3ce;margin-top:20px;font-size:12px;line-height:1.7}
+    #campus-brutal .cp-reason strong{display:flex;align-items:center;gap:6px;margin-bottom:5px}
+    #campus-brutal .cp-reason svg{width:16px;height:16px}
+    #campus-brutal .cp-confirm{display:flex;align-items:flex-start;gap:8px;font-size:12px;line-height:1.7;margin:21px 0 15px}
+    #campus-brutal .cp-confirm input{accent-color:var(--cp-ink);width:18px;height:18px;flex-shrink:0;margin:1px 0 0}
+    #campus-brutal .cp-pill{display:inline-flex;align-items:center;justify-content:center;gap:9px;border:3px solid var(--cp-ink);border-radius:var(--cp-radius);box-shadow:3px 3px 0 var(--cp-ink);background:var(--cp-yellow);padding:10px 13px;min-height:44px;font-size:12px;font-weight:900;transition:transform .2s ease,box-shadow .2s ease}
+    #campus-brutal .cp-pill:active:not(:disabled){transform:translate(3px,3px);box-shadow:0 0 0 var(--cp-ink)}
+    #campus-brutal .cp-pill svg{width:17px;height:17px}
+    #campus-brutal .cp-wide{width:calc(100% - 3px);font-size:14px}
+    #campus-brutal .cp-feedback{font-size:12px;text-align:center;line-height:1.7;color:#44522e;margin:15px 0 0;min-height:20px}
+    #campus-brutal .cp-quiet{font-size:11px;color:#5c5c52;line-height:1.8;margin:22px 2px 7px}
+    #campus-brutal .cp-fields{display:grid;gap:16px;margin-top:25px}
+    #campus-brutal .cp-fields label{font-size:13px;font-weight:900;display:grid;gap:10px}
+    #campus-brutal .cp-fields textarea{background:#fffdf7;border:3px solid var(--cp-ink);border-radius:var(--cp-radius);width:calc(100% - 4px);box-shadow:4px 4px 0 var(--cp-ink);min-height:140px;padding:12px;font-size:16px;line-height:1.8;resize:vertical}
+    #campus-brutal .cp-profile{display:flex;align-items:center;gap:17px;padding:17px 0 20px}
+    #campus-brutal .cp-profile h2{font-size:22px;font-weight:950;letter-spacing:-.7px}
+    #campus-brutal .cp-notice{border-top:2px solid var(--cp-ink);padding:14px 0 0;font-size:12px;margin-top:15px}
+    @media(max-width:370px){#campus-brutal .cp-app{padding:16px 12px 14px}#campus-brutal .cp-stage{margin:0 -12px}#campus-brutal .cp-home,#campus-brutal .cp-panel{padding-left:12px;padding-right:12px}#campus-brutal .cp-scene h1{font-size:43px}#campus-brutal .cp-arrow-art{width:61px;height:61px;right:7px;top:70px}#campus-brutal .cp-arrow-art svg{width:48px;height:48px}#campus-brutal .cp-hero-note{font-size:11px;top:160px}#campus-brutal .cp-dragger{padding:9px 6px;font-size:11px;gap:4px}#campus-brutal .cp-dragger[data-mascot="study"]{left:35%}#campus-brutal .cp-dragger svg{width:14px;height:14px}#campus-brutal .cp-tile{padding:12px 10px;min-height:159px}#campus-brutal .cp-tile-title{font-size:22px}#campus-brutal .cp-tile-sub{font-size:10px}#campus-brutal .cp-tile-symbol{width:28px;height:28px}#campus-brutal .cp-bento{gap:15px 12px}#campus-brutal .cp-team{gap:8px;padding:13px 10px}#campus-brutal .cp-team-copy strong{font-size:12px}#campus-brutal .cp-team-copy small{font-size:10px}#campus-brutal .cp-avatar{width:33px;height:36px}#campus-brutal .cp-filter{gap:7px}#campus-brutal .cp-filter button{padding:8px 7px;font-size:10px}#campus-brutal .cp-panel-top h1{font-size:23px}#campus-brutal .cp-panel-tag{font-size:9px}#campus-brutal .cp-feature h2{font-size:25px}#campus-brutal .cp-feature .cp-emblem{width:43px;height:43px;right:12px}#campus-brutal .cp-profile{gap:12px}#campus-brutal .cp-profile h2{font-size:18px}}
+    @media(prefers-reduced-motion:reduce){#campus-brutal *,#campus-brutal *:before,#campus-brutal *:after{transition:none!important;scroll-behavior:auto!important}}
+  </style>
+  <div class="cp-app" aria-label="校园新粗野主义风格">
+    <header class="cp-header"><div class="cp-brand"><span class="cp-logo" aria-hidden="true">碰</span><div>碰个头<small>CAMPUS TOGETHER</small></div></div><button class="cp-icon cursor-interaction" data-go="profile" aria-label="设置我的兴趣"><i data-lucide="sliders-horizontal" aria-hidden="true"></i></button></header>
+    <div class="cp-stage">
+      <main class="cp-home">
+        <section class="cp-scene" aria-label="拖动兴趣标签，松手回弹；点击进入分区">
+          <span class="cp-hero-kicker">GOOD IDEAS NEED GOOD PEOPLE.</span>
+          <h1>别只想，<br><span>一起做。</span></h1>
+          <span class="cp-arrow-art" aria-hidden="true"><i data-lucide="arrow-up-right"></i></span>
+          <p class="cp-hero-note">在校园，找到把想法变成现实的人。</p>
+          <button class="cp-dragger cursor-interaction" data-mascot="competition" aria-label="做点项目，拖动回弹或点击进入竞赛"><i data-lucide="code-2" aria-hidden="true"></i>做点项目</button>
+          <button class="cp-dragger cursor-interaction" data-mascot="study" aria-label="一起进步，拖动回弹或点击进入学习"><i data-lucide="book-open" aria-hidden="true"></i>一起进步</button>
+          <button class="cp-dragger cursor-interaction" data-mascot="outdoor" aria-label="出去走走，拖动回弹或点击进入户外"><i data-lucide="sun" aria-hidden="true"></i>出去走走</button>
+        </section>
+        <div class="cp-heading"><h2>从一个兴趣开始</h2><span class="cp-index">PICK YOUR SIDE ↘</span></div>
+        <section class="cp-bento" aria-label="校园兴趣分区">
+          <button class="cp-tile cp-tile-competition cursor-interaction" data-category="competition"><span class="cp-tile-top"><span class="cp-tile-number">01 / BUILD</span><span class="cp-tile-symbol"><i data-lucide="asterisk" aria-hidden="true"></i></span></span><span class="cp-tile-title">竞赛组队</span><p class="cp-tile-sub">不同技能，同一个目标。</p><span class="cp-tile-link">找到队友<i data-lucide="arrow-up-right" aria-hidden="true"></i></span></button>
+          <button class="cp-tile cp-tile-study cursor-interaction" data-category="study"><span class="cp-tile-top"><span class="cp-tile-number">02 / GROW</span><span class="cp-tile-symbol"><i data-lucide="book-open" aria-hidden="true"></i></span></span><span class="cp-tile-title">学习搭子</span><p class="cp-tile-sub">一起专注，一起有进步。</p><span class="cp-tile-link">约个自习<i data-lucide="arrow-up-right" aria-hidden="true"></i></span></button>
+          <button class="cp-tile cp-tile-game cursor-interaction" data-category="game"><span class="cp-tile-top"><span class="cp-tile-number">03 / PLAY</span><span class="cp-tile-symbol"><i data-lucide="gamepad-2" aria-hidden="true"></i></span></span><span class="cp-tile-title">游戏开黑</span><p class="cp-tile-sub">课后快乐，默契开局。</p><span class="cp-tile-link">组个小队<i data-lucide="arrow-up-right" aria-hidden="true"></i></span></button>
+          <button class="cp-tile cp-tile-outdoor cursor-interaction" data-category="outdoor"><span class="cp-tile-top"><span class="cp-tile-number">04 / ROAM</span><span class="cp-tile-symbol"><i data-lucide="mountain" aria-hidden="true"></i></span></span><span class="cp-tile-title">周末户外</span><p class="cp-tile-sub">离开屏幕，去看看世界。</p><span class="cp-tile-link">出发集合<i data-lucide="arrow-up-right" aria-hidden="true"></i></span></button>
+        </section>
+        <button class="cp-launch cursor-interaction" data-go="publish"><span><strong>你的点子，缺个队友？</strong><small>写下一句话，发起一次招募。</small></span><i data-lucide="arrow-up-right" aria-hidden="true"></i></button>
+        <div class="cp-row-heading"><h2>招募公告栏</h2><button class="cp-text-btn cursor-interaction" data-go="teams">去看看<i data-lucide="arrow-up-right" aria-hidden="true"></i></button></div>
+        <button class="cp-team cursor-interaction" data-category="competition"><span class="cp-avatar" aria-hidden="true">01</span><span class="cp-team-copy"><strong>校园创意小队，寻找前端搭档</strong><small>技能互补 / 每周两晚 / 示例</small></span><i data-lucide="arrow-up-right" aria-hidden="true"></i></button>
+      </main>
+      <section class="cp-panel" hidden aria-label="兴趣招募详情"></section>
+    </div>
+    <nav class="cp-nav" aria-label="主要导航"><span class="cp-nav-indicator" aria-hidden="true"></span><button class="cursor-interaction" data-nav="home" aria-current="page"><i data-lucide="grid-2x2" aria-hidden="true"></i>发现</button><button class="cursor-interaction" data-nav="teams"><i data-lucide="users" aria-hidden="true"></i>组队</button><button class="cursor-interaction" data-nav="publish"><span class="cp-nav-plus"><i data-lucide="plus" aria-hidden="true"></i></span>发起</button><button class="cursor-interaction" data-nav="messages"><i data-lucide="message-square" aria-hidden="true"></i>消息</button><button class="cursor-interaction" data-nav="profile"><i data-lucide="user-round" aria-hidden="true"></i>我的</button></nav>
+    <p class="cp-footnote">交互概念 / 全部为示例数据 / 未连接真实用户或 AI</p>
+  </div>
+  <script>
+  (()=>{
+    const root=document.getElementById('campus-brutal'), panel=root.querySelector('.cp-panel'), home=root.querySelector('.cp-home'), stage=root.querySelector('.cp-stage'), nav=root.querySelector('.cp-nav'), indicator=root.querySelector('.cp-nav-indicator');
+    const reduced=matchMedia('(prefers-reduced-motion: reduce)'), options={radius:5,motion:1}, pending=new Set();
+    const data={competition:{title:'竞赛组队',headline:'点子很大？一起做。',sub:'把各自的擅长，拼成一个好作品。',color:'var(--cp-coral)',mascot:'',name:'校园创意小队 · 寻找前端搭档',desc:'想做一个真正能用的校园小工具。已有产品与视觉方向，期待你一起把想法做出来。',tags:['前端开发','交互设计','校园创新'],time:'每周二、四 19:00–21:00',place:'线上协作 / 校内讨论',role:'前端方向 1 名',reason:'你关注前端开发，小队需要界面实现；可用时间还需要你确认。'},study:{title:'学习搭子',headline:'一个人学？一起呀。',sub:'互相督促，也给彼此一点鼓励。',color:'var(--cp-cyan)',mascot:'cp-blue',name:'图书馆专注小组 · 一起复习',desc:'每次专注 50 分钟，结束后分享一个收获。安静学习，轻松坚持。',tags:['晚间自习','英语学习','专注陪伴'],time:'每周一、三 19:00–20:50',place:'图书馆公共自习区',role:'自习搭子 2 名',reason:'你可以按学习目标筛选搭子；这条为固定示例，不代表系统已读取你的课表。'},game:{title:'游戏开黑',headline:'快乐开局，默契加倍。',sub:'友好交流，把快乐留在这一局。',color:'var(--cp-yellow)',mascot:'cp-coral cp-wink',name:'课后快乐小队 · 休闲不熬夜',desc:'轻松玩、友好沟通。新手也欢迎，先约好时间，再一起开局。',tags:['休闲交流','新手友好','不熬夜'],time:'周五 20:00–21:30',place:'线上游戏',role:'游戏搭档 2 名',reason:'休闲偏好和交流方式需要相互确认；不根据胜率或段位作虚假推荐。'},outdoor:{title:'周末出逃',headline:'去吹风，也去认识你。',sub:'从校园旁的一次散步开始。',color:'var(--cp-purple)',mascot:'cp-green',name:'周末散步摄影团 · 慢慢走',desc:'沿校园周边绿道走走，拍树影和夕阳。无需专业相机，手机也能记录好天气。',tags:['轻徒步','手机摄影','新手友好'],time:'周六 16:00–18:00',place:'校门集合，周边绿道',role:'散步搭子 3 名',reason:'路线、时长和摄影兴趣可以作为匹配条件；本概念稿不使用实时位置。'}};
+    let state={screen:'home',category:'competition',applied:[],interests:['competition']}, gesture=null, suppressClick=0, suppressNode=null, panelX=0, activeOrigin=null;
+    const allowed=['home','teams','publish','messages','profile','category'];
+    function normalize(s){if(!s||s.style!=='campus-brutal')return null;return{screen:allowed.includes(s.screen)?s.screen:'home',category:data[s.category]?s.category:'competition',applied:Array.isArray(s.applied)?s.applied.filter(k=>data[k]):[],interests:Array.isArray(s.interests)?s.interests.filter(k=>data[k]):['competition']};}
+    const restored=normalize(window.openai?.widgetState?.privateContent);if(restored)state=restored;
+    function save(){try{const p=window.openai?.setWidgetState?.({modelContent:{design:'Campus Neo-Brutal',screen:state.screen,category:state.category},privateContent:{...state,style:'campus-brutal'}});p?.catch?.(()=>{});}catch{}}
+    function icons(){globalThis.lucide?.createIcons({attrs:{width:21,height:21}});}
+    function mascot(cls=''){const icon=cls.includes('blue')?'book-open':cls.includes('green')?'mountain':cls.includes('purple')?'lightbulb':cls.includes('coral')?'gamepad-2':'asterisk';return `<span class="cp-emblem" aria-hidden="true"><i data-lucide="${icon}"></i></span>`;}
+    function top(title,tag='左边缘右滑返回'){return `<div class="cp-panel-top"><button class="cp-back cursor-interaction" data-back aria-label="返回发现"><i data-lucide="arrow-left" aria-hidden="true"></i></button><h1>${title}</h1><span class="cp-panel-tag">${tag}</span></div>`;}
+    function feature(d){return `<div class="cp-feature" style="background:${d.color}"><h2>${d.headline}</h2><p>${d.sub}</p>${mascot(d.mascot)}</div>`;}
+    function filters(){return `<div class="cp-filter" aria-label="兴趣分区">${Object.entries(data).map(([k,d])=>`<button class="cursor-interaction" data-switch="${k}" aria-pressed="${state.category===k}">${d.title}</button>`).join('')}</div>`;}
+    function recruitment(){const d=data[state.category],applied=state.applied.includes(state.category);return `${feature(d)}<h2 class="cp-section-title">找到合拍的那一队</h2>${filters()}<article class="cp-paper"><span class="cp-label">招募示例 · 尚未核验</span><h2>${d.name}</h2><p class="cp-description">${d.desc}</p><div class="cp-tags">${d.tags.map(t=>`<span>${t}</span>`).join('')}</div><dl class="cp-specs"><div><dt>一起做什么</dt><dd>${d.role}</dd></div><div><dt>约定时间</dt><dd>${d.time}</dd></div><div><dt>在哪里</dt><dd>${d.place}</dd></div></dl><div class="cp-reason"><strong><i data-lucide="sparkles" aria-hidden="true"></i>为什么可能合拍</strong>${d.reason}</div><label class="cp-confirm"><input type="checkbox" id="cp-confirm" ${applied?'checked disabled':''}>我已确认示例时间，愿意进一步沟通</label><button id="cp-apply" class="cp-pill cp-wide cursor-interaction" ${applied?'':'disabled'}>${applied?'撤回示例申请':'申请加入 · 演示'}<i data-lucide="arrow-right" aria-hidden="true"></i></button><p class="cp-feedback" role="status">${applied?'已模拟申请，尚未发送给任何人。':''}</p></article><p class="cp-quiet">先看清目标、时间和分工，再决定是否加入。所有申请仅演示本地状态。</p>`;}
+    function publish(){return `${top('灵感发射站')}<div class="cp-feature" style="background:var(--cp-pink)"><h2>脑袋里的点子，<br>值得被看见。</h2><p>先把想做的事，说清楚。</p>${mascot('cp-purple cp-wink')}</div><div class="cp-fields"><label for="cp-intent">我想发起……<textarea id="cp-intent" placeholder="例如：想找一位前端搭档，每周两晚，一起完成校园创新项目。" maxlength="300"></textarea></label><button class="cp-pill cp-wide cursor-interaction" id="cp-draft">查看招募草稿示例<i data-lucide="wand-sparkles" aria-hidden="true"></i></button></div><p id="cp-draft-message" class="cp-feedback" role="status"></p><article class="cp-paper" id="cp-draft-result" hidden><span class="cp-label">固定草稿示例 · 未调用 AI</span><h2>校园创新项目 · 寻找前端搭档</h2><div class="cp-tags"><span>前端实现</span><span>每周两晚</span><span>目标待补充</span></div><p class="cp-description">草稿示例：一起定义问题、制作原型、完成演示。正式开发时再接入意图解析与可编辑表单。</p><button class="cp-pill cursor-interaction" data-category="competition" style="margin-top:17px">看看完整招募<i data-lucide="arrow-right" aria-hidden="true"></i></button></article><p class="cp-quiet">这里展示填写和展开交互。输入不会上传，草稿为预设内容。</p>`;}
+    function profile(){return `${top('我的兴趣','随时可以改')}<div class="cp-profile">${mascot('cp-green')}<div><h2>你好，同频的你。</h2><p class="cp-description">从喜欢的事情，开始认识彼此。</p></div></div><article class="cp-paper"><h2>最近想一起做什么？</h2><p class="cp-description">点亮兴趣，保存在这张概念稿中。</p><div class="cp-filter" style="margin-top:20px">${Object.entries(data).map(([k,d])=>`<button class="cursor-interaction" data-interest="${k}" aria-pressed="${state.interests.includes(k)}">${d.title}</button>`).join('')}</div><div class="cp-notice">${state.interests.length?'已点亮 '+state.interests.length+' 个兴趣，下一步去看看合适的招募。':'还没想好也没关系，先去逛逛。'}</div><button class="cp-pill cp-wide cursor-interaction" data-go="teams" style="margin-top:20px">去找合拍的队友<i data-lucide="arrow-right" aria-hidden="true"></i></button></article><p class="cp-quiet">个人资料、校内身份与兴趣信息在正式版中由你自主填写。此处不展示虚构认证。</p>`;}
+    function messages(){return `${top('消息','仅本地演示')}<div class="cp-feature" style="background:var(--cp-cyan)"><h2>一个招呼，<br>故事就开始了。</h2><p>申请进度，清清楚楚。</p>${mascot('cp-blue')}</div><h2 class="cp-section-title">我的示例申请</h2>${state.applied.length?state.applied.map(k=>`<article class="cp-paper"><span class="cp-label">模拟待审核</span><h2>${data[k].name}</h2><p class="cp-description">已在本概念稿中记录。未发送申请，未建立真实聊天。</p><button class="cp-pill cursor-interaction" data-category="${k}" style="margin-top:15px">查看申请<i data-lucide="arrow-right" aria-hidden="true"></i></button></article>`).join(''):`<article class="cp-paper"><h2>这里还没有申请</h2><p class="cp-description">试着进入一个兴趣分区，确认时间后体验申请流程。</p><button class="cp-pill cursor-interaction" data-go="teams" style="margin-top:20px">去看看招募<i data-lucide="arrow-right" aria-hidden="true"></i></button></article>`}`;}
+    function stopAnimations(el){el.getAnimations().forEach(a=>a.cancel());}
+    function animate(el,frames,duration=280){if(reduced.matches)return null;const a=el.animate(frames,{duration:duration*options.motion,easing:'cubic-bezier(.2,.8,.2,1)'});pending.add(a);a.finished.catch(()=>{}).finally(()=>pending.delete(a));return a;}
+    function spring(el,from,to,paint,done){const old=el._cpSpring;if(old)cancelAnimationFrame(old);if(reduced.matches){paint(to);done?.();return;}let x=from,v=0,last=performance.now();function step(t){const dt=Math.min((t-last)/1000,.025);last=t;v+=(-440*(x-to)-31*v)*dt;x+=v*dt;paint(x);if(Math.abs(x-to)<.2&&Math.abs(v)<2){paint(to);el._cpSpring=0;done?.();}else el._cpSpring=requestAnimationFrame(step);}el._cpSpring=requestAnimationFrame(step);}
+    function navTo(target,immediate=false){const key=target==='category'?'teams':target;nav.querySelectorAll('[data-nav]').forEach(b=>b.setAttribute('aria-current',b.dataset.nav===key?'page':'false'));const b=nav.querySelector(`[data-nav="${key}"]`)||nav.querySelector('[data-nav="home"]');indicator.style.width=b.offsetWidth+'px';const old=Number(indicator.dataset.x)||0,to=b.offsetLeft-8;if(immediate){indicator.style.transform=`translateX(${to}px)`;indicator.dataset.x=to;}else spring(indicator,old,to,x=>{indicator.style.transform=`translateX(${x}px)`;indicator.dataset.x=x;});}
+    function render(enter=false,origin=null){if(panel._cpSpring){cancelAnimationFrame(panel._cpSpring);panel._cpSpring=0;}stopAnimations(panel);panelX=0;panel.style.transform='';const open=state.screen!=='home';root.dataset.screen=state.screen;panel.hidden=!open;home.inert=open;home.style.visibility='visible';if(open){if(state.screen==='category'||state.screen==='teams')panel.innerHTML=top(data[state.category].title)+recruitment();else if(state.screen==='publish')panel.innerHTML=publish();else if(state.screen==='profile')panel.innerHTML=profile();else panel.innerHTML=messages();icons();if(enter){const b=panel.getBoundingClientRect();const o=origin?.getBoundingClientRect();const ox=o?Math.min(b.width,Math.max(0,o.x-b.x+o.width/2)):b.width/2;const oy=o?Math.max(0,o.y-b.y+o.height/2):70;panel.style.transformOrigin=`${ox}px ${oy}px`;animate(panel,[{transform:'translateY(20px) scale(.94)',opacity:.35},{transform:'translateY(0) scale(1)',opacity:1}],320);}}navTo(state.screen,!enter);}
+    function go(screen,category,origin){if(gesture)return;state.screen=screen;if(data[category])state.category=category;activeOrigin=origin||activeOrigin;render(true,origin);save();}
+    function back(){const from=panelX;stopAnimations(panel);if(panel._cpSpring)cancelAnimationFrame(panel._cpSpring);if(reduced.matches){finishBack();return;}const a=panel.animate([{transform:`translateX(${from}px)`},{transform:`translateX(${stage.clientWidth+20}px)`}],{duration:220*options.motion,easing:'cubic-bezier(.2,.8,.2,1)',fill:'forwards'});a.finished.then(()=>{finishBack();a.cancel();}).catch(()=>{});}
+    function finishBack(){state.screen='home';render();save();activeOrigin?.focus({preventScroll:true});}
+    root.addEventListener('click',e=>{const b=e.target.closest('button');if(performance.now()<suppressClick&&(b===suppressNode||e.target===suppressNode)){e.preventDefault();return;}if(!b||b.disabled)return;if(b.hasAttribute('data-back'))back();else if(b.dataset.category)go('category',b.dataset.category,b);else if(b.dataset.mascot)go('category',b.dataset.mascot,b);else if(b.dataset.go)go(b.dataset.go,null,b);else if(b.dataset.nav){if(b.dataset.nav==='home'&&state.screen!=='home')back();else if(b.dataset.nav!=='home')go(b.dataset.nav,null,b);}else if(b.dataset.switch){state.category=b.dataset.switch;render();save();animate(panel.querySelector('.cp-feature'),[{transform:'translateY(9px)',opacity:.5},{transform:'translateY(0)',opacity:1}],210);panel.querySelector(`[data-switch="${state.category}"]`)?.focus({preventScroll:true});}else if(b.id==='cp-apply'){const k=state.category;const was=state.applied.includes(k);state.applied=was?state.applied.filter(v=>v!==k):[...state.applied,k];render();save();panel.querySelector('.cp-feedback').textContent=was?'已撤回示例申请。':'已模拟申请，尚未发送给任何人。';panel.querySelector('#cp-apply')?.focus({preventScroll:true});}else if(b.dataset.interest){const k=b.dataset.interest;state.interests=state.interests.includes(k)?state.interests.filter(v=>v!==k):[...state.interests,k];render();save();panel.querySelector(`[data-interest="${k}"]`)?.focus({preventScroll:true});}else if(b.id==='cp-draft'){const input=panel.querySelector('#cp-intent'), result=panel.querySelector('#cp-draft-result'),msg=panel.querySelector('#cp-draft-message');if(!input.value.trim()){result.hidden=true;msg.textContent='先写下你想一起做的事。';input.focus();return;}result.hidden=false;msg.textContent='这是固定内容，仅演示草稿展开效果。';animate(result,[{transform:'translateY(16px) scale(.97)',opacity:0},{transform:'translateY(0) scale(1)',opacity:1}],290);}});
+    root.addEventListener('change',e=>{if(e.target.id==='cp-confirm')panel.querySelector('#cp-apply').disabled=!e.target.checked;});
+    root.addEventListener('pointerdown',e=>{if(e.button!==0||gesture)return;const m=e.target.closest('[data-mascot]');if(m&&state.screen==='home'){if(m._cpSpring)cancelAnimationFrame(m._cpSpring);stopAnimations(m);const t=new DOMMatrixReadOnly(getComputedStyle(m).transform);gesture={kind:'mascot',id:e.pointerId,node:m,sx:e.clientX,sy:e.clientY,x:t.m41,y:t.m42,dx:0,dy:0,active:false};m.setPointerCapture(e.pointerId);return;}const b=panel.getBoundingClientRect();if(!panel.hidden&&e.clientX-b.left<27&&!e.target.closest('button,input,textarea')){if(panel._cpSpring)cancelAnimationFrame(panel._cpSpring);stopAnimations(panel);gesture={kind:'back',id:e.pointerId,node:panel,sx:e.clientX,sy:e.clientY,dx:0,active:false};panel.setPointerCapture(e.pointerId);}});
+    function drag(e){if(!gesture||gesture.id!==e.pointerId)return;const g=gesture;g.dx=e.clientX-g.sx;g.dy=e.clientY-g.sy;if(Math.abs(g.dx)+Math.abs(g.dy)>5)g.active=true;if(g.kind==='mascot'){const dx=Math.max(-50,Math.min(50,g.x+g.dx*.65)),dy=Math.max(-50,Math.min(50,g.y+g.dy*.65));g.node.style.transform=`translate(${dx}px,${dy}px) rotate(${dx*.17}deg)`;}else{if(!g.active)return;panelX=Math.max(0,Math.min(stage.clientWidth,g.dx));panel.style.transform=`translateX(${panelX}px)`;} }
+    root.addEventListener('pointermove',drag);
+    function end(e,cancelled=false){if(!gesture||gesture.id!==e.pointerId)return;const g=gesture;if(!cancelled)drag(e);gesture=null;if(g.active){suppressClick=performance.now()+350;suppressNode=g.node;}if(g.node.hasPointerCapture(e.pointerId))g.node.releasePointerCapture(e.pointerId);if(g.kind==='mascot'){const mat=new DOMMatrixReadOnly(getComputedStyle(g.node).transform),dx=mat.m41,dy=mat.m42;spring(g.node,1,0,x=>{g.node.style.transform=`translate(${dx*x}px,${dy*x}px) rotate(${dx*x*.17}deg)`;});}else if(!cancelled&&panelX>stage.clientWidth*.24)back();else spring(panel,panelX,0,x=>{panelX=x;panel.style.transform=`translateX(${x}px)`;});}
+    root.addEventListener('pointerup',e=>end(e));root.addEventListener('pointercancel',e=>end(e,true));root.addEventListener('lostpointercapture',e=>{if(gesture?.id===e.pointerId&&e.target===gesture.node&&!gesture.node.hasPointerCapture(e.pointerId))end(e,true);});
+    root.addEventListener('keydown',e=>{if(e.key==='Escape'&&state.screen!=='home'){e.preventDefault();back();}});
+    new ResizeObserver(()=>navTo(state.screen,true)).observe(nav);
+    window.addEventListener('openai:set_globals',e=>{const incoming=normalize(e.detail?.globals?.widgetState?.privateContent);if(incoming&&JSON.stringify(incoming)!==JSON.stringify(state)&&!gesture){state=incoming;render();}});
+    render();
+    if(globalThis.Tweak){const tweak=new Tweak({container:root.querySelector('.cp-app'),onChange:()=>{root.style.setProperty('--cp-radius',options.radius+'px');root.style.setProperty('--cp-speed',options.motion);}});tweak.addSlider(options,'radius',{label:'卡片圆角',min:0,max:12,unit:'px'});tweak.addSlider(options,'motion',{label:'动效时长倍率',min:.6,max:1.5,step:.1});}
+  })();
+  </script>
+</div>

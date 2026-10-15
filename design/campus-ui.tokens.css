@@ -1,0 +1,94 @@
+/* Campus UI v1.1 Fresh. Design assets only; not an implemented application. */
+:root,
+[data-campus-theme="light"] {
+  color-scheme: light;
+  --campus-bg: #f1faf8;
+  --campus-surface: #ffffff;
+  --campus-surface-muted: #e6f3f5;
+  --campus-text: #203849;
+  --campus-text-secondary: #526979;
+  --campus-border: #d7e9e7;
+  --campus-input-border: #798d98;
+  --campus-primary: #0878d1;
+  --campus-primary-ink: #0866b2;
+  --campus-on-primary: #ffffff;
+  --campus-primary-soft: #e7f4ff;
+  --campus-success: #177952;
+  --campus-success-soft: #e5f8ee;
+  --campus-pending: #8a5800;
+  --campus-pending-soft: #fff4d8;
+  --campus-error: #b42318;
+  --campus-error-soft: #feeceb;
+  --campus-game: #754bc4;
+  --campus-game-soft: #f3edff;
+  --campus-study: #087e72;
+  --campus-study-soft: #e1f9f0;
+  --campus-competition: #a65b00;
+  --campus-competition-soft: #fff2d9;
+  --campus-outdoor: #287d4b;
+  --campus-outdoor-soft: #eaf8e5;
+  --campus-shadow-card: 0 4px 18px rgb(54 135 134 / 3%);
+  --campus-shadow-overlay: 0 12px 36px rgb(44 108 121 / 12%);
+  --campus-font: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+  --campus-space-1: 4px;
+  --campus-space-2: 8px;
+  --campus-space-3: 12px;
+  --campus-space-4: 16px;
+  --campus-space-5: 20px;
+  --campus-space-6: 24px;
+  --campus-space-8: 32px;
+  --campus-space-10: 40px;
+  --campus-radius-card: 20px;
+  --campus-radius-control: 12px;
+  --campus-radius-segment: 16px;
+  --campus-radius-tag: 8px;
+  --campus-radius-round: 999px;
+  --campus-touch-min: 44px;
+  --campus-motion-fast: 150ms;
+  --campus-motion-base: 220ms;
+  --campus-motion-panel: 280ms;
+  --campus-spring-stiffness: 480;
+  --campus-spring-damping: 34;
+  --campus-easing: cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+/* Explicit opt-in only. The current Fresh preview stays light even in a dark host. */
+[data-campus-theme="dark"] {
+  color-scheme: dark;
+  --campus-bg: #111315;
+  --campus-surface: #1c1f23;
+  --campus-surface-muted: #282c32;
+  --campus-text: #f4f5f7;
+  --campus-text-secondary: #b5bbc5;
+  --campus-border: #414750;
+  --campus-input-border: #88919d;
+  --campus-primary: #91c4ff;
+  --campus-primary-ink: #a9d7ff;
+  --campus-on-primary: #102743;
+  --campus-primary-soft: #20364f;
+  --campus-success: #91ddb0;
+  --campus-success-soft: #203a2d;
+  --campus-pending: #f0c86c;
+  --campus-pending-soft: #44371b;
+  --campus-error: #ffb3ac;
+  --campus-error-soft: #482a29;
+  --campus-game: #c6afff;
+  --campus-game-soft: #332a49;
+  --campus-study: #8bd9ca;
+  --campus-study-soft: #193c37;
+  --campus-competition: #f5c080;
+  --campus-competition-soft: #43321f;
+  --campus-outdoor: #a1d8ad;
+  --campus-outdoor-soft: #263d2b;
+  --campus-shadow-card: none;
+  --campus-shadow-overlay: 0 12px 40px rgb(0 0 0 / 30%);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root,
+  [data-campus-theme] {
+    --campus-motion-fast: 0ms;
+    --campus-motion-base: 0ms;
+    --campus-motion-panel: 0ms;
+  }
+}
