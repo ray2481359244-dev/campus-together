@@ -1,0 +1,11 @@
+import 'dotenv/config';
+import { spawnSync } from 'node:child_process';
+import { createRequire } from 'node:module';
+import { resolve } from 'node:path';
+const require = createRequire(import.meta.url), tsx = require.resolve('tsx/cli');
+const migrate = spawnSync(process.execPath, ['scripts/prepare-tests.mjs'], { stdio: 'inherit', windowsHide: true });
+if (migrate.status !== 0) process.exit(migrate.status || 1);
+const seed = spawnSync(process.execPath, [tsx, 'scripts/e2e-data.ts'], { stdio: 'inherit', windowsHide: true });
+if (seed.status !== 0) process.exit(seed.status || 1);
+Object.assign(process.env, { DATABASE_URL: process.env.TEST_DATABASE_URL, PORT: '3101', WEB_ORIGIN: 'http://127.0.0.1:3101', SERVE_WEB: '1', NODE_ENV: 'test', APP_MODE: 'DEMO' });
+await import('../apps/server/dist/index.js');

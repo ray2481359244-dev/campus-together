@@ -37,6 +37,11 @@ const ctl = (args: string[]) => new Promise<void>((done, reject) => {
   child.on('error', reject);
   child.on('exit', code => code === 0 ? done() : reject(new Error(`pg_ctl failed (${code}); inspect ${join(alias, 'postgres.log')}`)));
 });
+if (process.argv.includes('--stop')) {
+  await ctl(['stop', '-D', directory, '-m', 'fast', '-w']);
+  console.log('Project PostgreSQL stopped safely. Persistent data retained.');
+  process.exit(0);
+}
 if (!existsSync(join(directory, 'PG_VERSION'))) {
   const passwordFile = join(alias, 'init-password');
   writeFileSync(passwordFile, decodeURIComponent(url.password) + '\n', { mode: 0o600 });
@@ -56,6 +61,7 @@ for (const name of [url.pathname.slice(1), 'campus_test']) {
 }
 await client.end();
 console.log(`Local PostgreSQL ready on 127.0.0.1:${port}; persistent data location recorded in .local/runtime.json. Ctrl+C stops it safely.`);
+if (process.argv.includes('--once')) process.exit(0);
 let stopping = false;
 const stop = async () => {
   if (stopping) return; stopping = true;

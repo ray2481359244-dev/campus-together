@@ -48,9 +48,19 @@ pnpm.cmd dev
 pnpm.cmd db:check
 pnpm.cmd typecheck
 pnpm.cmd build
+pnpm.cmd test
+pnpm.cmd test:e2e
 ```
 
 测试与浏览器验收命令、已运行结果随实际实现记录在 docs/PROGRESS.md。失败的命令不算通过；当前不能据 README 文案推断尚未实现的功能已经完成。
+
+`test` 与 `test:e2e` 使用独立 `campus_test`，会清理该测试库的用户与讨论，不能指向有用数据。浏览器验收测试最终构建，运行前先 `pnpm build`。Windows 默认用已安装 Microsoft Edge；其他系统先按 Playwright 说明安装对应测试浏览器。E2E 服务只在 3101 监听，测试后回收。
+
+`pnpm test:persistence` 会短暂重启本项目专用本地 PostgreSQL，同时只向独立测试库写入验证内容；不要在其他人使用本地演示时执行。不适用于外部数据库。它已验证帖子与服务端会话在 API 和 PostgreSQL 重启后保留。
+
+构建后可停止开发进程，执行 `pnpm start` 在 http://127.0.0.1:3001 同域运行构建产物；这条本地路径也支持写入。未来 HTTPS 部署需单独设置 `NODE_ENV=production` 与 `SERVE_ORIGIN`，不能直接将本地演示配置公开发布。
+
+`pnpm db:stop` 安全停止专用本地 PostgreSQL。数据不删除，之后用 `pnpm db:local` 再启动。
 
 工程：`apps/web` 前端、`apps/server` API、`packages/contracts` 共享校验与 DTO、`prisma` 迁移与 seed、`docs` 决策和过程记录。新粗野主义概念稿只作视觉参考，运行数据来自 API 与 PostgreSQL。
 

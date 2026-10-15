@@ -8,6 +8,7 @@ import type { Category, PostDTO, TopicDTO } from '@campus/contracts';
 import { api, messageOf } from '../lib/api';
 import { useSchool } from '../components/Layout';
 import { Loading, EmptyState, ErrorState } from '../components/UI';
+import { rememberScroll } from '../lib/scroll';
 
 const order: Category[] = ['COMPETITION', 'STUDY', 'GAME', 'OUTDOOR'];
 const icons = { COMPETITION: Asterisk, STUDY: BookOpen, GAME: Gamepad2, OUTDOOR: Mountain };
@@ -18,7 +19,7 @@ function InterestChip({ category, label, rotation, choose }: { category: Categor
 }
 export function PostCard({ post }: { post: PostDTO }) {
   const location = useLocation();
-  return <Link className="post-card" to={'/posts/' + post.id} state={{ backgroundLocation: location }}>
+  return <Link className="post-card" to={'/posts/' + post.id} state={{ backgroundLocation: location }} onClick={() => rememberScroll(location.key)}>
     <div className="post-card-top"><span className={'topic-badge cat-' + post.topic.category}>{post.topic.name}</span><span className="metadata">{new Date(post.createdAt).toLocaleDateString('zh-CN', { timeZone: 'Asia/Shanghai', month: 'short', day: 'numeric' })}</span></div>
     <h3>{post.title}</h3><p className="post-excerpt">{post.body.slice(0, 120)}{post.body.length > 120 ? '……' : ''}</p>
     <div className="post-card-footer"><span className="author-line"><span className="avatar">{post.author.nickname.slice(0, 1)}</span>{post.author.nickname}</span><ArrowUpRight size={20} aria-hidden="true" /></div>

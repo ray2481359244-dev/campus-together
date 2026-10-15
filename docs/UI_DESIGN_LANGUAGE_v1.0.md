@@ -1,5 +1,7 @@
 # CampusTogether UI设计语言规范
 
+> 历史参考：已由用户后续暂定的新粗野主义方向取代。当前开发请使用 UI_DESIGN_LANGUAGE_v1.2.md 与 design/campus-neo-brutal.tokens.css。
+
 版本：v1.1　日期：2026年10月15日　适用范围：参赛版响应式Web
 
 **界面采用明亮、清新的iOS式层级与分组，加入能即时响应手指的交互。** 薄荷浅底、白色内容表面、天空蓝主操作和柔和主题色形成校园氛围。设计语言沿用Campus UI，本次修订为清新版。
