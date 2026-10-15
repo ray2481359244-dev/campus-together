@@ -22,6 +22,8 @@ export const ProfileSchema = z.object({
 }).strict();
 export const CreatePostSchema = z.object({ topicId: IdSchema, title: z.string().trim().min(5, '标题至少 5 个字').max(60), body: z.string().trim().min(10, '正文至少 10 个字').max(5000) }).strict();
 export const EditPostSchema = CreatePostSchema.omit({ topicId: true }).extend({ revision: z.number().int().positive() }).strict();
+export const DeletePostSchema = z.object({ revision: z.number().int().positive() }).strict();
+export const PostCursorSchema = z.object({ createdAt: z.iso.datetime(), id: IdSchema }).strict();
 export const PostsQuerySchema = z.object({
   schoolId: IdSchema, category: CategorySchema.optional(), topicId: IdSchema.optional(),
   q: z.string().trim().max(100).optional(), cursor: z.string().max(300).optional(),

@@ -18,7 +18,7 @@
     "typecheck": "tsc --noEmit -p apps/server/tsconfig.json && tsc --noEmit -p apps/web/tsconfig.json",
     "build": "pnpm --filter @campus/web build && node scripts/build.mjs",
     "start": "node --env-file=.env apps/server/dist/index.js",
-    "test": "vitest run",
+    "test": "node scripts/prepare-tests.mjs && vitest run",
     "test:e2e": "playwright test",
     "check": "pnpm typecheck && pnpm test && pnpm build"
   },
