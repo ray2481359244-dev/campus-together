@@ -4,6 +4,7 @@ node_modules/
 !.env.example
 .local/
 .cache/
+.pnpm-store/
 dist/
 coverage/
 playwright-report/
