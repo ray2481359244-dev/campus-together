@@ -8,6 +8,14 @@ const children = [
   spawn(process.execPath, [tsx, 'watch', '--env-file=.env', 'apps/server/src/index.ts'], { stdio: 'inherit', windowsHide: true }),
   spawn(process.execPath, [vite, '--host', '127.0.0.1'], { cwd: resolve('apps/web'), stdio: 'inherit', windowsHide: true }),
 ];
-const stop = () => children.forEach(child => child.kill());
+let stopping = false;
+const stop = () => {
+  if (stopping) return; stopping = true;
+  children.forEach(child => {
+    if (child.exitCode !== null || !child.pid) return;
+    if (process.platform === 'win32') spawn('taskkill.exe', ['/PID', String(child.pid), '/T', '/F'], { stdio: 'ignore', windowsHide: true });
+    else child.kill('SIGTERM');
+  });
+};
 process.on('SIGINT', stop); process.on('SIGTERM', stop);
 children.forEach(child => child.on('exit', code => { if (code) { stop(); process.exitCode = code; } }));
