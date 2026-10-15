@@ -1,0 +1,22 @@
+/* Campus Neo-Brutal v1.2. Accepted provisional implementation baseline. */
+:root {
+  color-scheme: light;
+  --campus-bg: #fff9ef;
+  --campus-surface: #fffdf7;
+  --campus-text: #20201e;
+  --campus-muted: #5d5d53;
+  --campus-primary: #f5ff62;
+  --campus-competition: #c3b3ff;
+  --campus-study: #a7dfed;
+  --campus-game: #f5ff62;
+  --campus-outdoor: #b7edaa;
+  --campus-creative: #ffb3cf;
+  --campus-success-bg: #e5f2d2;
+  --campus-error: #a32828;
+  --campus-error-bg: #fff0e9;
+  --campus-border: 3px solid #20201e;
+  --campus-radius: 5px;
+  --campus-shadow: 5px 5px 0 #20201e;
+  --campus-ease: cubic-bezier(.2,.8,.2,1);
+  --campus-font: "PingFang SC", "Microsoft YaHei", system-ui, sans-serif;
+}
