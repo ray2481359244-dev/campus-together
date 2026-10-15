@@ -1,6 +1,6 @@
 {
   "formatVersion": 1,
-  "exportedAt": "2026-10-15T09:34:13.330Z",
+  "exportedAt": "2026-10-15T09:36:13.913Z",
   "source": "Current project Codex session; local original not published",
   "range": {
     "firstMessage": "2026-10-15T02:58:03.848Z",
@@ -20,7 +20,8 @@
     "images/attachments"
   ],
   "textReconstruction": false,
+  "formattingNormalization": "Trailing horizontal whitespace and extra blank lines at EOF removed; dialogue content not rewritten.",
   "outputFile": "2026-10-15-visible-conversation.md",
-  "sha256": "51010a70c2a40f7e3ed0878c1ab89f80b2a39422bcf1d0acf81274db33198116",
+  "sha256": "587b3ab9fd370bd43f97031bb54e8dd4de4b7c1073f4c71199a95944094ba134",
   "limitations": "Visible conversation text only; not a claim of three complete core iteration chains."
 }
