@@ -6,7 +6,9 @@
 
 记录入口：[持续开发日志](DEVELOPMENT_LOG.md) · [2026-10-15 详细记录](docs/development/2026-10-15.md) · [参赛材料核对表](docs/competition/SUBMISSION_CHECKLIST.md) · [AI 证据索引](docs/ai/README.md)。
 
-获取代码（仓库建立并上传后可用）：
+源码已上传到[公开 GitHub 仓库](https://github.com/ray2481359244-dev/campus-together)，默认分支为 `master`，保留从文档基线开始的完整提交历史。
+
+获取代码：
 
 ```powershell
 git clone https://github.com/ray2481359244-dev/campus-together.git

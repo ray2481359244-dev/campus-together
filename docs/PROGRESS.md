@@ -68,4 +68,6 @@
 
 用户已授权新建 GitHub 仓库上传。新增 [开发日志入口](../DEVELOPMENT_LOG.md)、[当日日志](development/2026-10-15.md)、日记模板、[AI 证据索引](ai/README.md) 与 [参赛核对表](competition/SUBMISSION_CHECKLIST.md)。本会话可见文本快照由实际记录导出，明确不含工具全文和附件。
 
-上传结果以参赛核对表的真实归档记录为准。上述为过程材料整理，不增加应用功能；完整 Prompt 链、干净环境 10 分钟复现、视频、PDF 和官网提交仍待完成。
+GitHub 公开仓库 [ray2481359244-dev/campus-together](https://github.com/ray2481359244-dev/campus-together) 已创建并成功上传，默认分支 `master`；17:40 核对首次上传的 `ec0b95f` 与本地一致，保留 10 个真实提交，未登录 API 读取为 200。此次成功记录随后独立提交；最新版本以远端 master 为准。
+
+详情见参赛核对表。上述为过程材料整理，不增加应用功能；完整 Prompt 链、干净环境 10 分钟复现、视频、PDF 和官网提交仍待完成。
