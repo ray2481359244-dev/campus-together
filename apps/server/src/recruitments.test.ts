@@ -147,5 +147,6 @@ describe('real recruitment drafts and transactional publication', () => {
     const read = await b.get('/api/v1/recruitments/' + saved.body.data.id).expect(200);
     expect(read.body.data.team.id).toBe(published.body.data.team.id);
     expect(read.body.data.draft.sourcePostId).toBe(post.body.data.id);
+    expect(read.body.data.sourceAvailable).toBe(false);
   });
 });

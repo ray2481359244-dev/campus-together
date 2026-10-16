@@ -8,7 +8,7 @@ import { parse, ApiError } from './http.js';
 import { userInclude } from './dto.js';
 import type { Prisma } from './generated/prisma/client.js';
 
-const include = { school: true, topic: true, author: { include: userInclude }, team: { include: { slots: { orderBy: { position: 'asc' as const } }, members: { where: { status: 'ACTIVE' as const }, select: { userId: true, slotId: true, role: true } } } } } as const;
+const include = { school: true, topic: true, sourcePost: { select: { status: true } }, author: { include: userInclude }, team: { include: { slots: { orderBy: { position: 'asc' as const } }, members: { where: { status: 'ACTIVE' as const }, select: { userId: true, slotId: true, role: true } } } } } as const;
 type Record = Prisma.RecruitmentGetPayload<{ include: typeof include }>;
 function dto(row: Record, userId?: string): RecruitmentDTO {
   const draft = RecruitmentDraftSchema.parse(row.payload);
@@ -16,7 +16,7 @@ function dto(row: Record, userId?: string): RecruitmentDTO {
     category: 'COMPETITION', school: { id: row.school.id, name: row.school.name, isDemo: row.school.isDemo },
     topic: row.topic ? { id: row.topic.id, name: row.topic.name } : null,
     author: { id: row.authorId, nickname: row.author.profile?.nickname || '校园用户' },
-    canEditDraft: row.publicationStatus === 'DRAFT' && row.authorId === userId,
+    canEditDraft: row.publicationStatus === 'DRAFT' && row.authorId === userId, sourceAvailable: row.sourcePost?.status === 'PUBLISHED',
     createdAt: row.createdAt.toISOString(), updatedAt: row.updatedAt.toISOString(), publishedAt: row.publishedAt?.toISOString() ?? null,
     draft, team: row.team ? { id: row.team.id, status: row.team.status, memberCount: row.team.members.length, capacity: row.capacity,
       captainUserId: row.team.captainUserId, acceptingStatus: row.joinDeadline && row.joinDeadline > new Date() ? 'OPEN' : 'CLOSED', chatAvailable: false,

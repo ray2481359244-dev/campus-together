@@ -84,6 +84,13 @@ test('an author converts a discussion, resumes a draft and safely retries a comm
     await expect(b.locator('.recruitment-grid')).toContainText(title);
     await b.getByLabel('浏览学校', { exact: true }).selectOption({ label: '青禾学院（虚构演示）' });
     await expect(b.getByRole('heading', { name: '第一支队伍，等你发起' })).toBeVisible();
+    await a.goto(sourceUrl);
+    await a.getByRole('button', { name: '删除讨论', exact: true }).click();
+    await a.getByRole('button', { name: '确认删除', exact: true }).click();
+    await b.goto('/recruitments/' + id);
+    await expect(b.getByRole('heading', { name: title, exact: true })).toBeVisible();
+    await expect(b.getByText('来源讨论已不可用；这份已发布招募仍独立保留。', { exact: true })).toBeVisible();
+    await expect(b.getByRole('link', { name: '查看来源讨论', exact: true })).toHaveCount(0);
     expect(errors).toEqual([]);
   } finally { await owner.close(); await observer.close(); }
 });

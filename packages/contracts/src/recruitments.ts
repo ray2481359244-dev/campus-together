@@ -46,7 +46,7 @@ export const RecruitmentCursorSchema = z.object({ publishedAt: z.iso.datetime(),
 export interface RecruitmentDTO {
   id: string; publicationStatus: 'DRAFT' | 'PUBLISHED'; revision: number; title: string; description: string;
   category: 'COMPETITION'; school: { id: string; name: string; isDemo: boolean }; topic: { id: string; name: string } | null;
-  author: { id: string; nickname: string }; canEditDraft: boolean; createdAt: string; updatedAt: string; publishedAt: string | null;
+  author: { id: string; nickname: string }; canEditDraft: boolean; sourceAvailable: boolean; createdAt: string; updatedAt: string; publishedAt: string | null;
   draft: RecruitmentDraft;
   team: null | { id: string; status: string; memberCount: number; capacity: number; captainUserId: string; acceptingStatus: 'OPEN' | 'CLOSED';
     slots: { id: string; name: string; capacity: number; occupied: number; requiredSkills: string[] }[]; chatAvailable: false };
