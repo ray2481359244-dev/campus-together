@@ -31,7 +31,7 @@ if (process.env.SERVE_WEB === '1') {
   const web = resolve('apps/web/dist');
   if (!existsSync(resolve(web, 'index.html'))) throw new Error('Web build missing. Run pnpm build first.');
   app.use(express.static(web));
-  app.use((req, res, next) => { if (req.method === 'GET' && req.accepts('html')) res.sendFile(resolve(web, 'index.html')); else next(); });
+  app.use((req, res, next) => { if (req.method === 'GET' && req.accepts('html')) res.sendFile('index.html', { root: web }); else next(); });
 }
 app.use(notFound);
 app.use(errorHandler);
