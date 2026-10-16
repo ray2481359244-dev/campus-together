@@ -19,6 +19,16 @@ Set-Location campus-together
 
 ## 环境与启动（Windows PowerShell）
 
+Windows 已安装依赖时，可以直接双击根目录的 **启动平台.cmd**。保留该窗口运行，再访问 http://127.0.0.1:5173/ 。已运行时会给出地址，不再启动重复服务。
+
+打不开时先运行 `pnpm.cmd doctor`（或 `node scripts/doctor.mjs`）。诊断只读取配置与运行状态，不打印密钥、不清理数据、不结束其他程序：
+
+- `STOPPED`：网页未启动，执行 `pnpm.cmd local` 或双击启动入口。
+- `RUNNING`：本项目网页、API 与数据库均就绪，直接打开提示地址。
+- `DATABASE_UNAVAILABLE`：网页和 API 可达，数据库不可用，检查数据库终端或运行 `pnpm.cmd db:local`。
+- `PORT_CONFLICT`：端口被其他程序、旧版服务或其他检出目录占用；先检查原开发终端，不能直接结束未知程序。
+- `ENVIRONMENT_ERROR`：按提示安装 Node / 依赖或配置环境。若是刚克隆、没有 `.env`，先 `pnpm.cmd setup`。
+
 需要 Node.js **24 LTS** 与 pnpm **11.5.1**。依赖已经锁定，首次下载速度取决于网络；尚未完成干净环境 10 分钟复现测试。
 
 ```powershell
@@ -43,6 +53,8 @@ pnpm.cmd dev
 
 `pnpm setup` 生成随机本地数据库密码到忽略的 `.env`，不覆盖既有文件。此处不需要模型密钥。
 
+`pnpm local` 会先检查本项目实例和端口。若仅网页或 API 仍在运行，先在其原终端正常停止，再重新启动；不会自动抢占端口。配置外部 PostgreSQL 时跳过本地数据库管理，直接连接你已准备好的数据库。开发网页固定 5173，若修改 API 的 `PORT`，通过 `pnpm dev` / `pnpm local` 启动时会同步代理。
+
 ### 本地数据库
 
 - 本机没有 Docker，默认使用锁定的 embedded-postgres 开发组件提供真正的 PostgreSQL 18.4；组件包版本含 beta 标记，仅用于本地开发。生产可连接普通 PostgreSQL，不依赖此启动器。
@@ -65,6 +77,7 @@ pnpm.cmd typecheck
 pnpm.cmd build
 pnpm.cmd test
 pnpm.cmd test:e2e
+pnpm.cmd test:startup
 ```
 
 测试与浏览器验收命令、已运行结果随实际实现记录在 docs/PROGRESS.md。失败的命令不算通过；当前不能据 README 文案推断尚未实现的功能已经完成。
