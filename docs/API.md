@@ -4,7 +4,7 @@
 
 | 方法与路径 | 当前行为 |
 | --- | --- |
-| GET /health | 存活与 DEMO 标识，不依赖登录或数据库 |
+| GET /health | 存活与 DEMO 标识，不依赖登录或数据库；开发启动器可显式提供当前目录短摘要 devInstance，生产不返回该字段 |
 | GET /ready | 实际查询 PostgreSQL，就绪失败 503 |
 | GET /schools | 可用学校，含演示标记 |
 | GET /topics?category= | 数据库主题；区域枚举校验 |

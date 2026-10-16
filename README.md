@@ -78,6 +78,7 @@ pnpm.cmd build
 pnpm.cmd test
 pnpm.cmd test:e2e
 pnpm.cmd test:startup
+pnpm.cmd test:serve
 ```
 
 测试与浏览器验收命令、已运行结果随实际实现记录在 docs/PROGRESS.md。失败的命令不算通过；当前不能据 README 文案推断尚未实现的功能已经完成。
@@ -89,6 +90,8 @@ pnpm.cmd test:startup
 构建后可停止开发进程，执行 `pnpm start` 在 http://127.0.0.1:3001 同域运行构建产物；这条本地路径也支持写入。未来 HTTPS 部署需单独设置 `NODE_ENV=production` 与 `SERVE_ORIGIN`，不能直接将本地演示配置公开发布。
 
 `pnpm db:stop` 安全停止专用本地 PostgreSQL。数据不删除，之后用 `pnpm db:local` 再启动。
+
+10 月 16 日已完成一次[同机独立目录复现](docs/reproduction/2026-10-16.md)：使用既有离线依赖缓存、全新环境与数据库，构建版注册和发帖通过。原始失败和耗时均记录；尚未完成干净新机器首次网络安装验证。`test:serve` 在已构建后检查隐藏父目录的网页深链接及 API 404 边界。
 
 工程：`apps/web` 前端、`apps/server` API、`packages/contracts` 共享校验与 DTO、`prisma` 迁移与 seed、`docs` 决策和过程记录。新粗野主义概念稿只作视觉参考，运行数据来自 API 与 PostgreSQL。
 

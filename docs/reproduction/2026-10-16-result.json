@@ -1,0 +1,77 @@
+{
+  "date": "2026-10-16",
+  "startedAt": "2026-10-16T04:30:59.048Z",
+  "sourceCommit": "b6118557f283a8f2e4ac8514b8c5b209cb928a18",
+  "mode": "same-host-independent-checkout-cached-offline",
+  "node": "24.16.0",
+  "pgPort": 5433,
+  "appPort": 3104,
+  "steps": [
+    {
+      "label": "local clone of committed source",
+      "seconds": 0.272,
+      "exitCode": 0
+    },
+    {
+      "label": "install locked dependencies from existing cache",
+      "seconds": 4.25,
+      "exitCode": 0
+    },
+    {
+      "label": "generate isolated local environment",
+      "seconds": 0.066,
+      "exitCode": 0
+    },
+    {
+      "label": "start independent PostgreSQL",
+      "seconds": 6.612,
+      "exitCode": 0
+    },
+    {
+      "label": "generate Prisma client",
+      "seconds": 2.495,
+      "exitCode": 0
+    },
+    {
+      "label": "apply SQL migrations",
+      "seconds": 0.936,
+      "exitCode": 0
+    },
+    {
+      "label": "seed explicitly fictional demo data",
+      "seconds": 0.669,
+      "exitCode": 0
+    },
+    {
+      "label": "build web and server",
+      "seconds": 1.593,
+      "exitCode": 0
+    },
+    {
+      "label": "stop only independent PostgreSQL",
+      "seconds": 1.449,
+      "exitCode": 0
+    }
+  ],
+  "mainDataBefore": {
+    "users": 2,
+    "posts": 4
+  },
+  "browser": {
+    "pageStatus": 200,
+    "readiness": true,
+    "registration": true,
+    "published": true,
+    "readAfterReload": true
+  },
+  "secondsToBrowserSuccess": 18.575,
+  "mainDataAfter": {
+    "users": 2,
+    "posts": 4
+  },
+  "mainCountsUnchanged": true,
+  "passed": true,
+  "independentDatabaseStopped": true,
+  "totalSecondsIncludingCleanup": 20.413,
+  "finishedAt": "2026-10-16T04:31:19.498Z"
+}
