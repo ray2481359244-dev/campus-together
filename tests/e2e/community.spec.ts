@@ -140,3 +140,51 @@ test('real touch drags, cancellation, swipe-back and reduced-motion remain usabl
     await noOverflow(page);
   } finally { await context.close(); }
 });
+
+for (const width of [390, 1440]) {
+  test(`category changes retain layout and indicator through slow and interrupted requests at ${width}px`, async ({ browser }) => {
+    const context = await browser.newContext({ baseURL, viewport: { width, height: 1000 } });
+    const page = await context.newPage();
+    let release: (() => void) | undefined;
+    try {
+      await page.goto('/discover');
+      await expect(page.locator('.post-card')).not.toHaveCount(0);
+      const previousTitle = await page.locator('.post-card h3').first().textContent();
+      await page.evaluate(() => {
+        (window as unknown as Record<string, unknown>).switchIndicator = document.querySelector('.tab-indicator');
+        window.scrollTo({ top: document.querySelector('#discussion-board')!.getBoundingClientRect().top + scrollY - 20, behavior: 'instant' });
+      });
+      const top = await page.evaluate(() => scrollY);
+      const gate = new Promise<void>(done => { release = done; });
+      await page.route('**/api/v1/posts?*', async route => {
+        if (new URL(route.request().url()).searchParams.get('category') === 'STUDY') await gate;
+        await route.continue().catch(() => { /* A rapid subsequent selection can abort this request. */ });
+      });
+      await page.locator('.category-tabs button').nth(1).click();
+      await expect(page.locator('.post-results')).toHaveAttribute('data-updating', 'true');
+      await expect(page.locator('.post-list')).toContainText(previousTitle!);
+      await expect(page.locator('.loading-mark')).toHaveCount(0);
+      await expect(page.locator('.post-results')).toHaveAttribute('inert', '');
+      await expect.poll(() => page.evaluate(() => {
+        const bar = document.querySelector('.tab-indicator')!.getBoundingClientRect();
+        const button = document.querySelectorAll('.category-tabs button')[1].getBoundingClientRect();
+        return Math.abs(bar.left - button.left);
+      })).toBeLessThan(1);
+      expect(await page.evaluate(() => (window as unknown as Record<string, unknown>).switchIndicator === document.querySelector('.tab-indicator'))).toBe(true);
+      expect(Math.abs(await page.evaluate(() => scrollY) - top)).toBeLessThan(2);
+      expect(await page.evaluate(() => new DOMMatrixReadOnly(getComputedStyle(document.querySelector('.tab-indicator')!).transform).m42)).toBe(0);
+      expect(await page.evaluate(() => performance.getEntriesByType('navigation').length)).toBe(1);
+      await page.screenshot({ path: `.local/screenshots/d2-switch-pending-${width}.png`, fullPage: true });
+      await page.locator('.category-tabs button').nth(2).click();
+      await expect(page.locator('.post-list')).toContainText('新手第一次参加桌游');
+      release!(); await page.unrouteAll({ behavior: 'wait' });
+      await expect(page.locator('.post-list')).toContainText('新手第一次参加桌游');
+      await expect(page.locator('.category-tabs button').nth(2)).toHaveAttribute('aria-pressed', 'true');
+      await page.emulateMedia({ reducedMotion: 'reduce' });
+      await page.locator('.category-tabs button').nth(3).click();
+      await expect(page.locator('.post-list')).toContainText('校园里的光影');
+      expect(await page.evaluate(() => new DOMMatrixReadOnly(getComputedStyle(document.querySelector('.tab-indicator')!).transform).m42)).toBe(0);
+      await noOverflow(page);
+    } finally { release?.(); await context.close(); }
+  });
+}

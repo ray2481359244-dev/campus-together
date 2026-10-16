@@ -79,7 +79,10 @@ svg{flex-shrink:0}
 .category-tabs{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:4px;position:relative;background:var(--campus-surface);border:2px solid var(--campus-text);border-radius:var(--campus-radius);padding:4px;margin-bottom:18px}
 .category-tabs button{border:0;background:none;font-size:14px;font-weight:800;position:relative;padding:10px 5px;min-width:0;min-height:44px}
 .category-tabs button>span:last-child{position:relative;z-index:1}
-.tab-indicator{position:absolute;inset:0;background:var(--campus-primary);border:2px solid var(--campus-text);border-radius:2px}
+.tab-indicator{position:absolute;left:4px;top:4px;bottom:4px;width:calc((100% - 20px)/4);background:var(--campus-primary);border:2px solid var(--campus-text);border-radius:2px;pointer-events:none}
+.results-status{min-height:26px;font-size:12px;color:var(--campus-muted);line-height:1.8}
+.post-results{transition:opacity .16s ease}
+.post-results[data-updating=true]{opacity:.55;pointer-events:none}
 .board-tabs{display:flex;align-items:center;gap:20px;font-size:13px;font-weight:800;border-bottom:2px solid var(--campus-text);margin-bottom:17px}
 .board-tabs>span{border-bottom:4px solid var(--campus-text);padding:6px 2px}
 .board-tabs>a{display:flex;align-items:center;gap:4px;color:var(--campus-muted);padding:6px 0}
