@@ -10,7 +10,7 @@ let csrfA = '', csrfB = '', topic = '', otherTopic = '', postId = '';
 const valid = () => ({ topicId: topic, title: '真实讨论的测试标题', body: '这是通过真实 API 保存到 PostgreSQL 的讨论正文。' });
 beforeAll(async () => {
   if (!new URL(config.databaseUrl!).pathname.endsWith('_test')) throw new Error('Not test database');
-  await db.session.deleteMany(); await db.post.deleteMany(); await db.profile.deleteMany(); await db.user.deleteMany(); await db.topic.deleteMany(); await db.school.deleteMany();
+  await db.recruitment.deleteMany(); await db.session.deleteMany(); await db.post.deleteMany(); await db.profile.deleteMany(); await db.user.deleteMany(); await db.topic.deleteMany(); await db.school.deleteMany();
   await db.school.createMany({ data: [{ id: schoolA, name: '测试甲校', city: '测试' }, { id: schoolB, name: '测试乙校', city: '测试' }] });
   topic = (await db.topic.create({ data: { category: 'COMPETITION', name: '应用开发', normalizedName: '应用开发' } })).id;
   otherTopic = (await db.topic.create({ data: { category: 'STUDY', name: '高等数学', normalizedName: '高等数学' } })).id;

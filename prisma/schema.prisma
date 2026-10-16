@@ -39,6 +39,7 @@ model School {
   active    Boolean  @default(true)
   profiles  Profile[]
   posts     Post[]
+  recruitments Recruitment[]
   createdAt DateTime @default(now()) @db.Timestamptz(3)
 }
 
@@ -51,6 +52,10 @@ model User {
   profile      Profile?
   sessions     Session[]
   posts        Post[]
+  recruitments Recruitment[]
+  captainTeams Team[] @relation("TeamCaptain")
+  memberships TeamMember[]
+  domainEvents DomainEvent[]
   createdAt    DateTime   @default(now()) @db.Timestamptz(3)
   updatedAt    DateTime   @updatedAt @db.Timestamptz(3)
 }
@@ -91,6 +96,7 @@ model Topic {
   description    String   @default("") @db.VarChar(300)
   active         Boolean  @default(true)
   posts          Post[]
+  recruitments Recruitment[]
   createdAt      DateTime @default(now()) @db.Timestamptz(3)
 
   @@unique([category, normalizedName])
@@ -111,7 +117,128 @@ model Post {
   createdAt DateTime      @default(now()) @db.Timestamptz(3)
   updatedAt DateTime      @updatedAt @db.Timestamptz(3)
   deletedAt DateTime?     @db.Timestamptz(3)
+  recruitments Recruitment[]
 
   @@index([schoolId, status, createdAt, id])
   @@index([topicId, status, createdAt, id])
+}
+
+enum PublicationStatus {
+  DRAFT
+  PUBLISHED
+}
+
+enum TeamStatus {
+  OPEN
+  FULL
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+  EXPIRED
+}
+
+enum MemberRole {
+  CAPTAIN
+  MEMBER
+}
+
+enum MemberStatus {
+  ACTIVE
+  LEFT
+  REMOVED
+}
+
+model Recruitment {
+  id String @id @default(uuid()) @db.Uuid
+  authorId String @db.Uuid
+  author User @relation(fields: [authorId], references: [id], onDelete: Restrict)
+  schoolId String @db.Uuid
+  school School @relation(fields: [schoolId], references: [id], onDelete: Restrict)
+  topicId String? @db.Uuid
+  topic Topic? @relation(fields: [topicId], references: [id], onDelete: Restrict)
+  sourcePostId String? @db.Uuid
+  sourcePost Post? @relation(fields: [sourcePostId], references: [id], onDelete: SetNull)
+  category Category @default(COMPETITION)
+  title String @default("") @db.VarChar(60)
+  description String @default("") @db.VarChar(3000)
+  payload Json
+  publicationStatus PublicationStatus @default(DRAFT)
+  revision Int @default(1)
+  createRequestKey String @db.Uuid
+  createRequestHash String @db.Char(64)
+  startAt DateTime? @db.Timestamptz(3)
+  endAt DateTime? @db.Timestamptz(3)
+  joinDeadline DateTime? @db.Timestamptz(3)
+  capacity Int
+  allowCrossSchool Boolean @default(false)
+  publishedAt DateTime? @db.Timestamptz(3)
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt DateTime @updatedAt @db.Timestamptz(3)
+  team Team?
+
+  @@unique([authorId, createRequestKey])
+  @@index([schoolId, publicationStatus, publishedAt, id])
+  @@index([topicId, publicationStatus])
+}
+
+model Team {
+  id String @id @default(uuid()) @db.Uuid
+  recruitmentId String @unique @db.Uuid
+  recruitment Recruitment @relation(fields: [recruitmentId], references: [id], onDelete: Cascade)
+  captainUserId String @db.Uuid
+  captain User @relation("TeamCaptain", fields: [captainUserId], references: [id], onDelete: Restrict)
+  status TeamStatus @default(OPEN)
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
+  slots TeamSlot[]
+  members TeamMember[]
+  chatSpace ChatSpace?
+  events DomainEvent[]
+}
+
+model TeamSlot {
+  id String @id @default(uuid()) @db.Uuid
+  teamId String @db.Uuid
+  team Team @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  name String @db.VarChar(30)
+  capacity Int
+  requiredSkills String[] @default([])
+  position Int
+  members TeamMember[]
+
+  @@unique([id, teamId])
+  @@unique([teamId, position])
+}
+
+model TeamMember {
+  id String @id @default(uuid()) @db.Uuid
+  teamId String @db.Uuid
+  team Team @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  slotId String @db.Uuid
+  slot TeamSlot @relation(fields: [slotId, teamId], references: [id, teamId], onDelete: Cascade)
+  userId String @db.Uuid
+  user User @relation(fields: [userId], references: [id], onDelete: Restrict)
+  role MemberRole
+  status MemberStatus @default(ACTIVE)
+  joinedAt DateTime @default(now()) @db.Timestamptz(3)
+  leftAt DateTime? @db.Timestamptz(3)
+
+  @@unique([teamId, userId])
+}
+
+model ChatSpace {
+  id String @id @default(uuid()) @db.Uuid
+  teamId String @unique @db.Uuid
+  team Team @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
+}
+
+model DomainEvent {
+  id String @id @default(uuid()) @db.Uuid
+  teamId String @db.Uuid
+  team Team @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  actorId String? @db.Uuid
+  actor User? @relation(fields: [actorId], references: [id], onDelete: SetNull)
+  kind String @db.VarChar(60)
+  payload Json
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
 }
