@@ -26,7 +26,7 @@ export function Publish({ edit = false }: { edit?: boolean }) {
   if (edit && post.isError) return <ErrorState message={messageOf(post.error)} retry={() => void post.refetch()} />;
   if (edit && post.data && !post.data.data.canEdit) return <ErrorState message="只有作者可以编辑这条讨论。" />;
   return <section className="form-page"><PageTitle title={edit ? '让想法更清楚一点。' : '你的想法，值得被看见。'} eyebrow={edit ? 'EDIT YOUR DISCUSSION.' : 'LET YOUR IDEA OUT.'} back={() => navigate(edit ? '/posts/' + id : '/discover')} />
-    {!edit && <div className="publish-modes"><span className="current"><Check size={16} />发布讨论</span><Link to="/recruitments">招募功能 · 下一阶段<ArrowUpRight size={14} /></Link></div>}
+    {!edit && <div className="publish-modes"><span className="current"><Check size={16} />发布讨论</span><Link to="/recruitments/new">发起竞赛招募<ArrowUpRight size={14} /></Link></div>}
     <form className="paper form-stack" onSubmit={handleSubmit(async values => {
       setError(''); setIsDirtyAfterFailure(false);
       try {
