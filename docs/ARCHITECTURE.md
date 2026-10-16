@@ -1,6 +1,6 @@
 # 当前架构与边界
 
-基线：7fe970d。当前仅实现首周账号、资料和讨论。
+基线：`2b18760`。当前实现首周账号、资料、讨论与 W1-S1 最小竞赛招募发布，完整入队 / 聊天 / AI 仍待开发。
 
 ```mermaid
 flowchart LR
@@ -18,10 +18,20 @@ flowchart LR
 - prisma：实际 SQL 迁移与幂等 seed。只有 DEMO 模式创建虚构账号和讨论。
 - tests/e2e：对构建产物启动独立 3101 服务，使用 campus_test；不使用静态数组模拟账号和帖子。
 
-数据库当前表：School、User、Profile、Session、Topic、Post。关系、邮箱唯一、主题唯一、外键与列表索引实际落库。队伍/岗位/聊天等表不预先堆空实现，进入后续阶段再随迁移和测试加入。
+数据库基础表：School、User、Profile、Session、Topic、Post。10 月 16 日增量迁移新增 Recruitment、Team、TeamSlot、TeamMember、ChatSpace、DomainEvent，支持真实招募发布；ChatSpace 仅为空间关联元数据，没有消息表或收发服务。迁移无重置语句，保留原账号与讨论。
 
 登录先获取匿名 CSRF 上下文；成功后撤销旧上下文并轮换随机 Session Cookie。数据库只存 token/CSRF 摘要，CSRF 使用服务端密钥和当前会话生成，页面刷新可重新获取。所有写入验证 Origin 与令牌；公开资料不返回邮箱、密码摘要或会话。
 
 作者编辑和软删除使用 revision 做条件更新，过期版本返回 409，避免无声覆盖。列表使用 createdAt + UUID 稳定游标。正文始终作为 React 文本渲染，不执行 HTML。
 
 后续团队、消息、AI 与管理必须依照 DECISIONS.md 的事务和权限边界实现，不能复制当前原型中的模拟申请逻辑到正式应用。
+
+## 竞赛招募发布事务
+
+作者先保存私有 Recruitment（DRAFT），结构化草稿放 JSON，列表所需标题 / 学校 / 主题单独索引。发布前共享 Schema 校验完整字段、岗位合计和队长岗位，服务端重查引用及截止是否晚于当前时间。
+
+发布以 Recruitment 行锁串行化，并在一个事务内创建 Team → TeamSlot → TeamMember(CAPTAIN) → ChatSpace → TEAM_CREATED 事件，再更新招募为 PUBLISHED。唯一 recruitmentId 防止一份招募创建两队，作者 + requestKey 防止草稿重试重复创建，revision 拒绝过时修改。跨队岗位通过复合外键拒绝，部分唯一索引限制每队一个有效队长。岗位合计与占位由发布校验和事务保证；后续加入不能绕过同一队伍锁自行写成员。
+
+事务中后续操作失败，队伍、岗位、成员和前置写入整体回滚。发布响应丢失时，客户端保留已保存草稿和预览，再次 publish 返回既有队伍；并发幂等和回滚均有真实数据库测试。来源讨论软删除不影响已发布招募的独立内容。
+
+目前没有成员变更、队伍调度、通知投递或 Socket；创建事件只为后续演进保留事实，不冒称已实现通知。已发布内容只读，其他三区、直接入队和完整生命周期在相应阶段补齐。
