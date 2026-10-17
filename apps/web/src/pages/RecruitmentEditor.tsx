@@ -11,7 +11,7 @@ import { PageTitle, Loading, LoginGate, ErrorState, FormError } from '../compone
 
 export function RecruitmentEditor() {
   const { id } = useParams(), [params] = useSearchParams(), sourceId = !id ? params.get('sourcePost') : null;
-  const { user, loading } = useAuth(), navigate = useNavigate(), location = useLocation(), client = useQueryClient();
+  const { user, loading, error: authError, reload } = useAuth(), navigate = useNavigate(), location = useLocation(), client = useQueryClient();
   const [draft, setDraft] = useState(emptyRecruitment), [skills, setSkills] = useState(''), [slotSkills, setSlotSkills] = useState<Record<string, string>>({});
   const [preview, setPreview] = useState<RecruitmentDraft | null>(null), [busy, setBusy] = useState(false), [error, setError] = useState(''), [hydrated, setHydrated] = useState('');
   const saved = useRef<RecruitmentDTO | null>(null), createAttempt = useRef({ body: '', key: crypto.randomUUID() }), prefilled = useRef(false);
@@ -58,6 +58,7 @@ export function RecruitmentEditor() {
     setError(''); setPreview(parsed.data);
   }
   if (loading) return <Loading />;
+  if (authError) return <ErrorState message={authError.message} retry={() => void reload()} />;
   if (!user) return <LoginGate next={id ? '/recruitments/' + id + '/edit' : '/recruitments/new'} />;
   if ((id && (record.isPending || (record.data && hydrated !== id))) || (sourceId && source.isPending)) return <Loading label="正在读取招募草稿……" />;
   if (record.isError || source.isError) return <ErrorState message={recruitmentError(record.error || source.error)} />;

@@ -11,7 +11,7 @@ import { api, messageOf } from '../lib/api';
 import { PageTitle, Loading, ErrorState, FormError, LoginGate } from '../components/UI';
 
 export function Publish({ edit = false }: { edit?: boolean }) {
-  const { user, loading } = useAuth(), { id } = useParams(), [params] = useSearchParams(), navigate = useNavigate(), client = useQueryClient();
+  const { user, loading, error: authError, reload } = useAuth(), { id } = useParams(), [params] = useSearchParams(), navigate = useNavigate(), client = useQueryClient();
   const [category, setCategory] = useState<Category>(['COMPETITION', 'GAME', 'STUDY', 'OUTDOOR'].includes(params.get('category') || '') ? params.get('category') as Category : 'COMPETITION');
   const [error, setError] = useState(''), [isDirtyAfterFailure, setIsDirtyAfterFailure] = useState(false);
   const post = useQuery({ queryKey: ['post', id], queryFn: () => api<PostDTO>('/posts/' + id), enabled: edit && !!id });
@@ -21,6 +21,7 @@ export function Publish({ edit = false }: { edit?: boolean }) {
   useEffect(() => { if (edit && post.data) { setCategory(post.data.data.topic.category); reset({ title: post.data.data.title, body: post.data.data.body, topicId: post.data.data.topic.id }); } }, [post.data, edit, reset]);
   useEffect(() => { if (!edit && topics.data && !topics.data.data.some(t => t.id === selectedTopic)) setValue('topicId', topics.data.data[0]?.id || ''); }, [topics.data, edit, selectedTopic, setValue]);
   if (loading) return <Loading />;
+  if (authError) return <ErrorState message={authError.message} retry={() => void reload()} />;
   if (!user) return <LoginGate next={edit ? '/posts/' + id + '/edit' : '/publish'} />;
   if (edit && post.isPending) return <Loading label="正在读取讨论……" />;
   if (edit && post.isError) return <ErrorState message={messageOf(post.error)} retry={() => void post.refetch()} />;

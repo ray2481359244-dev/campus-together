@@ -201,6 +201,9 @@ svg{flex-shrink:0}
 @media(prefers-reduced-motion:reduce){*,*:before,*:after{animation:none!important;transition:none!important;scroll-behavior:auto!important}}
 
 .recruitment-intro{display:flex;align-items:center;justify-content:space-between;gap:24px;margin-bottom:27px}
+.session-gate{max-width:680px;margin:12vh auto;padding:22px}
+.session-gate h1{font-size:clamp(24px,5vw,34px);line-height:1.4}
+.session-gate p{overflow-wrap:anywhere}
 .recruitment-intro p{font-size:14px;color:var(--campus-muted);max-width:650px}
 .recruitment-intro .button{flex-shrink:0}
 .recruitment-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:22px;padding-right:5px}

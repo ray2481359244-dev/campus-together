@@ -9,10 +9,10 @@ import { ArrowUpRight } from 'lucide-react';
 import { useAuth } from '../lib/auth';
 import { useSchool } from '../components/Layout';
 import { api, messageOf } from '../lib/api';
-import { PageTitle, FormError } from '../components/UI';
+import { PageTitle, FormError, Loading, ErrorState } from '../components/UI';
 
 export function AuthPage({ registerMode = false }: { registerMode?: boolean }) {
-  const { accept } = useAuth(), { schools } = useSchool(), navigate = useNavigate(), [params] = useSearchParams();
+  const { accept, loading, error: authError, reload } = useAuth(), { schools } = useSchool(), navigate = useNavigate(), [params] = useSearchParams();
   const [error, setError] = useState('');
   const nextParam = params.get('next') || '/discover';
   const next = /^\/(?!\/)/.test(nextParam) && !nextParam.includes('\\') ? nextParam : '/discover';
@@ -21,6 +21,8 @@ export function AuthPage({ registerMode = false }: { registerMode?: boolean }) {
       try { const r = await api<{ user: MeDTO; csrfToken: string }>(registerMode ? '/auth/register' : '/auth/login', { method: 'POST', body: values }); accept(r.data.user, r.data.csrfToken); navigate(next, { replace: true }); }
       catch (e) { setError(messageOf(e)); }
   };
+  if (loading) return <Loading label="正在确认登录状态……" />;
+  if (authError) return <ErrorState message={authError.message} retry={() => void reload()} />;
   return <section className="form-page auth-page"><PageTitle title={registerMode ? '认识一下，同频的你。' : '欢迎回来，继续一起做。'} eyebrow={registerMode ? 'NICE TO MEET YOU.' : 'GOOD TO SEE YOU AGAIN.'} />
     {registerMode ? <RegistrationForm schools={schools} submit={submit} error={error} next={next} /> : <LoginForm submit={submit} error={error} next={next} />}
     <div className="under-note"><strong>从一个真实的问题开始。</strong><p>先聊聊你的兴趣，再找到一起行动的人。</p></div>
