@@ -4,7 +4,7 @@
 
 核心视觉暂定 **新粗野主义**：奶油白、黑边框、硬阴影、明亮分区色。设计原型见 design/campus-brutal-concept.html；原型内数据不计为应用功能。
 
-记录入口：[持续开发日志](DEVELOPMENT_LOG.md) · [最新详细记录](docs/development/2026-10-16.md) · [参赛材料核对表](docs/competition/SUBMISSION_CHECKLIST.md) · [AI 证据索引](docs/ai/README.md)。
+记录入口：[持续开发日志](DEVELOPMENT_LOG.md) · [最新详细记录](docs/development/2026-10-17.md) · [参赛材料核对表](docs/competition/SUBMISSION_CHECKLIST.md) · [AI 证据索引](docs/ai/README.md)。
 
 源码已上传到[公开 GitHub 仓库](https://github.com/ray2481359244-dev/campus-together)，默认分支为 `master`，保留从文档基线开始的完整提交历史。
 
@@ -96,6 +96,8 @@ pnpm.cmd test:serve
 工程：`apps/web` 前端、`apps/server` API、`packages/contracts` 共享校验与 DTO、`prisma` 迁移与 seed、`docs` 决策和过程记录。新粗野主义概念稿只作视觉参考，运行数据来自 API 与 PostgreSQL。
 
 ## 开发节奏与参赛证据
+
+10 月 17 日按 W1-03 复核账号与资料：注册账号、最少资料与新会话改为同事务；普通标签页共用登录 Cookie，另一个标签页注销 / 切换账号时显示恢复提示。界面携带预期账号，服务端拒绝旧账号页面误用新账号 Cookie 写入；凭证重试保留原身份，旧请求迟到的结果不会恢复已退出的账号。普通保存失败保留输入，身份变化时清除旧缓存和未提交表单，已保存草稿仍属于原账号。[账号体验与边界](docs/weekly/W1_03_ACCOUNT_REVIEW.md)。
 
 10 月 16 日继续推进首周挑战 W1-S1：从「招募」进入竞赛招募大厅，保存私有草稿，补齐比赛、时间、岗位和总人数后预览确认发布。总人数包含队长，发布成功会真实创建队伍与岗位关系；刷新和其他账号可读取。也可从自己的竞赛讨论发起关联招募。
 
