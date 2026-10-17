@@ -77,7 +77,11 @@ test('long persisted content reflows across mobile tablet and desktop and Escape
         await expect(page.locator('.post-list')).toContainText('W'.repeat(60));
         await page.screenshot({ path: `.local/screenshots/w104-home-${width}.png`, fullPage: true });
       }
-      if (route === '/posts/' + id && [390, 1440].includes(width)) await page.screenshot({ path: `.local/screenshots/w104-detail-${width}.png`, fullPage: true });
+      if (route === '/posts/' + id && [390, 1440].includes(width)) {
+        await expect.poll(() => page.getByTestId('swipe-panel').evaluate(n => Number(getComputedStyle(n).opacity))).toBeGreaterThanOrEqual(.99);
+        await expect.poll(() => page.getByTestId('swipe-panel').evaluate(n => Math.abs(new DOMMatrixReadOnly(getComputedStyle(n).transform).m42))).toBeLessThan(.5);
+        await page.screenshot({ path: `.local/screenshots/w104-detail-${width}.png`, fullPage: true });
+      }
     }
   }
   await page.getByRole('button', { name: '删除讨论', exact: true }).click();
