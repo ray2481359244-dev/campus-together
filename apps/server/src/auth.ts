@@ -9,6 +9,7 @@ import { ApiError, parse } from './http.js';
 import { hashPassword, verifyPassword } from './password.js';
 import { userInclude, publicProfile, privateProfile } from './dto.js';
 import type { AuthUser } from './dto.js';
+import type { Prisma } from './generated/prisma/client.js';
 
 const COOKIE = 'campus_session';
 const digest = (value: string) => createHash('sha256').update(value).digest('hex');
@@ -31,6 +32,13 @@ export const loadSession: RequestHandler = async (req, res, next) => {
       else { await db.session.updateMany({ where: { userId: session.userId, revokedAt: null }, data: { revokedAt: new Date() } }); res.clearCookie(COOKIE, cookieOptions); }
     }
   }
+  // A browser tab may retain UI/CSRF state after another tab replaces the shared cookie.
+  const expected = req.get('x-session-user');
+  if (expected !== undefined && expected !== (res.locals.session?.userId ?? 'anonymous')) {
+    res.setHeader('Cache-Control', 'no-store');
+    if (!res.locals.session?.userId && expected !== 'anonymous') throw new ApiError(401, 'AUTH_REQUIRED', '登录已过期，请重新登录后继续。');
+    throw new ApiError(409, 'SESSION_CHANGED', '登录状态已变化，请重新加载并确认账号后再操作。');
+  }
   next();
 };
 export function requireUser(res: Response): AuthUser {
@@ -44,14 +52,23 @@ export const csrfGuard: RequestHandler = (req, res, next) => {
   if (!session || !token || token.length > 100 || !timingSafeEqual(Buffer.from(digest(token), 'hex'), Buffer.from(session.csrfHash, 'hex'))) throw new ApiError(403, 'CSRF_INVALID', '操作凭证已过期，请刷新后重试。');
   next();
 };
-async function newSession(res: Response, userId: string | null) {
+async function saveSession(tx: Prisma.TransactionClient, previousId: string | undefined, userId: string | null) {
   const token = randomBytes(32).toString('base64url'), csrfToken = csrfFor(token), ttl = userId ? 7 * 86400_000 : 15 * 60_000;
-  await db.$transaction(async tx => {
-    if (res.locals.session) await tx.session.update({ where: { id: res.locals.session.id }, data: { revokedAt: new Date() } });
-    await tx.session.create({ data: { tokenHash: digest(token), csrfHash: digest(csrfToken), userId, expiresAt: new Date(Date.now() + ttl) } });
-  });
-  res.cookie(COOKIE, token, { ...cookieOptions, maxAge: ttl });
-  return csrfToken;
+  if (previousId) {
+    const claimed = await tx.session.updateMany({ where: { id: previousId, revokedAt: null, expiresAt: { gt: new Date() } }, data: { revokedAt: new Date() } });
+    if (claimed.count !== 1) throw new ApiError(409, 'SESSION_CHANGED', '登录状态已变化，请重新加载并确认账号后再操作。');
+  }
+  await tx.session.create({ data: { tokenHash: digest(token), csrfHash: digest(csrfToken), userId, expiresAt: new Date(Date.now() + ttl) } });
+  return { token, csrfToken, ttl };
+}
+function sendSession(res: Response, session: Awaited<ReturnType<typeof saveSession>>) {
+  // Never set a cookie before the transaction has successfully committed.
+  res.cookie(COOKIE, session.token, { ...cookieOptions, maxAge: session.ttl });
+  return session.csrfToken;
+}
+async function newSession(res: Response, userId: string | null) {
+  const session = await db.$transaction(tx => saveSession(tx, res.locals.session?.id, userId));
+  return sendSession(res, session);
 }
 export const authRouter = Router();
 authRouter.use((_req, res, next) => { res.setHeader('Cache-Control', 'no-store'); next(); });
@@ -64,12 +81,14 @@ authRouter.get('/csrf', anonymousLimit, async (req, res) => {
 authRouter.get('/me', (_req, res) => res.json({ data: { user: res.locals.session?.user ? privateProfile(res.locals.session.user) : null, csrfToken: res.locals.session ? csrfFor(res.locals.session.rawToken) : null } }));
 authRouter.post('/register', authLimit, csrfGuard, async (req, res) => {
   const input = parse(RegisterSchema, req.body);
-  const school = await db.school.findFirst({ where: { id: input.schoolId, active: true } });
-  if (!school) throw new ApiError(400, 'INVALID_SCHOOL', '请选择可用的学校。');
   const passwordHash = await hashPassword(input.password);
-  const user = await db.user.create({ data: { email: input.email, passwordHash, profile: { create: { nickname: input.nickname, schoolId: input.schoolId } } }, include: userInclude });
-  const csrfToken = await newSession(res, user.id);
-  res.status(201).json({ data: { user: privateProfile(user), csrfToken } });
+  const result = await db.$transaction(async tx => {
+    if (!await tx.school.findFirst({ where: { id: input.schoolId, active: true } })) throw new ApiError(400, 'INVALID_SCHOOL', '请选择可用的学校。');
+    const user = await tx.user.create({ data: { email: input.email, passwordHash, profile: { create: { nickname: input.nickname, schoolId: input.schoolId } } }, include: userInclude });
+    const session = await saveSession(tx, res.locals.session?.id, user.id);
+    return { user, session };
+  });
+  res.status(201).json({ data: { user: privateProfile(result.user), csrfToken: sendSession(res, result.session) } });
 });
 authRouter.post('/login', authLimit, csrfGuard, async (req, res) => {
   const input = parse(LoginSchema, req.body);
@@ -80,7 +99,10 @@ authRouter.post('/login', authLimit, csrfGuard, async (req, res) => {
   res.json({ data: { user: privateProfile(user), csrfToken } });
 });
 authRouter.post('/logout', csrfGuard, async (_req, res) => {
-  if (res.locals.session) await db.session.update({ where: { id: res.locals.session.id }, data: { revokedAt: new Date() } });
+  if (res.locals.session) {
+    const revoked = await db.session.updateMany({ where: { id: res.locals.session.id, revokedAt: null, expiresAt: { gt: new Date() } }, data: { revokedAt: new Date() } });
+    if (revoked.count !== 1) throw new ApiError(409, 'SESSION_CHANGED', '登录状态已变化，请重新加载并确认账号后再操作。');
+  }
   res.clearCookie(COOKIE, cookieOptions);
   res.json({ data: { loggedOut: true } });
 });
