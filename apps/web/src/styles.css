@@ -237,3 +237,17 @@ svg{flex-shrink:0}
 .slot-summary p,.slot-summary>span{font-size:12px;color:var(--campus-muted)}
 .stage-explanation{font-size:13px;line-height:1.9;margin:24px 0;color:var(--campus-muted)}
 @media(max-width:767px){.recruitment-intro{align-items:stretch;flex-direction:column;gap:17px}.recruitment-intro .button{align-self:flex-start}.recruitment-grid{grid-template-columns:1fr}.recruitment-fields h2{font-size:20px}.slot-editor{padding:14px}.recruitment-facts>div{grid-template-columns:82px minmax(0,1fr);gap:10px}.recruitment-facts dd{font-size:13px}.slot-summary{flex-direction:column;align-items:flex-start;padding:13px}.recruitment-detail .post-card-top{align-items:flex-start;flex-direction:column}.recruitment-detail .post-card-top>span:last-child{font-size:12px}.draft-row{gap:10px;padding:12px}.draft-row strong{font-size:13px}}
+
+/* Readable auxiliary text and keyboard access retain the accepted visual tokens. */
+.skip-link{position:fixed;z-index:100;left:12px;top:12px;padding:10px 16px;min-height:44px;background:var(--campus-primary);border:var(--campus-border);box-shadow:var(--campus-shadow);font-weight:850;transform:translateY(-180%)}
+.skip-link:focus{transform:none}
+#main-content:focus-visible,h1[tabindex="-1"]:focus-visible{outline:3px dashed var(--campus-text);outline-offset:4px}
+.serial,.eyebrow,.section-heading .serial,.discussion-board .section-heading .serial,.category-card-top .serial,.post-detail .eyebrow,.demo-banner,.demo-banner>span,.metadata,.topic-badge,.post-card-footer,.page-footer,.detail-time,.detail-author p,.profile-summary>div>span,.swipe-hint,.school-control label,.mobile-nav-item,.interest-chip,.interest-option,.category-card>p,.category-action,.hero-copy>p,.launch-strip p,.topbar .button.compact{font-size:12px}
+.category-card-top .serial{min-width:0;overflow-wrap:anywhere;line-height:1.5}
+.section-heading .serial{max-width:46%;overflow-wrap:anywhere;text-align:right}
+.button.compact,.topbar .button.compact,.text-button,.board-tabs>a,.account-link,.school-control select,.topic-picker select,.search-form input,.search-form button,.inline-error button{min-height:44px}
+.icon-button{width:44px;height:44px}
+.search-form button{min-width:44px}
+.detail-top{flex-wrap:wrap}
+.swipe-hint{max-width:100%}
+@media(max-width:767px){.school-control select,.topic-picker select,.search-form input{font-size:16px}.mobile-nav{bottom:max(12px,env(safe-area-inset-bottom))}body{padding-bottom:calc(96px + env(safe-area-inset-bottom))}.form-stack input,.form-stack select,.form-stack textarea{scroll-margin-block:100px}}
