@@ -131,6 +131,11 @@ svg{flex-shrink:0}
 .page-title h1{font-size:34px;font-weight:950;letter-spacing:-1.2px;line-height:1.5;margin-top:6px;overflow-wrap:anywhere}
 .paper{background:var(--campus-surface);border:var(--campus-border);border-radius:var(--campus-radius);box-shadow:var(--campus-shadow);padding:27px;margin-right:5px;min-width:0}
 .form-stack{display:grid;gap:20px}
+.version-tools{display:grid;gap:14px;min-width:0}
+.version-tools>.button{justify-self:start}
+.version-review{display:grid;gap:14px;min-width:0;border:2px solid var(--campus-text);padding:16px;background:var(--campus-bg);overflow-wrap:anywhere}
+.version-review h2{font-size:16px}.version-review h3{font-size:18px;line-height:1.6}
+.version-body{font-size:14px;line-height:1.9;white-space:pre-wrap;max-height:280px;overflow:auto;overflow-wrap:anywhere}
 .form-field{display:grid;gap:9px;min-width:0}
 .form-stack label{display:grid;gap:9px;font-size:14px;font-weight:850;min-width:0}
 .form-stack input,.form-stack select,.form-stack textarea{width:100%;min-width:0;background:var(--campus-bg);border:2px solid var(--campus-text);border-radius:3px;padding:11px 12px;min-height:47px;font-size:16px;font-weight:400}

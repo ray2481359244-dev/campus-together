@@ -62,9 +62,12 @@ postsRouter.patch('/posts/:id', async (req, res) => {
   const post = await db.post.findFirst({ where: { id, status: 'PUBLISHED' } });
   if (!post) throw new ApiError(404, 'NOT_FOUND', '该讨论不存在或已经不可见。');
   if (post.authorId !== user.id) throw new ApiError(403, 'NOT_AUTHOR', '只有作者可以修改这条讨论。');
-  const result = await db.post.updateMany({ where: { id, authorId: user.id, revision: input.revision, status: 'PUBLISHED' }, data: { title: input.title, body: input.body, revision: { increment: 1 } } });
-  if (!result.count) throw new ApiError(409, 'REVISION_CONFLICT', '讨论已在其他页面更新，请重新载入后编辑。');
-  const updated = await db.post.findUniqueOrThrow({ where: { id }, include: postInclude });
+  const updated = await db.$transaction(async tx => {
+    const result = await tx.post.updateMany({ where: { id, authorId: user.id, revision: input.revision, status: 'PUBLISHED' }, data: { title: input.title, body: input.body, revision: { increment: 1 } } });
+    if (!result.count) throw new ApiError(409, 'REVISION_CONFLICT', '讨论已在其他页面更新，请核对已保存版本后编辑。');
+    // Hold the update's row lock until the matching response snapshot has been read.
+    return tx.post.findUniqueOrThrow({ where: { id }, include: postInclude });
+  });
   res.json({ data: postDTO(updated, user.id) });
 });
 postsRouter.delete('/posts/:id', async (req, res) => {

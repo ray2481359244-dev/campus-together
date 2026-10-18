@@ -76,4 +76,36 @@ describe('persistent discussion contracts and permissions', () => {
     const post = await db.post.findUniqueOrThrow({ where: { id: postId } });
     expect(post.status).toBe('DELETED'); expect(post.deletedAt).not.toBeNull();
   });
+  it('allows exactly one concurrent edit from the same base and returns its own content', async () => {
+    const created = await write(a, csrfA, 'post', '/api/v1/posts', valid()).expect(201);
+    const id = created.body.data.id;
+    const titles = ['同一版本并发编辑的第一个想法', '同一版本并发编辑的第二个想法'];
+    const results = await Promise.all(titles.map(title => write(a, csrfA, 'patch', '/api/v1/posts/' + id, { title, body: valid().body, revision: 1 })));
+    expect(results.map(r => r.status).sort()).toEqual([200, 409]);
+    const index = results.findIndex(r => r.status === 200), winner = results[index].body.data;
+    expect(winner.title).toBe(titles[index]); expect(winner.revision).toBe(2);
+    const stored = await db.post.findUniqueOrThrow({ where: { id } });
+    expect(stored.title).toBe(winner.title); expect(stored.revision).toBe(2);
+    expect(results[1 - index].body.error.code).toBe('REVISION_CONFLICT');
+  });
+  it('serializes an edit racing deletion and never resurrects a deleted discussion', async () => {
+    const created = await write(a, csrfA, 'post', '/api/v1/posts', valid()).expect(201), id = created.body.data.id;
+    const [edited, removed] = await Promise.all([
+      write(a, csrfA, 'patch', '/api/v1/posts/' + id, { title: '编辑与删除竞争同一个讨论版本', body: valid().body, revision: 1 }),
+      write(a, csrfA, 'delete', '/api/v1/posts/' + id, { revision: 1 }),
+    ]);
+    expect([edited, removed].filter(r => r.status === 200)).toHaveLength(1);
+    const stored = await db.post.findUniqueOrThrow({ where: { id } });
+    expect(stored.revision).toBe(2);
+    if (removed.status === 200) {
+      expect([404, 409]).toContain(edited.status); expect(stored.status).toBe('DELETED');
+    } else {
+      expect(edited.status).toBe(200); expect(removed.status).toBe(409); expect(stored.status).toBe('PUBLISHED');
+      await write(a, csrfA, 'delete', '/api/v1/posts/' + id, { revision: 2 }).expect(200);
+    }
+    await write(a, csrfA, 'patch', '/api/v1/posts/' + id, { title: '已经删除的内容不能再次被恢复', body: valid().body, revision: 2 }).expect(404);
+    await b.get('/api/v1/posts/' + id).expect(404);
+    const listed = (await a.get('/api/v1/posts').query({ schoolId: schoolA, limit: 50 })).body.data;
+    expect(listed.some((p: { id: string }) => p.id === id)).toBe(false);
+  });
 });
