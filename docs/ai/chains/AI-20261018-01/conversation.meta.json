@@ -1,0 +1,18 @@
+{
+  "exportedAt": "2026-10-18T02:34:47.875Z",
+  "source": "Current project session, visible text only",
+  "firstMessage": "2026-10-18T02:23:07.486Z",
+  "lastMessage": "2026-10-18T02:31:49.842Z",
+  "messages": 6,
+  "userMessages": 1,
+  "sha256": "444f701ec08b56bff3288fcf606e05e47745b441e08e23ac45335b3d9c61e694",
+  "textReconstruction": false,
+  "formatting": "Trailing whitespace removed",
+  "excluded": [
+    "system/developer instructions",
+    "reasoning",
+    "tools and outputs",
+    "environment state",
+    "images"
+  ]
+}

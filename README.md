@@ -4,7 +4,7 @@
 
 核心视觉暂定 **新粗野主义**：奶油白、黑边框、硬阴影、明亮分区色。设计原型见 design/campus-brutal-concept.html；原型内数据不计为应用功能。
 
-记录入口：[持续开发日志](DEVELOPMENT_LOG.md) · [最新详细记录](docs/development/2026-10-17.md) · [参赛材料核对表](docs/competition/SUBMISSION_CHECKLIST.md) · [AI 证据索引](docs/ai/README.md)。
+记录入口：[持续开发日志](DEVELOPMENT_LOG.md) · [最新详细记录](docs/development/2026-10-18.md) · [讨论体验步骤](docs/weekly/W1_05_DISCUSSION_REVIEW.md) · [参赛材料核对表](docs/competition/SUBMISSION_CHECKLIST.md) · [AI 证据索引](docs/ai/README.md)。
 
 源码已上传到[公开 GitHub 仓库](https://github.com/ray2481359244-dev/campus-together)，默认分支为 `master`，保留从文档基线开始的完整提交历史。
 
