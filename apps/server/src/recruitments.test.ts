@@ -76,7 +76,7 @@ describe('real recruitment drafts and transactional publication', () => {
     }
   });
   it('validates source ownership and records an actual discussion link', async () => {
-    const post = await write(a, csrfA, 'post', '/api/v1/posts', { topicId, title: '先讨论再正式发起招募的项目', body: '这是一条真实讨论，可以作为作者发布竞赛招募的来源。' }).expect(201);
+    const post = await write(a, csrfA, 'post', '/api/v1/posts', { requestKey: randomUUID(), topicId, title: '先讨论再正式发起招募的项目', body: '这是一条真实讨论，可以作为作者发布竞赛招募的来源。' }).expect(201);
     await write(b, csrfB, 'post', '/api/v1/recruitments', { requestKey: randomUUID(), draft: { ...valid(), sourcePostId: post.body.data.id } }).expect(422);
     const saved = await create({ ...valid(), sourcePostId: post.body.data.id }).expect(201);
     expect((await db.recruitment.findUniqueOrThrow({ where: { id: saved.body.data.id } })).sourcePostId).toBe(post.body.data.id);
@@ -139,7 +139,7 @@ describe('real recruitment drafts and transactional publication', () => {
     await a.get('/api/v1/recruitments/' + privateId).expect(404);
   });
   it('keeps a published recruitment readable after its source discussion is deleted', async () => {
-    const post = await write(a, csrfA, 'post', '/api/v1/posts', { topicId, title: '来源删除不会破坏独立招募', body: '先讨论方向，再发起正式招募；两类内容分别保存和管理。' }).expect(201);
+    const post = await write(a, csrfA, 'post', '/api/v1/posts', { requestKey: randomUUID(), topicId, title: '来源删除不会破坏独立招募', body: '先讨论方向，再发起正式招募；两类内容分别保存和管理。' }).expect(201);
     const saved = await create({ ...valid(), sourcePostId: post.body.data.id }).expect(201);
     const published = await publish(saved.body.data.id).expect(201);
     await write(a, csrfA, 'delete', '/api/v1/posts/' + post.body.data.id, { revision: post.body.data.revision }).expect(200);

@@ -117,8 +117,11 @@ model Post {
   createdAt DateTime      @default(now()) @db.Timestamptz(3)
   updatedAt DateTime      @updatedAt @db.Timestamptz(3)
   deletedAt DateTime?     @db.Timestamptz(3)
+  createRequestKey String? @db.Uuid
+  createRequestHash String? @db.Char(64)
   recruitments Recruitment[]
 
+  @@unique([authorId, createRequestKey])
   @@index([schoolId, status, createdAt, id])
   @@index([topicId, status, createdAt, id])
 }

@@ -21,8 +21,11 @@ export const ProfileSchema = z.object({
   skills: z.array(z.string().trim().min(1).max(30)).max(15),
   interests: z.array(CategorySchema).max(4).refine(a => new Set(a).size === a.length, '兴趣不能重复'),
 }).strict();
-export const CreatePostSchema = z.object({ topicId: IdSchema, title: z.string().trim().min(5, '标题至少 5 个字').max(60), body: z.string().trim().min(10, '正文至少 10 个字').max(5000) }).strict();
-export const EditPostSchema = CreatePostSchema.omit({ topicId: true }).extend({ revision: z.number().int().positive() }).strict();
+export const PostContentSchema = z.object({ topicId: IdSchema, title: z.string().trim().min(5, '标题至少 5 个字').max(60), body: z.string().trim().min(10, '正文至少 10 个字').max(5000) }).strict();
+export type PostContent = z.infer<typeof PostContentSchema>;
+export const CreatePostSchema = PostContentSchema.extend({ requestKey: IdSchema }).strict();
+export type CreatePost = z.infer<typeof CreatePostSchema>;
+export const EditPostSchema = PostContentSchema.omit({ topicId: true }).extend({ revision: z.number().int().positive() }).strict();
 export const DeletePostSchema = z.object({ revision: z.number().int().positive() }).strict();
 export const PostCursorSchema = z.object({ createdAt: z.iso.datetime(), id: IdSchema }).strict();
 export const PostsQuerySchema = z.object({

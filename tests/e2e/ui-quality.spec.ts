@@ -63,7 +63,7 @@ test('long persisted content reflows across mobile tablet and desktop and Escape
   const id = await page.evaluate(async () => {
     const me = (await (await fetch('/api/v1/auth/me')).json()).data;
     const topics = (await (await fetch('/api/v1/topics?category=COMPETITION')).json()).data;
-    const created = await fetch('/api/v1/posts', { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': me.csrfToken, 'X-Session-User': me.user.id }, body: JSON.stringify({ topicId: topics[0].id, title: 'W'.repeat(60), body: 'LongContent'.repeat(60) }) });
+    const created = await fetch('/api/v1/posts', { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': me.csrfToken, 'X-Session-User': me.user.id }, body: JSON.stringify({ requestKey: crypto.randomUUID(), topicId: topics[0].id, title: 'W'.repeat(60), body: 'LongContent'.repeat(60) }) });
     if (created.status !== 201) throw new Error('Fixture publication failed');
     return (await created.json()).data.id as string;
   });

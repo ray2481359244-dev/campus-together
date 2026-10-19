@@ -1,4 +1,5 @@
 import { Router } from 'express';
+import { createHash, randomUUID } from 'node:crypto';
 import { CategorySchema, CreatePostSchema, EditPostSchema, DeletePostSchema, IdSchema, PostsQuerySchema, PostCursorSchema } from '@campus/contracts';
 import { db } from './db.js';
 import { csrfGuard, requireUser, writeLimit } from './auth.js';
@@ -50,12 +51,27 @@ postsRouter.get('/posts/:id', async (req, res) => {
 });
 postsRouter.use('/posts', (_req, res, next) => { requireUser(res); next(); }, writeLimit, csrfGuard);
 postsRouter.post('/posts', async (req, res) => {
-  const user = requireUser(res), input = parse(CreatePostSchema, req.body);
-  const topic = await db.topic.findFirst({ where: { id: input.topicId, active: true } });
-  if (!topic) throw new ApiError(422, 'TOPIC_UNAVAILABLE', '主题已停用或不存在，请重新选择。');
-  if (!user.profile || !await db.school.findFirst({ where: { id: user.profile.schoolId, active: true } })) throw new ApiError(422, 'PROFILE_INCOMPLETE', '请先完善有效的学校资料。');
-  const post = await db.post.create({ data: { ...input, authorId: user.id, schoolId: user.profile.schoolId }, include: postInclude });
-  res.status(201).json({ data: postDTO(post, user.id) });
+  const user = requireUser(res), { requestKey, ...content } = parse(CreatePostSchema, req.body);
+  const hash = createHash('sha256').update(JSON.stringify(content)).digest('hex');
+  const where = { authorId_createRequestKey: { authorId: user.id, createRequestKey: requestKey } };
+  function replay(post: PostRecord) {
+    if (post.createRequestHash !== hash) throw new ApiError(409, 'REQUEST_KEY_CONFLICT', '本次发布内容与先前提交不一致，请先核对已发布讨论。');
+    if (post.status !== 'PUBLISHED') throw new ApiError(410, 'POST_UNAVAILABLE', '本次发布的讨论已删除或不可见，不能通过重试重新发布。');
+    return post;
+  }
+  const result = await db.$transaction(async tx => {
+    // Resolve a committed request before checking references that may since have changed.
+    const existing = await tx.post.findUnique({ where, include: postInclude });
+    if (existing) return { post: replay(existing), created: false };
+    const topic = await tx.topic.findFirst({ where: { id: content.topicId, active: true } });
+    if (!topic) throw new ApiError(422, 'TOPIC_UNAVAILABLE', '主题已停用或不存在，请重新选择。');
+    const profile = await tx.profile.findUnique({ where: { userId: user.id }, include: { school: true } });
+    if (!profile?.school.active) throw new ApiError(422, 'PROFILE_INCOMPLETE', '请先完善有效的学校资料。');
+    const created = await tx.post.createMany({ data: [{ id: randomUUID(), ...content, authorId: user.id, schoolId: profile.schoolId, createRequestKey: requestKey, createRequestHash: hash }], skipDuplicates: true });
+    const post = replay(await tx.post.findUniqueOrThrow({ where, include: postInclude }));
+    return { post, created: created.count === 1 };
+  });
+  res.status(result.created ? 201 : 200).json({ data: postDTO(result.post, user.id) });
 });
 postsRouter.patch('/posts/:id', async (req, res) => {
   const user = requireUser(res), id = parse(IdSchema, req.params.id), input = parse(EditPostSchema, req.body);

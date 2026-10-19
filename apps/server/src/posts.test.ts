@@ -1,13 +1,16 @@
-import { beforeAll, afterAll, describe, it, expect } from 'vitest';
+import { beforeAll, beforeEach, afterAll, describe, it, expect } from 'vitest';
 import request from 'supertest';
+import { randomUUID } from 'node:crypto';
+import { ipKeyGenerator } from 'express-rate-limit';
 import { app } from './app.js';
 import { db } from './db.js';
 import { config } from './config.js';
+import { writeLimit } from './auth.js';
 
 const a = request.agent(app), b = request.agent(app);
 const schoolA = '91000000-0000-4000-8000-000000000001', schoolB = '91000000-0000-4000-8000-000000000002';
 let csrfA = '', csrfB = '', topic = '', otherTopic = '', postId = '';
-const valid = () => ({ topicId: topic, title: '真实讨论的测试标题', body: '这是通过真实 API 保存到 PostgreSQL 的讨论正文。' });
+const valid = () => ({ requestKey: randomUUID(), topicId: topic, title: '真实讨论的测试标题', body: '这是通过真实 API 保存到 PostgreSQL 的讨论正文。' });
 beforeAll(async () => {
   if (!new URL(config.databaseUrl!).pathname.endsWith('_test')) throw new Error('Not test database');
   await db.recruitment.deleteMany(); await db.session.deleteMany(); await db.post.deleteMany(); await db.profile.deleteMany(); await db.user.deleteMany(); await db.topic.deleteMany(); await db.school.deleteMany();
@@ -21,6 +24,8 @@ beforeAll(async () => {
   }
 });
 afterAll(() => db.$disconnect());
+// Isolate independent behavior checks; the production 40/minute limit stays enabled.
+beforeEach(() => writeLimit.resetKey(ipKeyGenerator('::ffff:127.0.0.1')));
 const write = (agent: typeof a, csrf: string, method: 'post' | 'patch' | 'delete', path: string, body: object) => agent[method](path).set('Origin', config.origin).set('X-CSRF-Token', csrf).send(body);
 
 describe('persistent discussion contracts and permissions', () => {
@@ -29,6 +34,9 @@ describe('persistent discussion contracts and permissions', () => {
     await a.post('/api/v1/posts').set('Origin', config.origin).send(valid()).expect(403);
   });
   it('enforces content and forbids client-controlled author/school', async () => {
+    const { requestKey: _key, ...withoutKey } = valid();
+    await write(a, csrfA, 'post', '/api/v1/posts', withoutKey).expect(400);
+    await write(a, csrfA, 'post', '/api/v1/posts', { ...valid(), requestKey: 'not-a-uuid' }).expect(400);
     await write(a, csrfA, 'post', '/api/v1/posts', { ...valid(), title: '短' }).expect(400);
     await write(a, csrfA, 'post', '/api/v1/posts', { ...valid(), schoolId: schoolB }).expect(400);
     await write(a, csrfA, 'post', '/api/v1/posts', { ...valid(), authorId: schoolB }).expect(400);
@@ -107,5 +115,66 @@ describe('persistent discussion contracts and permissions', () => {
     await b.get('/api/v1/posts/' + id).expect(404);
     const listed = (await a.get('/api/v1/posts').query({ schoolId: schoolA, limit: 50 })).body.data;
     expect(listed.some((p: { id: string }) => p.id === id)).toBe(false);
+  });
+  it('creates exactly one discussion for concurrent retries and keeps request metadata private', async () => {
+    const input = valid();
+    const results = await Promise.all([write(a, csrfA, 'post', '/api/v1/posts', input), write(a, csrfA, 'post', '/api/v1/posts', input)]);
+    expect(results.map(r => r.status).sort()).toEqual([200, 201]);
+    expect(results[0].body.data.id).toBe(results[1].body.data.id);
+    const rows = await db.post.findMany({ where: { createRequestKey: input.requestKey } });
+    expect(rows).toHaveLength(1); expect(rows[0].createRequestHash).toMatch(/^[0-9a-f]{64}$/);
+    const publicRead = await b.get('/api/v1/posts/' + rows[0].id).expect(200);
+    for (const result of [...results, publicRead]) expect(JSON.stringify(result.body)).not.toMatch(/createRequest|requestKey|passwordHash|posta@/);
+  });
+  it('rejects changed content under the same request key without changing the saved discussion', async () => {
+    const input = valid(), created = await write(a, csrfA, 'post', '/api/v1/posts', input).expect(201);
+    for (const changed of [{ title: '同一次发布不能偷偷换成其他标题' }, { body: '这段不同的正文不允许覆盖原先已经保存的发布内容。' }, { topicId: otherTopic }]) {
+      const rejected = await write(a, csrfA, 'post', '/api/v1/posts', { ...input, ...changed }).expect(409);
+      expect(rejected.body.error.code).toBe('REQUEST_KEY_CONFLICT');
+    }
+    const saved = await db.post.findUniqueOrThrow({ where: { id: created.body.data.id } });
+    expect(saved.title).toBe(input.title); expect(saved.body).toBe(input.body); expect(saved.revision).toBe(1);
+  });
+  it('scopes retry keys to the authenticated author', async () => {
+    const input = valid();
+    const first = await write(a, csrfA, 'post', '/api/v1/posts', input).expect(201);
+    const second = await write(b, csrfB, 'post', '/api/v1/posts', input).expect(201);
+    expect(second.body.data.id).not.toBe(first.body.data.id);
+    expect(second.body.data.school.id).toBe(schoolB);
+    const retry = await write(b, csrfB, 'post', '/api/v1/posts', input).expect(200);
+    expect(retry.body.data.id).toBe(second.body.data.id);
+  });
+  it('resolves the original post after edits and changes to school or topic availability', async () => {
+    const input = valid(), created = await write(a, csrfA, 'post', '/api/v1/posts', input).expect(201);
+    await write(a, csrfA, 'patch', '/api/v1/posts/' + created.body.data.id, { title: '已发布后由作者正常完善的标题', body: input.body, revision: 1 }).expect(200);
+    const authorId = created.body.data.author.id;
+    await db.profile.update({ where: { userId: authorId }, data: { schoolId: schoolB } });
+    await db.topic.update({ where: { id: topic }, data: { active: false } });
+    try {
+      const replay = await write(a, csrfA, 'post', '/api/v1/posts', input).expect(200);
+      expect(replay.body.data.id).toBe(created.body.data.id); expect(replay.body.data.school.id).toBe(schoolA);
+      expect(replay.body.data.title).toBe('已发布后由作者正常完善的标题'); expect(replay.body.data.revision).toBe(2);
+      expect(await db.post.count({ where: { createRequestKey: input.requestKey } })).toBe(1);
+    } finally {
+      await db.profile.update({ where: { userId: authorId }, data: { schoolId: schoolA } });
+      await db.topic.update({ where: { id: topic }, data: { active: true } });
+    }
+  });
+  it('never recreates or exposes hidden or deleted discussions when retrying creation', async () => {
+    for (const status of ['HIDDEN', 'DELETED'] as const) {
+      const input = valid(), created = await write(a, csrfA, 'post', '/api/v1/posts', input).expect(201);
+      if (status === 'DELETED') await write(a, csrfA, 'delete', '/api/v1/posts/' + created.body.data.id, { revision: 1 }).expect(200);
+      else await db.post.update({ where: { id: created.body.data.id }, data: { status } });
+      const rejected = await write(a, csrfA, 'post', '/api/v1/posts', input).expect(410);
+      expect(rejected.body.error.code).toBe('POST_UNAVAILABLE'); expect(JSON.stringify(rejected.body)).not.toContain(input.body);
+      expect(await db.post.count({ where: { createRequestKey: input.requestKey } })).toBe(1);
+      expect((await db.post.findUniqueOrThrow({ where: { id: created.body.data.id } })).status).toBe(status);
+    }
+  });
+  it('does not consume a request key when topic validation rejects creation', async () => {
+    const input = { ...valid(), topicId: otherTopic };
+    await write(a, csrfA, 'post', '/api/v1/posts', input).expect(422);
+    expect(await db.post.count({ where: { createRequestKey: input.requestKey } })).toBe(0);
+    await write(a, csrfA, 'post', '/api/v1/posts', { ...input, topicId: topic }).expect(201);
   });
 });
