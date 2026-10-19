@@ -4,7 +4,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { PublishableRecruitmentSchema, RecruitmentDraftSchema } from '@campus/contracts';
 import type { RecruitmentDTO, RecruitmentDraft, TopicDTO, PostDTO } from '@campus/contracts';
 import { ArrowUpRight, Plus, Save } from 'lucide-react';
-import { api } from '../lib/api';
+import { api, ApiError } from '../lib/api';
 import { emptyRecruitment, splitSkills, beijingInput, fromBeijingInput, beijingTime, recruitmentError } from '../lib/recruitments';
 import { useAuth } from '../lib/auth';
 import { PageTitle, Loading, LoginGate, ErrorState, FormError } from '../components/UI';
@@ -19,7 +19,7 @@ export function RecruitmentEditor() {
   const topics = useQuery({ queryKey: ['topics', 'COMPETITION'], queryFn: () => api<TopicDTO[]>('/topics?category=COMPETITION') });
   const source = useQuery({ queryKey: ['post', sourceId], queryFn: () => api<PostDTO>('/posts/' + sourceId), enabled: !!sourceId && !!user, retry: false });
   useEffect(() => {
-    if (id && record.data && hydrated !== id) {
+    if (id && record.data?.data.canEditDraft && hydrated !== id) {
       const r = record.data.data; saved.current = r; setDraft(r.draft); setSkills(r.draft.existingSkills.join('，'));
       setSlotSkills(Object.fromEntries(r.draft.slots.map(s => [s.key, s.requiredSkills.join('，')]))); setHydrated(id);
     }
@@ -30,6 +30,9 @@ export function RecruitmentEditor() {
     }
   }, [source.data]);
   useEffect(() => { if (!id && topics.data) setDraft(d => d.topicId ? d : { ...d, topicId: topics.data.data[0]?.id || null }); }, [topics.data, id]);
+  const hasDraft = !!id && hydrated === id && saved.current?.id === id;
+  const unavailable = hasDraft && ((record.data && !record.data.data.canEditDraft) || (record.error instanceof ApiError && record.error.status === 404));
+  const retryReads = () => { if (record.isError) void record.refetch(); if (source.isError) void source.refetch(); };
   const change = <K extends keyof RecruitmentDraft>(key: K, value: RecruitmentDraft[K]) => setDraft(d => ({ ...d, [key]: value }));
   function materialize() { return { ...draft, existingSkills: splitSkills(skills), slots: draft.slots.map(s => ({ ...s, requiredSkills: splitSkills(slotSkills[s.key] || '') })) }; }
   async function persist(values: RecruitmentDraft) {
@@ -45,6 +48,7 @@ export function RecruitmentEditor() {
     return response.data;
   }
   async function saveDraft() {
+    if (busy || unavailable) return;
     const parsed = RecruitmentDraftSchema.safeParse(materialize());
     if (!parsed.success) { setError(parsed.error.issues.slice(0, 5).map(i => i.message).join('；')); return; }
     setBusy(true); setError('');
@@ -53,6 +57,7 @@ export function RecruitmentEditor() {
     finally { setBusy(false); }
   }
   function previewDraft() {
+    if (busy || unavailable) return;
     const parsed = PublishableRecruitmentSchema.safeParse(materialize());
     if (!parsed.success) { setError(parsed.error.issues.slice(0, 6).map(i => i.message).join('；')); return; }
     setError(''); setPreview(parsed.data);
@@ -60,21 +65,25 @@ export function RecruitmentEditor() {
   if (loading) return <Loading />;
   if (authError) return <ErrorState message={authError.message} retry={() => void reload()} />;
   if (!user) return <LoginGate next={id ? '/recruitments/' + id + '/edit' : '/recruitments/new'} />;
-  if ((id && (record.isPending || (record.data && hydrated !== id))) || (sourceId && source.isPending)) return <Loading label="正在读取招募草稿……" />;
-  if (record.isError || source.isError) return <ErrorState message={recruitmentError(record.error || source.error)} />;
-  if (id && record.data && !record.data.data.canEditDraft) return <ErrorState message="这条内容不是你可编辑的草稿；当前阶段已发布招募只读。" />;
+  if ((id && !hasDraft && (record.isPending || (record.data?.data.canEditDraft && hydrated !== id))) || (sourceId && source.isPending)) return <Loading label="正在读取招募草稿……" />;
+  if ((record.isError && !hasDraft) || (source.isError && !prefilled.current)) return <><Link className="text-button" to="/recruitments">返回招募大厅</Link><ErrorState message={recruitmentError(record.error || source.error)} retry={retryReads} /></>;
+  if (id && !hasDraft && record.data && !record.data.data.canEditDraft) return <ErrorState message="这条内容不是你可编辑的草稿；当前阶段已发布招募只读。" />;
   if (source.data && (!source.data.data.canEdit || source.data.data.topic.category !== 'COMPETITION')) return <ErrorState message="只能从自己的竞赛讨论发起关联招募。" />;
   const dateField = (key: 'startAt' | 'endAt' | 'joinDeadline' | 'competitionDeadline', label: string) => <label>{label}<input type="datetime-local" aria-label={label} value={beijingInput(draft[key])} onChange={e => change(key, fromBeijingInput(e.target.value))} /></label>;
   return <section className="form-page"><PageTitle title={preview ? '确认这份招募。' : '先把队伍想清楚。'} eyebrow="COMPETITION / RECRUITMENT DRAFT" back={() => preview ? setPreview(null) : navigate('/recruitments')} />
+    {(record.isError || source.isError) && <ErrorState message={recruitmentError(record.error || source.error) + '。本页尚未保存的输入仍保留，重新读取不会替换输入。'} retry={retryReads} />}
+    {unavailable && <div className="inline-error" role="status">这份草稿已发布、删除或不可编辑，本页输入仍保留，已停止保存和发布。{record.data?.data.publicationStatus === 'PUBLISHED' && <Link to={'/recruitments/' + id}>查看已发布招募</Link>}</div>}
+    {hasDraft && !unavailable && record.data && record.data.data.revision !== saved.current!.revision && <p className="form-note" role="status">草稿已在其他页面更新。本页输入仍基于原版本；保存时会检查版本，不能覆盖其他页面的修改。</p>}
     <p className="form-note recruitment-form-note">草稿仅自己可见。确认发布后内容公开，并创建队伍与队长关系。当前尚不能申请入队或群聊。</p>
     {!preview && location.state?.draftSaved && <div className="success-notice" role="status">草稿已保存到数据库，仅自己可见。继续修改后请再次保存。</div>}
-    {preview ? <div className="paper form-stack" aria-label="招募发布预览"><h2>{preview.title}</h2><p className="post-body">{preview.description}</p><dl className="recruitment-facts"><div><dt>竞赛主题</dt><dd>{topics.data?.data.find(t => t.id === preview.topicId)?.name || "正在读取主题"}</dd></div><div><dt>比赛与方向</dt><dd>{preview.competitionName} · {preview.direction}</dd></div><div><dt>学校与形式</dt><dd>{user.school.name} · {preview.mode === 'ONLINE' ? '线上' : preview.locationPublic}</dd></div><div><dt>协作时间</dt><dd>{beijingTime(preview.startAt)} 至 {beijingTime(preview.endAt)}（北京时间）</dd></div><div><dt>招募截止</dt><dd>{beijingTime(preview.joinDeadline || preview.startAt)}（北京时间）</dd></div><div><dt>比赛截止</dt><dd>{beijingTime(preview.competitionDeadline)}（北京时间）</dd></div><div><dt>投入与时段</dt><dd>每周 {preview.weeklyHours} 小时 · {preview.collaboration}</dd></div><div><dt>目标</dt><dd>{preview.goal}</dd></div><div><dt>已有技能</dt><dd>{preview.existingSkills.join("、") || "未填写"}（自述）</dd></div><div><dt>学校范围</dt><dd>{preview.allowCrossSchool ? "接受跨校意向" : "仅限同校意向"}</dd></div>{preview.officialUrl && <div><dt>比赛链接</dt><dd><a href={preview.officialUrl} target="_blank" rel="noopener noreferrer">{preview.officialUrl}</a></dd></div>}<div><dt>队伍总人数</dt><dd>{preview.capacity} 人，包含我作为队长</dd></div></dl><div className="slot-list">{preview.slots.map(s => <div className="slot-summary" key={s.key}><strong>{s.name}{s.key === preview.captainSlotKey ? ' · 我负责' : ''}</strong><span>{s.capacity} 人{s.requiredSkills.length ? ' · ' + s.requiredSkills.join('、') : ''}</span></div>)}</div><FormError>{error}</FormError><div className="button-row"><button className="button secondary" disabled={busy} onClick={() => { setPreview(null); setError(''); }}>返回修改</button><button className="button" disabled={busy} onClick={async () => {
+    {preview ? <div className="paper form-stack" aria-label="招募发布预览"><h2>{preview.title}</h2><p className="post-body">{preview.description}</p><dl className="recruitment-facts"><div><dt>竞赛主题</dt><dd>{topics.data?.data.find(t => t.id === preview.topicId)?.name || "正在读取主题"}</dd></div><div><dt>比赛与方向</dt><dd>{preview.competitionName} · {preview.direction}</dd></div><div><dt>学校与形式</dt><dd>{user.school.name} · {preview.mode === 'ONLINE' ? '线上' : preview.locationPublic}</dd></div><div><dt>协作时间</dt><dd>{beijingTime(preview.startAt)} 至 {beijingTime(preview.endAt)}（北京时间）</dd></div><div><dt>招募截止</dt><dd>{beijingTime(preview.joinDeadline || preview.startAt)}（北京时间）</dd></div><div><dt>比赛截止</dt><dd>{beijingTime(preview.competitionDeadline)}（北京时间）</dd></div><div><dt>投入与时段</dt><dd>每周 {preview.weeklyHours} 小时 · {preview.collaboration}</dd></div><div><dt>目标</dt><dd>{preview.goal}</dd></div><div><dt>已有技能</dt><dd>{preview.existingSkills.join("、") || "未填写"}（自述）</dd></div><div><dt>学校范围</dt><dd>{preview.allowCrossSchool ? "接受跨校意向" : "仅限同校意向"}</dd></div>{preview.officialUrl && <div><dt>比赛链接</dt><dd><a href={preview.officialUrl} target="_blank" rel="noopener noreferrer">{preview.officialUrl}</a></dd></div>}<div><dt>队伍总人数</dt><dd>{preview.capacity} 人，包含我作为队长</dd></div></dl><div className="slot-list">{preview.slots.map(s => <div className="slot-summary" key={s.key}><strong>{s.name}{s.key === preview.captainSlotKey ? ' · 我负责' : ''}</strong><span>{s.capacity} 人{s.requiredSkills.length ? ' · ' + s.requiredSkills.join('、') : ''}</span></div>)}</div><FormError>{error}</FormError><div className="button-row"><button className="button secondary" disabled={busy} onClick={() => { setPreview(null); setError(''); }}>返回修改</button><button className="button" disabled={busy || unavailable} onClick={async () => {
+      if (busy || unavailable) return;
       setBusy(true); setError('');
       try { const stored = await persist(preview); const response = await api<RecruitmentDTO>('/recruitments/' + stored.id + '/publish', { method: 'POST', body: { revision: stored.revision } }); await client.invalidateQueries({ queryKey: ['recruitments'] }); await client.invalidateQueries({ queryKey: ['my-recruitments'] }); client.setQueryData(['recruitment', stored.id, user.id], response); navigate('/recruitments/' + stored.id, { replace: true }); }
       catch (e) { setError(recruitmentError(e)); }
       finally { setBusy(false); }
     }}>{busy ? '正在发布……' : '确认发布招募'}<ArrowUpRight size={18} /></button></div>{saved.current && error && <Link className="text-button" to={'/recruitments/' + saved.current.id}>查看已经保存的内容 →</Link>}</div>
-    : <form className="paper form-stack" noValidate onSubmit={e => { e.preventDefault(); previewDraft(); }}><fieldset className="recruitment-fields" disabled={busy}>
+    : <form className="paper form-stack" noValidate onSubmit={e => { e.preventDefault(); previewDraft(); }}><fieldset className="recruitment-fields" disabled={busy || unavailable}>
       <h2>这次一起做什么</h2><label>竞赛主题<select aria-label="竞赛主题" value={draft.topicId || ''} disabled={!topics.data} onChange={e => change('topicId', e.target.value || null)}><option value="">请选择</option>{topics.data?.data.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}</select></label>{topics.isError && <ErrorState message="读取主题失败，请重试" retry={() => void topics.refetch()} />}
       <label>招募标题<input aria-label="招募标题" value={draft.title} onChange={e => change('title', e.target.value)} maxLength={60} placeholder="5—60 个字，说明想找怎样的伙伴" /></label>
       <label>招募说明<textarea aria-label="招募说明" rows={5} value={draft.description} onChange={e => change('description', e.target.value)} maxLength={3000} placeholder="20—3000 个字，说明项目、分工与合作期待" /></label>

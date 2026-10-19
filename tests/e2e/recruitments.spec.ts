@@ -30,12 +30,28 @@ test('an author converts a discussion, resumes a draft and safely retries a comm
     const sourceUrl = a.url();
     await a.getByRole('link', { name: '从讨论发起招募', exact: true }).click();
     await expect(a.getByLabel('招募标题', { exact: true })).toHaveValue(title);
+    let releaseSource!: () => void;
+    const sourceGate = new Promise<void>(resolve => { releaseSource = resolve; });
+    await a.route('**/api/v1/posts/' + new URL(sourceUrl).pathname.split('/').at(-1), async route => {
+      await sourceGate;
+      await route.fulfill({ status: 503, contentType: 'application/json', body: JSON.stringify({ error: { code: 'TEST_SOURCE_FAILURE', message: '验证用来源讨论读取失败' } }) });
+    });
+    await a.reload();
+    await expect(a.getByRole('status')).toContainText('正在读取招募草稿');
+    releaseSource();
+    await expect(a.getByRole('alert')).toContainText('验证用来源讨论读取失败');
+    await a.unrouteAll({ behavior: 'wait' });
+    await a.getByRole('button', { name: '重新加载', exact: true }).click();
+    await expect(a.getByLabel('招募标题', { exact: true })).toHaveValue(title);
     await a.getByRole('button', { name: '保存私有草稿', exact: true }).click();
     await expect(a).toHaveURL(/\/recruitments\/[a-f0-9-]+\/edit$/);
     const editUrl = a.url(), id = editUrl.split('/').at(-2)!;
     await a.reload(); await expect(a.getByLabel('招募标题', { exact: true })).toHaveValue(title);
     await b.goto('/recruitments/' + id);
     await expect(b.getByRole('alert')).toContainText('尚未公开');
+    await b.goto('/recruitments/' + id + '/edit');
+    await expect(b.getByRole('alert')).toContainText('尚未公开');
+    await expect(b.getByLabel('招募标题', { exact: true })).toHaveCount(0);
     await b.goto('/recruitments');
     await expect(b.locator('.recruitment-grid')).toHaveCount(0);
     await a.getByLabel('比赛名称', { exact: true }).fill('校园应用创新赛');
@@ -59,6 +75,11 @@ test('an author converts a discussion, resumes a draft and safely retries a comm
     await a.setViewportSize({ width: 390, height: 1000 });
     await a.getByRole('button', { name: '预览并发布', exact: true }).click();
     await expect(a.getByRole('heading', { name: '确认这份招募。' })).toBeVisible();
+    const staleEditor = await owner.newPage();
+    await staleEditor.goto(editUrl);
+    await staleEditor.getByLabel('招募标题', { exact: true }).fill('另一标签页发布后仍保留的未提交草稿');
+    await staleEditor.clock.install(); await staleEditor.clock.fastForward(21_000);
+    await a.bringToFront();
     // The database commits normally; only delivery of the success response is lost.
     await a.route('**/api/v1/recruitments/' + id + '/publish', async route => {
       const committed = await route.fetch();
@@ -70,6 +91,14 @@ test('an author converts a discussion, resumes a draft and safely retries a comm
     await expect(a.getByRole('heading', { name: '确认这份招募。' })).toBeVisible();
     await a.getByRole('button', { name: '确认发布招募', exact: true }).click();
     await expect(a).toHaveURL(new RegExp('/recruitments/' + id + '$'));
+    const publishedRead = staleEditor.waitForResponse(r => r.url().endsWith('/api/v1/recruitments/' + id) && r.request().method() === 'GET');
+    await staleEditor.bringToFront();
+    await staleEditor.evaluate(() => window.dispatchEvent(new Event('visibilitychange')));
+    expect((await publishedRead).status()).toBe(200);
+    await expect(staleEditor.getByLabel('招募标题', { exact: true })).toHaveValue('另一标签页发布后仍保留的未提交草稿');
+    await expect(staleEditor.getByRole('button', { name: '保存私有草稿', exact: true })).toBeDisabled();
+    await expect(staleEditor.getByRole('link', { name: '查看已发布招募', exact: true })).toHaveAttribute('href', '/recruitments/' + id);
+    await staleEditor.close(); await a.bringToFront();
     await expect(a.getByRole('heading', { name: title, exact: true })).toBeVisible();
     await expect(a.getByText('当前 1 / 3 人，总人数包含队长。每位成员只占一个岗位。', { exact: true })).toBeVisible();
     await expect(a.locator('.slot-summary').first()).toContainText('1 / 1 已占');
@@ -95,7 +124,7 @@ test('an author converts a discussion, resumes a draft and safely retries a comm
   } finally { await owner.close(); await observer.close(); }
 });
 
-test('failed draft writes preserve input, can retry, and saved drafts can be deleted', async ({ page }) => {
+test('failed draft writes preserve input, can retry, and saved drafts can be deleted', async ({ page, context }) => {
   await register(page, 'draft-retry@campus.invalid', '草稿体验');
   await page.goto('/recruitments/new');
   await page.getByLabel('招募标题', { exact: true }).fill('失败后输入仍保留的私有草稿');
@@ -109,16 +138,83 @@ test('failed draft writes preserve input, can retry, and saved drafts can be del
   await page.unrouteAll({ behavior: 'wait' });
   await page.getByRole('button', { name: '保存私有草稿', exact: true }).click();
   await expect(page).toHaveURL(/\/recruitments\/[a-f0-9-]+\/edit$/);
-  const id = page.url().split('/').at(-2)!;
+  const editUrl = page.url(), id = editUrl.split('/').at(-2)!;
+  const localTitle = '后台读取失败时仍须保留的草稿标题';
+  await expect(page.getByLabel('招募标题', { exact: true })).toHaveValue('失败后输入仍保留的私有草稿');
+  await page.getByLabel('招募标题', { exact: true }).fill(localTitle);
+  const other = await context.newPage();
+  await other.goto(editUrl);
+  await other.getByLabel('招募标题', { exact: true }).fill('另一个标签页已经保存的草稿标题');
+  await other.getByRole('button', { name: '保存私有草稿', exact: true }).click();
+  await expect(other.getByRole('status')).toContainText('草稿已保存到数据库');
+  await other.close(); await page.bringToFront();
+  await page.route('**/api/v1/recruitments/' + id, async route => {
+    if (route.request().method() === 'GET') await route.fulfill({ status: 503, contentType: 'application/json', body: JSON.stringify({ error: { code: 'TEST_READ_FAILURE', message: '验证用草稿读取中断' } }) });
+    else await route.continue();
+  });
+  await page.clock.install(); await page.clock.fastForward(21_000);
+  const background = page.waitForResponse(r => r.url().endsWith('/api/v1/recruitments/' + id) && r.request().method() === 'GET');
+  await page.evaluate(() => window.dispatchEvent(new Event('visibilitychange')));
+  expect((await background).status()).toBe(503);
+  await expect(page.getByRole('alert')).toContainText('验证用草稿读取中断');
+  await expect(page.getByLabel('招募标题', { exact: true })).toHaveValue(localTitle);
+  for (const width of [320, 390, 1440]) {
+    await page.setViewportSize({ width, height: 1000 }); await noOverflow(page);
+    await page.getByLabel('招募标题', { exact: true }).scrollIntoViewIfNeeded();
+    await page.screenshot({ path: `.local/screenshots/w106-draft-recovery-${width}.png` });
+  }
+  await page.clock.resume();
+  await page.unrouteAll({ behavior: 'wait' });
+  await page.getByRole('button', { name: '重新加载', exact: true }).click();
+  await expect(page.getByRole('alert')).toHaveCount(0);
+  await expect(page.getByLabel('招募标题', { exact: true })).toHaveValue(localTitle);
+  await expect(page.getByRole('status').filter({ hasText: '草稿已在其他页面更新' })).toBeVisible();
+  const conflict = page.waitForResponse(r => r.url().endsWith('/api/v1/recruitments/' + id) && r.request().method() === 'PATCH');
+  await page.getByRole('button', { name: '保存私有草稿', exact: true }).click();
+  expect((await conflict).status()).toBe(409);
+  await expect(page.getByRole('alert')).toContainText('草稿已有更新');
+  await expect(page.getByLabel('招募标题', { exact: true })).toHaveValue(localTitle);
+  // Explicit full reload follows manually retaining the local title; no automatic merge/rebase.
+  await page.reload();
+  await expect(page.getByLabel('招募标题', { exact: true })).toHaveValue('另一个标签页已经保存的草稿标题');
+  await page.getByLabel('招募标题', { exact: true }).fill(localTitle);
+  await page.getByRole('button', { name: '保存私有草稿', exact: true }).click();
+  await expect(page.getByRole('status')).toContainText('草稿已保存到数据库');
+  await page.route('**/api/v1/recruitments/' + id, async route => {
+    if (route.request().method() === 'GET') await route.fulfill({ status: 503, contentType: 'application/json', body: JSON.stringify({ error: { code: 'TEST_READ_FAILURE', message: '验证用首次读取失败' } }) });
+    else await route.continue();
+  });
+  await page.goto(editUrl);
+  await expect(page.getByRole('alert')).toContainText('验证用首次读取失败');
+  await page.unrouteAll({ behavior: 'wait' });
+  await page.getByRole('button', { name: '重新加载', exact: true }).click();
+  await expect(page.getByLabel('招募标题', { exact: true })).toHaveValue(localTitle);
+  const pending = await context.newPage();
+  await pending.goto(editUrl);
+  await pending.getByLabel('招募标题', { exact: true }).fill('原草稿删除后仍保留在本页的文字');
+  // Preserve the browser's existing virtual offset when installing on another tab.
+  const pendingTime = await pending.evaluate(() => Date.now());
+  await pending.clock.install({ time: pendingTime }); await pending.clock.fastForward(21_000);
+  expect(await pending.evaluate(() => Date.now())).toBeGreaterThanOrEqual(pendingTime + 21_000);
+  await page.bringToFront();
   await page.goto('/recruitments');
   await page.getByText('我的私有草稿', { exact: false }).click();
-  const row = page.locator('.draft-row').filter({ hasText: '失败后输入仍保留的私有草稿' });
+  const row = page.locator('.draft-row').filter({ hasText: localTitle });
   await expect(row).toBeVisible();
   await row.getByRole('button', { name: '删除草稿', exact: true }).click();
   await page.getByRole('button', { name: '先保留', exact: true }).click();
   await row.getByRole('button', { name: '删除草稿', exact: true }).click();
   await page.getByRole('button', { name: '确认删除草稿', exact: true }).click();
   await expect(row).toHaveCount(0);
+  const removed = pending.waitForResponse(r => r.url().endsWith('/api/v1/recruitments/' + id) && r.request().method() === 'GET');
+  await pending.bringToFront();
+  await pending.evaluate(() => window.dispatchEvent(new Event('visibilitychange')));
+  expect((await removed).status()).toBe(404);
+  await expect(pending.getByLabel('招募标题', { exact: true })).toHaveValue('原草稿删除后仍保留在本页的文字');
+  await expect(pending.getByLabel('招募标题', { exact: true })).toBeDisabled();
+  await expect(pending.getByRole('button', { name: '保存私有草稿', exact: true })).toBeDisabled();
+  await expect(pending.getByRole('status').filter({ hasText: '已停止保存和发布' })).toBeVisible();
+  await pending.close();
   await page.goto('/recruitments/' + id);
   await expect(page.getByRole('alert')).toContainText('不存在或尚未公开');
 });
