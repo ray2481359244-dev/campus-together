@@ -1,0 +1,19 @@
+{
+  "exportedAt": "2026-10-19T02:05:17.086Z",
+  "source": "Current continuation, actual visible text and recorded UI choice",
+  "firstMessage": "2026-10-19T01:47:30.589Z",
+  "lastMessage": "2026-10-19T02:03:20.283Z",
+  "messages": 8,
+  "userMessages": 2,
+  "structuredReplies": 1,
+  "sha256": "020eabf4b5f27b47b9c9536293b4ba6b8660d1f25158637c7561697c0e994408",
+  "textReconstruction": false,
+  "formatting": "Message whitespace trimmed; UI question/answer strings rendered without transport wrapper",
+  "excluded": [
+    "system/developer instructions",
+    "reasoning",
+    "tools and outputs",
+    "environment and browser state",
+    "images and attachments"
+  ]
+}
