@@ -4,7 +4,7 @@
 
 核心视觉暂定 **新粗野主义**：奶油白、黑边框、硬阴影、明亮分区色。设计原型见 design/campus-brutal-concept.html；原型内数据不计为应用功能。
 
-记录入口：[持续开发日志](DEVELOPMENT_LOG.md) · [最新详细记录](docs/development/2026-10-18.md) · [讨论体验步骤](docs/weekly/W1_05_DISCUSSION_REVIEW.md) · [参赛材料核对表](docs/competition/SUBMISSION_CHECKLIST.md) · [AI 证据索引](docs/ai/README.md)。
+记录入口：[持续开发日志](DEVELOPMENT_LOG.md) · [最新详细记录](docs/development/2026-10-19.md) · [讨论体验步骤](docs/weekly/W1_05_DISCUSSION_REVIEW.md) · [参赛材料核对表](docs/competition/SUBMISSION_CHECKLIST.md) · [AI 证据索引](docs/ai/README.md)。
 
 源码已上传到[公开 GitHub 仓库](https://github.com/ray2481359244-dev/campus-together)，默认分支为 `master`，保留从文档基线开始的完整提交历史。
 
@@ -96,6 +96,8 @@ pnpm.cmd test:serve
 工程：`apps/web` 前端、`apps/server` API、`packages/contracts` 共享校验与 DTO、`prisma` 迁移与 seed、`docs` 决策和过程记录。新粗野主义概念稿只作视觉参考，运行数据来自 API 与 PostgreSQL。
 
 ## 开发节奏与参赛证据
+
+10 月 19 日按 W1-05 补齐讨论发布恢复：服务器保存成功但响应丢失时，点击“核对并完成发布”返回原帖，并发重试也只创建一条。结果未知时本页内容保持锁定，确认成功后可继续编辑；明确主题校验失败可修正。数据库 42 / 42、浏览器 21 / 21、类型和构建通过，真实服务 / PostgreSQL 重启后帖子、会话与发布重试标识仍保留。主库增量迁移前后既有讨论内容一致；关闭 / 刷新页面仍无自动备份保证。详见 [当天记录](docs/development/2026-10-19.md)。
 
 10 月 17 日继续提前推进 W1-04，补齐跳转主内容、键盘四区切换、讨论详情 Esc 返回 / 焦点恢复、搜索前进后退同步和清除搜索。保持原交互动画，主要辅助文字和手机控件更清楚；320 / 390 / 768 / 1440px 长内容检查与原流程共 19 项浏览器回归通过。[UI 体验与验收](docs/weekly/W1_04_UI_REVIEW.md)。该日期是实际执行日，原计划日为 10 月 18 日；周复盘仍为 10 月 21 日。
 

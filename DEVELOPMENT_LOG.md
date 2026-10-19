@@ -18,6 +18,7 @@
 | 2026-10-16 | 启动改进、分区体验修复、独立检出复现；追加计划核对与 W1-S1 竞赛招募草稿 / 事务发布 / 预览 / 岗位 | [今日计划](docs/daily/DAY_02_PLAN_2026-10-16.md) / [详细日志](docs/development/2026-10-16.md) / [招募体验](docs/weekly/W1_S1_RECRUITMENT.md) |
 | 2026-10-17 | W1-03 账号复核；继续提前推进 W1-04：键盘切区、详情焦点与返回、搜索历史、窄屏可读性和长内容排版 | [今日计划](docs/daily/DAY_03_PLAN_2026-10-17.md) / [详细日志](docs/development/2026-10-17.md) / [UI 验收](docs/weekly/W1_04_UI_REVIEW.md) |
 | 2026-10-18 | 核对已提前完成的 W1-04，继续 W1-05：修复编辑刷新丢稿、固定提交版本、明确冲突恢复、并发编辑与删除验收 | [今日计划](docs/daily/DAY_04_PLAN_2026-10-18.md) / [详细日志](docs/development/2026-10-18.md) / [讨论验收](docs/weekly/W1_05_DISCUSSION_REVIEW.md) |
+| 2026-10-19 | W1-05 发布恢复：响应丢失后安全重试、并发去重、隐藏 / 删除不重建；重启持久化与主库增量迁移保留核对 | [今日计划](docs/daily/DAY_05_PLAN_2026-10-19.md) / [详细日志](docs/development/2026-10-19.md) / [讨论验收](docs/weekly/W1_05_DISCUSSION_REVIEW.md) |
 
 ## 关联材料
 
