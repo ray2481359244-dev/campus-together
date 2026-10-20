@@ -1,0 +1,19 @@
+{
+  "exportedAt": "2026-10-20T11:23:04.368Z",
+  "source": "Current day-six request and actual visible progress",
+  "firstMessage": "2026-10-20T11:01:19.702Z",
+  "lastMessage": "2026-10-20T11:22:28.200Z",
+  "messages": 7,
+  "userMessages": 1,
+  "sha256": "f0f663c30a8ed197ebb52d7195446a20de6b556367199e6eceb3f5479bcd87c0",
+  "textReconstruction": false,
+  "formatting": "Message whitespace trimmed; browser context wrapper removed",
+  "excluded": [
+    "system/developer instructions",
+    "reasoning",
+    "tools and outputs",
+    "environment and browser state",
+    "images and attachments",
+    "final reply and later archive status"
+  ]
+}

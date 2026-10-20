@@ -4,7 +4,7 @@
 
 核心视觉暂定 **新粗野主义**：奶油白、黑边框、硬阴影、明亮分区色。设计原型见 design/campus-brutal-concept.html；原型内数据不计为应用功能。
 
-记录入口：[持续开发日志](DEVELOPMENT_LOG.md) · [最新详细记录](docs/development/2026-10-19.md) · [讨论体验步骤](docs/weekly/W1_05_DISCUSSION_REVIEW.md) · [参赛材料核对表](docs/competition/SUBMISSION_CHECKLIST.md) · [AI 证据索引](docs/ai/README.md)。
+记录入口：[持续开发日志](DEVELOPMENT_LOG.md) · [最新详细记录](docs/development/2026-10-20.md) · [集成验收](docs/weekly/W1_06_INTEGRATION_REVIEW.md) · [参赛材料核对表](docs/competition/SUBMISSION_CHECKLIST.md) · [AI 证据索引](docs/ai/README.md)。
 
 源码已上传到[公开 GitHub 仓库](https://github.com/ray2481359244-dev/campus-together)，默认分支为 `master`，保留从文档基线开始的完整提交历史。
 
@@ -77,6 +77,7 @@ pnpm.cmd typecheck
 pnpm.cmd build
 pnpm.cmd test
 pnpm.cmd test:e2e
+pnpm.cmd test:recruitment-recovery
 pnpm.cmd test:startup
 pnpm.cmd test:serve
 ```
@@ -87,6 +88,8 @@ pnpm.cmd test:serve
 
 `pnpm test:persistence` 会短暂重启本项目专用本地 PostgreSQL，同时只向独立测试库写入验证内容；不要在其他人使用本地演示时执行。不适用于外部数据库。它已验证帖子与服务端会话在 API 和 PostgreSQL 重启后保留。
 
+`pnpm test:recruitment-recovery` 在构建和 `test:e2e` 生成测试演示数据后运行：仅在独立测试库写入两份验证草稿，重启专用 3102 API，验证创建标识、删除标记和会话保留。验证通过后删除本次仍存在的草稿，结束时回收该 API。它不重启主 PostgreSQL，不复用未知端口占用；需要测试库已有明确的 DEMO 账号。
+
 构建后可停止开发进程，执行 `pnpm start` 在 http://127.0.0.1:3001 同域运行构建产物；这条本地路径也支持写入。未来 HTTPS 部署需单独设置 `NODE_ENV=production` 与 `SERVE_ORIGIN`，不能直接将本地演示配置公开发布。
 
 `pnpm db:stop` 安全停止专用本地 PostgreSQL。数据不删除，之后用 `pnpm db:local` 再启动。
@@ -96,6 +99,8 @@ pnpm.cmd test:serve
 工程：`apps/web` 前端、`apps/server` API、`packages/contracts` 共享校验与 DTO、`prisma` 迁移与 seed、`docs` 决策和过程记录。新粗野主义概念稿只作视觉参考，运行数据来自 API 与 PostgreSQL。
 
 ## 开发节奏与参赛证据
+
+10 月 20 日按 W1-06 闭合昨天的创建恢复缺口：创建已提交但响应未知时，继续修改后保存会先找回原草稿，再按原版本保存当前内容；删除的草稿不能由旧请求重建，他页修改不被静默覆盖。数据库 48 / 48、完整浏览器 21 / 21、类型 / 构建及专用 API 重启检查通过。新增创建记录表回填既有数据，十类业务表迁移前后数量与摘要一致；主预览持续运行。[当日日志](docs/development/2026-10-20.md)保留真实复现与边界，10 月 21 日照常复盘。
 
 10 月 19 日按 W1-05 补齐讨论发布恢复：服务器保存成功但响应丢失时，点击“核对并完成发布”返回原帖，并发重试也只创建一条。结果未知时本页内容保持锁定，确认成功后可继续编辑；明确主题校验失败可修正。数据库 42 / 42、浏览器 21 / 21、类型和构建通过，真实服务 / PostgreSQL 重启后帖子、会话与发布重试标识仍保留。主库增量迁移前后既有讨论内容一致；关闭 / 刷新页面仍无自动备份保证。详见 [当天记录](docs/development/2026-10-19.md)。
 
