@@ -85,10 +85,27 @@ recruitmentsRouter.post('/recruitments', async (req, res) => {
   const user = requireUser(res), input = parse(CreateRecruitmentSchema, req.body);
   const hash = createHash('sha256').update(JSON.stringify(input.draft)).digest('hex');
   const result = await db.$transaction(async tx => {
+    const where = { authorId_requestKey: { authorId: user.id, requestKey: input.requestKey } };
+    // The unique request claim is committed with creation; deleted drafts retain the claim.
+    const claim = await tx.recruitmentCreateRequest.createMany({ data: [{ authorId: user.id, requestKey: input.requestKey, requestHash: hash }], skipDuplicates: true });
+    const request = await tx.recruitmentCreateRequest.findUniqueOrThrow({ where, include: { recruitment: { include } } });
+    if (request.requestHash !== hash) throw new ApiError(409, 'REQUEST_KEY_CONFLICT', '重复请求的内容不一致，请先核对已保存的草稿。');
+    if (!claim.count) {
+      if (!request.recruitment) throw new ApiError(410, 'DRAFT_DELETED', '本次创建的草稿已删除，不能通过重试重新创建。当前输入仍可自行复制保留。');
+      return { row: request.recruitment, created: false };
+    }
+    // Support requests written by the preceding app version during migration/deployment.
+    const legacy = await tx.recruitment.findUnique({ where: { authorId_createRequestKey: { authorId: user.id, createRequestKey: input.requestKey } }, include });
+    if (legacy) {
+      if (legacy.createRequestHash !== hash) throw new ApiError(409, 'REQUEST_KEY_CONFLICT', '重复请求的内容不一致，请先核对已保存的草稿。');
+      await tx.recruitmentCreateRequest.update({ where, data: { recruitmentId: legacy.id } });
+      return { row: legacy, created: false };
+    }
     const schoolId = await references(tx, user.id, input.draft);
     const created = await tx.recruitment.createMany({ data: [{ id: randomUUID(), authorId: user.id, schoolId, createRequestKey: input.requestKey, createRequestHash: hash, ...columns(input.draft) }], skipDuplicates: true });
     const row = await tx.recruitment.findUniqueOrThrow({ where: { authorId_createRequestKey: { authorId: user.id, createRequestKey: input.requestKey } }, include });
     if (row.createRequestHash !== hash) throw new ApiError(409, 'REQUEST_KEY_CONFLICT', '重复请求的内容不一致，请重新发起草稿。');
+    await tx.recruitmentCreateRequest.update({ where, data: { recruitmentId: row.id } });
     return { row, created: created.count === 1 };
   });
   res.status(result.created ? 201 : 200).json({ data: dto(result.row, user.id) });

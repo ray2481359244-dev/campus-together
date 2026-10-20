@@ -1,6 +1,6 @@
 # 已实现 API
 
-前缀 `/api/v1`。成功 `{data, meta?}`，失败 `{error:{code,message,fields?},requestId}`。更新至 2026-10-19 W1-05 发布恢复，未列出的入队 / 审核 / 聊天 / AI 业务仍未实现，返回 404。
+前缀 `/api/v1`。成功 `{data, meta?}`，失败 `{error:{code,message,fields?},requestId}`。更新至 2026-10-20 W1-06 草稿创建恢复，未列出的入队 / 审核 / 聊天 / AI 业务仍未实现，返回 404。
 
 | 方法与路径 | 当前行为 |
 | --- | --- |
@@ -23,7 +23,7 @@
 | GET /me/recruitments | 仅本人，按更新时间倒序返回最近 50 条草稿及已发布招募；不分页 |
 | GET /recruitments | 公开已发布竞赛招募；schoolId 必填，category 仅 COMPETITION；topicId/q/cursor/limit，默认 12、最大 30；q 搜索标题、说明、比赛名称与方向 |
 | GET /recruitments/:id | 已发布公开；草稿仅作者可读，其他人均 404；DTO 不包含邮箱、请求摘要和会话信息 |
-| POST /recruitments | 登录作者创建私有草稿；`{requestKey:UUID,draft}`，可暂缺发布必填项；同作者 / 同键 / 同请求重试 200，新建 201；同键不同内容 409 |
+| POST /recruitments | 登录作者创建私有草稿；`{requestKey:UUID,draft}`，可暂缺发布必填项；同作者 / 同键 / 同请求重试 200，新建 201；同键不同内容 409；原创建的草稿已删除为 410 DRAFT_DELETED，不重建 |
 | PATCH /recruitments/:id | 仅作者草稿，`{revision,draft}`，完整替换草稿；行锁和版本校验；冲突 409 |
 | DELETE /recruitments/:id | 仅作者草稿，`{revision}`；已发布不可删除，409 |
 | POST /recruitments/:id/publish | 仅作者，`{revision}`；重查学校 / 来源 / 主题与未来截止；事务建队、岗位、队长、空间元数据、事件并公开；首次 201，重复已发布 200 |
@@ -49,3 +49,9 @@
 招募请求的所有写入仍验证 Origin / CSRF，单实例写入限流为每分钟 40 次。招募 DTO 不缓存（no-store）。非作者操作草稿 404；已发布编辑 / 删除 409。前后端复用 `packages/contracts/src/recruitments.ts`，拒绝伪造 authorId / schoolId / teamId 等未支持字段。
 
 本阶段仅 COMPETITION 和 APPROVAL 发布模式。公共 `draft` 字段是作者确认发布的结构化内容，不含内部请求摘要；私有草稿只对作者返回。`team.chatAvailable=false`，`acceptingStatus` 只反映招募时间是否截止，不代表可以申请或完整生命周期已执行。没有直接加入、审核、消息或通知投递 API。
+
+10 月 20 日补充：招募创建标识保存到独立的 RecruitmentCreateRequest，作者 + requestKey 为主键，请求摘要和草稿关联与创建同事务。草稿删除时移除草稿正文，关联置空，保留最小创建记录；原键重试 410，不清理后重新创建。记录无自动 24 小时过期，随所属账号的硬删除级联清理；本轮没有新增账号删除界面。创建记录和摘要不进入 DTO。
+
+已提交请求先返回当前结果，再决定是否执行新建时的来源 / 学校校验；资料或来源后续变化不应把成功创建变成未知。旧数据通过增量迁移回填，兼容前一应用版本写入的原有创建字段。同一标识不同内容仍 409。
+
+前端保存未确认创建的原始快照与标识。用户继续修改后重试，先用原始请求找回草稿；仅在它仍是初始版本和原内容时，以该版本 PATCH 保存当前修改。若他页已更新 / 发布或原草稿已删除，保留本页输入并停止写入，提供已保存内容核对入口；不静默使用他页新版覆盖内容。明确的业务校验拒绝可修正后重新创建，非 JSON 网关错误、超时或限流继续保留原请求。关闭 / 刷新后没有本页创建恢复保证。

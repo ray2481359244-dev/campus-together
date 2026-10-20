@@ -1,5 +1,6 @@
 import { test, expect } from '@playwright/test';
 import type { Page } from '@playwright/test';
+import type { RecruitmentDTO } from '@campus/contracts';
 
 async function register(page: Page, email: string, nickname: string) {
   await page.goto('/register');
@@ -217,4 +218,68 @@ test('failed draft writes preserve input, can retry, and saved drafts can be del
   await pending.close();
   await page.goto('/recruitments/' + id);
   await expect(page.getByRole('alert')).toContainText('不存在或尚未公开');
+
+  await page.goto('/recruitments/new');
+  await page.getByLabel('招募标题', { exact: true }).fill('创建响应丢失前的招募草稿');
+  let originalId = '';
+  const creationAttempts: unknown[] = [];
+  await page.route('**/api/v1/recruitments', async route => {
+    if (route.request().method() !== 'POST') return route.continue();
+    creationAttempts.push(route.request().postDataJSON());
+    if (creationAttempts.length === 2) return route.fulfill({ status: 400, contentType: 'text/plain', body: 'Test gateway interruption' });
+    if (creationAttempts.length > 2) return route.continue();
+    const committed = await route.fetch();
+    expect(committed.status()).toBe(201); originalId = (await committed.json()).data.id;
+    await route.fulfill({ status: 503, contentType: 'application/json', body: JSON.stringify({ error: { code: 'TEST_LOST_CREATE_RESPONSE', message: '验证用草稿创建响应丢失' } }) });
+  });
+  await page.getByRole('button', { name: '保存私有草稿', exact: true }).click();
+  await expect(page.getByRole('alert')).toContainText('验证用草稿创建响应丢失');
+  await expect(page.getByLabel('招募标题', { exact: true })).toBeEnabled();
+  for (const width of [320, 390, 1440]) {
+    await page.setViewportSize({ width, height: 1000 }); await noOverflow(page);
+    await page.getByLabel('招募标题', { exact: true }).scrollIntoViewIfNeeded();
+    await page.screenshot({ path: `.local/screenshots/day6-create-recovery-${width}.png` });
+  }
+  await page.getByLabel('招募标题', { exact: true }).fill('创建响应丢失后继续修改的招募草稿');
+  await page.getByRole('button', { name: '保存私有草稿', exact: true }).click();
+  await expect(page.getByRole('alert')).toContainText('服务暂时不可用');
+  await expect(page.getByLabel('招募标题', { exact: true })).toHaveValue('创建响应丢失后继续修改的招募草稿');
+  await page.getByRole('button', { name: '保存私有草稿', exact: true }).click();
+  await expect(page).toHaveURL(/\/recruitments\/[a-f0-9-]+\/edit$/);
+  const own = (await (await page.request.get('/api/v1/me/recruitments')).json()).data;
+  expect(own.filter((r: { title: string }) => r.title.startsWith('创建响应丢失'))).toHaveLength(1);
+  await expect(page).toHaveURL(new RegExp('/recruitments/' + originalId + '/edit$'));
+  await expect(page.getByLabel('招募标题', { exact: true })).toHaveValue('创建响应丢失后继续修改的招募草稿');
+  expect(creationAttempts).toHaveLength(3);
+  for (const attempt of creationAttempts.slice(1)) expect(attempt).toEqual(creationAttempts[0]);
+  await page.unrouteAll({ behavior: 'wait' });
+
+  for (const action of ['deleted', 'edited'] as const) {
+    await page.goto('/recruitments/new');
+    await page.getByLabel('招募标题', { exact: true }).fill('需要核对创建结果的草稿 ' + action);
+    let recovered!: RecruitmentDTO;
+    await page.route('**/api/v1/recruitments', async route => {
+      const committed = await route.fetch();
+      expect(committed.status()).toBe(201); recovered = (await committed.json()).data;
+      await route.fulfill({ status: 503, contentType: 'application/json', body: JSON.stringify({ error: { code: 'TEST_LOST_CREATE_RESPONSE', message: '验证用草稿创建响应丢失' } }) });
+    }, { times: 1 });
+    await page.getByRole('button', { name: '保存私有草稿', exact: true }).click();
+    await expect(page.getByRole('alert')).toContainText('验证用草稿创建响应丢失');
+    const me = (await (await page.request.get('/api/v1/auth/me')).json()).data;
+    const headers = { Origin: new URL(page.url()).origin, 'X-CSRF-Token': me.csrfToken };
+    if (action === 'deleted') expect((await page.request.delete('/api/v1/recruitments/' + recovered.id, { headers, data: { revision: 1 } })).status()).toBe(200);
+    else expect((await page.request.patch('/api/v1/recruitments/' + recovered.id, { headers, data: { revision: 1, draft: { ...recovered.draft, title: '另一页面已保存的内容不能被恢复覆盖' } } })).status()).toBe(200);
+    const local = '这段未保存的输入应继续保留 ' + action;
+    await page.getByLabel('招募标题', { exact: true }).fill(local);
+    await page.getByRole('button', { name: '保存私有草稿', exact: true }).click();
+    await expect(page.getByRole('alert')).toContainText(action === 'deleted' ? '草稿已删除' : '已在其他页面更新或发布');
+    await expect(page.getByLabel('招募标题', { exact: true })).toHaveValue(local);
+    await expect(page.getByRole('button', { name: '保存私有草稿', exact: true })).toBeDisabled();
+    if (action === 'deleted') expect((await page.request.get('/api/v1/recruitments/' + recovered.id)).status()).toBe(404);
+    else {
+      const stored = (await (await page.request.get('/api/v1/recruitments/' + recovered.id)).json()).data;
+      expect(stored.title).toBe('另一页面已保存的内容不能被恢复覆盖'); expect(stored.revision).toBe(2);
+      await expect(page.getByRole('link', { name: '在新标签页核对已保存内容', exact: true })).toHaveAttribute('target', '_blank');
+    }
+  }
 });

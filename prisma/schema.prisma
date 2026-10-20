@@ -54,6 +54,7 @@ model User {
   posts        Post[]
   recruitments Recruitment[]
   captainTeams Team[] @relation("TeamCaptain")
+  recruitmentCreateRequests RecruitmentCreateRequest[]
   memberships TeamMember[]
   domainEvents DomainEvent[]
   createdAt    DateTime   @default(now()) @db.Timestamptz(3)
@@ -178,10 +179,23 @@ model Recruitment {
   createdAt DateTime @default(now()) @db.Timestamptz(3)
   updatedAt DateTime @updatedAt @db.Timestamptz(3)
   team Team?
+  createRequest RecruitmentCreateRequest?
 
   @@unique([authorId, createRequestKey])
   @@index([schoolId, publicationStatus, publishedAt, id])
   @@index([topicId, publicationStatus])
+}
+
+model RecruitmentCreateRequest {
+  authorId String @db.Uuid
+  author User @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  requestKey String @db.Uuid
+  requestHash String @db.Char(64)
+  recruitmentId String? @unique @db.Uuid
+  recruitment Recruitment? @relation(fields: [recruitmentId], references: [id], onDelete: SetNull)
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
+
+  @@id([authorId, requestKey])
 }
 
 model Team {

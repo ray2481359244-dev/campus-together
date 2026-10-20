@@ -1,10 +1,12 @@
-import { beforeAll, afterAll, describe, it, expect } from 'vitest';
+import { beforeAll, beforeEach, afterAll, describe, it, expect } from 'vitest';
 import request from 'supertest';
 import { randomUUID } from 'node:crypto';
+import { ipKeyGenerator } from 'express-rate-limit';
 import { RecruitmentDraftSchema, type RecruitmentDTO } from '@campus/contracts';
 import { app } from './app.js';
 import { db } from './db.js';
 import { config } from './config.js';
+import { writeLimit } from './auth.js';
 
 const a = request.agent(app), b = request.agent(app);
 const schoolA = '92000000-0000-4000-8000-000000000001', schoolB = '92000000-0000-4000-8000-000000000002';
@@ -34,6 +36,7 @@ beforeAll(async () => {
   }
 });
 afterAll(() => db.$disconnect());
+beforeEach(() => writeLimit.resetKey(ipKeyGenerator('::ffff:127.0.0.1')));
 
 describe('real recruitment drafts and transactional publication', () => {
   it('requires login, CSRF and strict competition inputs', async () => {
@@ -65,6 +68,7 @@ describe('real recruitment drafts and transactional publication', () => {
     expect(responses[0].body.data.id).toBe(responses[1].body.data.id);
     await create({ ...draft, title: '相同请求键但不同的招募标题' }, key).expect(409);
     expect(await db.recruitment.count({ where: { authorId: userA, createRequestKey: key } })).toBe(1);
+    expect(await db.recruitmentCreateRequest.count({ where: { authorId: userA, requestKey: key } })).toBe(1);
   });
   it('rejects incomplete publication, wrong role totals and missing captain slot', async () => {
     await publish(privateId, 2).expect(400);
@@ -148,5 +152,69 @@ describe('real recruitment drafts and transactional publication', () => {
     expect(read.body.data.team.id).toBe(published.body.data.team.id);
     expect(read.body.data.draft.sourcePostId).toBe(post.body.data.id);
     expect(read.body.data.sourceAvailable).toBe(false);
+  });
+  it('retains a deleted creation key without resurrecting the draft and isolates authors', async () => {
+    const draft = valid(), key = randomUUID(), result = await create(draft, key).expect(201);
+    await write(a, csrfA, 'delete', '/api/v1/recruitments/' + result.body.data.id, { revision: 1 }).expect(200);
+    const retry = await create(draft, key).expect(410);
+    expect(retry.body.error.code).toBe('DRAFT_DELETED');
+    expect(JSON.stringify(retry.body)).not.toContain(draft.description);
+    expect(await db.recruitment.count({ where: { authorId: userA, createRequestKey: key } })).toBe(0);
+    const remembered = await db.recruitmentCreateRequest.findUniqueOrThrow({ where: { authorId_requestKey: { authorId: userA, requestKey: key } } });
+    expect(remembered.recruitmentId).toBeNull();
+    const independent = await write(b, csrfB, 'post', '/api/v1/recruitments', { requestKey: key, draft }).expect(201);
+    expect(independent.body.data.author.id).toBe(userB);
+    expect(JSON.stringify(independent.body)).not.toMatch(/requestHash|requestKey|createRequest/);
+  });
+  it('resolves committed creation before changed school or source references and preserves later edits', async () => {
+    const post = await write(a, csrfA, 'post', '/api/v1/posts', { requestKey: randomUUID(), topicId, title: '创建恢复时核对来源讨论的状态', body: '这是一条真实的竞赛来源讨论，用于检查创建已成功后引用条件变化的恢复。' }).expect(201);
+    const draft = { ...valid(), sourcePostId: post.body.data.id }, key = randomUUID(), created = await create(draft, key).expect(201);
+    await write(a, csrfA, 'patch', '/api/v1/recruitments/' + created.body.data.id, { revision: 1, draft: { ...draft, title: '另一个标签页已正常保存的草稿版本' } }).expect(200);
+    await write(a, csrfA, 'delete', '/api/v1/posts/' + post.body.data.id, { revision: 1 }).expect(200);
+    await db.profile.update({ where: { userId: userA }, data: { schoolId: schoolB } });
+    try {
+      const replay = await create(draft, key).expect(200);
+      expect(replay.body.data.id).toBe(created.body.data.id); expect(replay.body.data.school.id).toBe(schoolA);
+      expect(replay.body.data.title).toBe('另一个标签页已正常保存的草稿版本'); expect(replay.body.data.revision).toBe(2);
+      expect(replay.body.data.sourceAvailable).toBe(false);
+    } finally { await db.profile.update({ where: { userId: userA }, data: { schoolId: schoolA } }); }
+  });
+  it('rolls back a rejected request claim and allows correction under that key', async () => {
+    const draft = valid(), key = randomUUID();
+    await create({ ...draft, topicId: wrongTopic }, key).expect(422);
+    expect(await db.recruitmentCreateRequest.count({ where: { authorId: userA, requestKey: key } })).toBe(0);
+    await create(draft, key).expect(201);
+  });
+  it('links a draft written by the preceding app version without creating a second draft', async () => {
+    const draft = valid(), key = randomUUID(), created = await create(draft, key).expect(201);
+    await db.recruitmentCreateRequest.delete({ where: { authorId_requestKey: { authorId: userA, requestKey: key } } });
+    const replay = await create(draft, key).expect(200);
+    expect(replay.body.data.id).toBe(created.body.data.id);
+    expect(await db.recruitment.count({ where: { authorId: userA, createRequestKey: key } })).toBe(1);
+    expect((await db.recruitmentCreateRequest.findUniqueOrThrow({ where: { authorId_requestKey: { authorId: userA, requestKey: key } } })).recruitmentId).toBe(created.body.data.id);
+  });
+  it('cannot recreate a draft when deletion races a creation retry', async () => {
+    const draft = valid(), key = randomUUID(), created = await create(draft, key).expect(201);
+    const [removed, retried] = await Promise.all([
+      write(a, csrfA, 'delete', '/api/v1/recruitments/' + created.body.data.id, { revision: 1 }), create(draft, key),
+    ]);
+    expect(removed.status).toBe(200); expect([200, 410]).toContain(retried.status);
+    await create(draft, key).expect(410);
+    expect(await db.recruitment.count({ where: { authorId: userA, createRequestKey: key } })).toBe(0);
+    expect(await db.recruitmentCreateRequest.count({ where: { authorId: userA, requestKey: key } })).toBe(1);
+  });
+  it('rolls back both draft and request when storing their link fails', async () => {
+    const draft = valid(), key = randomUUID();
+    try {
+      await db.$executeRawUnsafe(`CREATE FUNCTION test_reject_creation_link() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN RAISE EXCEPTION 'test link storage fault'; END $$`);
+      await db.$executeRawUnsafe(`CREATE TRIGGER test_creation_link_fault BEFORE UPDATE ON "RecruitmentCreateRequest" FOR EACH ROW EXECUTE FUNCTION test_reject_creation_link()`);
+      await create(draft, key).expect(503);
+      expect(await db.recruitment.count({ where: { authorId: userA, createRequestKey: key } })).toBe(0);
+      expect(await db.recruitmentCreateRequest.count({ where: { authorId: userA, requestKey: key } })).toBe(0);
+    } finally {
+      await db.$executeRawUnsafe('DROP TRIGGER IF EXISTS test_creation_link_fault ON "RecruitmentCreateRequest"');
+      await db.$executeRawUnsafe('DROP FUNCTION IF EXISTS test_reject_creation_link()');
+    }
+    await create(draft, key).expect(201);
   });
 });

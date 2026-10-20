@@ -26,6 +26,7 @@
     "test": "node scripts/prepare-tests.mjs && vitest run",
     "test:e2e": "playwright test",
     "test:persistence": "node scripts/check-persistence.mjs",
+    "test:recruitment-recovery": "node scripts/check-recruitment-recovery.mjs",
     "check": "pnpm typecheck && pnpm test && pnpm build"
   },
   "devDependencies": {
