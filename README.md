@@ -4,7 +4,7 @@
 
 核心视觉暂定 **新粗野主义**：奶油白、黑边框、硬阴影、明亮分区色。设计原型见 design/campus-brutal-concept.html；原型内数据不计为应用功能。
 
-记录入口：[持续开发日志](DEVELOPMENT_LOG.md) · [最新详细记录](docs/development/2026-10-20.md) · [集成验收](docs/weekly/W1_06_INTEGRATION_REVIEW.md) · [参赛材料核对表](docs/competition/SUBMISSION_CHECKLIST.md) · [AI 证据索引](docs/ai/README.md)。
+记录入口：[持续开发日志](DEVELOPMENT_LOG.md) · [最新详细记录](docs/development/2026-10-21.md) · [首周总结](docs/weekly/WEEK_01_REVIEW.md) · [第二周计划](docs/weekly/WEEK_02_PLAN.md) · [参赛材料核对表](docs/competition/SUBMISSION_CHECKLIST.md) · [AI 证据索引](docs/ai/README.md)。
 
 源码已上传到[公开 GitHub 仓库](https://github.com/ray2481359244-dev/campus-together)，默认分支为 `master`，保留从文档基线开始的完整提交历史。
 
@@ -99,6 +99,8 @@ pnpm.cmd test:serve
 工程：`apps/web` 前端、`apps/server` API、`packages/contracts` 共享校验与 DTO、`prisma` 迁移与 seed、`docs` 决策和过程记录。新粗野主义概念稿只作视觉参考，运行数据来自 API 与 PostgreSQL。
 
 ## 开发节奏与参赛证据
+
+10 月 21 日完成首周复盘，当前应用代码保持 `5ad3f7f`。本日重新验收数据库 48 / 48、浏览器 21 / 21、类型 / 构建、启动 / 服务和专用 API 重启，全部通过。负责人自述本周约 4h 主要用于可行性验证，聚焦使用问题的试用仍待开展。[首周总结](docs/weekly/WEEK_01_REVIEW.md)与 [第二周计划](docs/weekly/WEEK_02_PLAN.md)已落盘，10 月 22—28 日优先申请审核与成员事务；当前尚无实际入队或群聊。
 
 10 月 20 日按 W1-06 闭合昨天的创建恢复缺口：创建已提交但响应未知时，继续修改后保存会先找回原草稿，再按原版本保存当前内容；删除的草稿不能由旧请求重建，他页修改不被静默覆盖。数据库 48 / 48、完整浏览器 21 / 21、类型 / 构建及专用 API 重启检查通过。新增创建记录表回填既有数据，十类业务表迁移前后数量与摘要一致；主预览持续运行。[当日日志](docs/development/2026-10-20.md)保留真实复现与边界，10 月 21 日照常复盘。
 

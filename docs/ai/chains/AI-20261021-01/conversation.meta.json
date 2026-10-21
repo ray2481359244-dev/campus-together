@@ -1,0 +1,20 @@
+{
+  "exportedAt": "2026-10-21T12:44:00.481Z",
+  "source": "Current day-seven request and actual visible progress with recorded UI replies",
+  "firstMessage": "2026-10-21T12:28:24.060Z",
+  "lastMessage": "2026-10-21T12:42:00.491Z",
+  "messages": 8,
+  "userMessages": 3,
+  "structuredReplies": 2,
+  "sha256": "3fc3d8c2df49c7eb79f80a7bbf0f78446bb600eefd546b936999ae1adaca942b",
+  "textReconstruction": false,
+  "formatting": "Message whitespace trimmed; recorded UI question/answer strings rendered without transport wrapper",
+  "excluded": [
+    "system/developer instructions",
+    "reasoning",
+    "tools and outputs",
+    "environment and browser state",
+    "images and attachments",
+    "final reply and later archive status"
+  ]
+}

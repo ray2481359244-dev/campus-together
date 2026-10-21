@@ -20,6 +20,7 @@
 | 2026-10-18 | 核对已提前完成的 W1-04，继续 W1-05：修复编辑刷新丢稿、固定提交版本、明确冲突恢复、并发编辑与删除验收 | [今日计划](docs/daily/DAY_04_PLAN_2026-10-18.md) / [详细日志](docs/development/2026-10-18.md) / [讨论验收](docs/weekly/W1_05_DISCUSSION_REVIEW.md) |
 | 2026-10-19 | W1-05 发布重试与持久化；继续提前推进 W1-06：招募读取重试、后台失败保留输入、版本冲突和失效写入保护；确认持续自动归档 | [今日计划](docs/daily/DAY_05_PLAN_2026-10-19.md) / [详细日志](docs/development/2026-10-19.md) / [集成验收](docs/weekly/W1_06_INTEGRATION_REVIEW.md) |
 | 2026-10-20 | W1-06：闭合未确认创建后继续修改的重复草稿问题，独立创建记录、删除不重建、事务回滚及 API 重启验证 | [今日计划](docs/daily/DAY_06_PLAN_2026-10-20.md) / [详细日志](docs/development/2026-10-20.md) / [集成验收](docs/weekly/W1_06_INTEGRATION_REVIEW.md) |
+| 2026-10-21 | W1-07：当前版本实际验收、首周复盘、约 4h 人工投入反馈，制定第二周申请审核 / 成员事务的日期、依赖与验收门槛 | [今日计划](docs/daily/DAY_07_PLAN_2026-10-21.md) / [详细日志](docs/development/2026-10-21.md) / [首周总结](docs/weekly/WEEK_01_REVIEW.md) / [第二周计划](docs/weekly/WEEK_02_PLAN.md) |
 
 ## 关联材料
 
