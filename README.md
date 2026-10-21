@@ -4,7 +4,7 @@
 
 核心视觉暂定 **新粗野主义**：奶油白、黑边框、硬阴影、明亮分区色。设计原型见 design/campus-brutal-concept.html；原型内数据不计为应用功能。
 
-记录入口：[持续开发日志](DEVELOPMENT_LOG.md) · [最新详细记录](docs/development/2026-10-21.md) · [首周总结](docs/weekly/WEEK_01_REVIEW.md) · [第二周计划](docs/weekly/WEEK_02_PLAN.md) · [参赛材料核对表](docs/competition/SUBMISSION_CHECKLIST.md) · [AI 证据索引](docs/ai/README.md)。
+记录入口：[动态迭代计划](docs/ITERATION_PLAN.md) · [持续开发日志](DEVELOPMENT_LOG.md) · [最新详细记录](docs/development/2026-10-21.md) · [首周总结](docs/weekly/WEEK_01_REVIEW.md) · [参赛材料核对表](docs/competition/SUBMISSION_CHECKLIST.md) · [AI 证据索引](docs/ai/README.md)。
 
 源码已上传到[公开 GitHub 仓库](https://github.com/ray2481359244-dev/campus-together)，默认分支为 `master`，保留从文档基线开始的完整提交历史。
 
@@ -99,6 +99,8 @@ pnpm.cmd test:serve
 工程：`apps/web` 前端、`apps/server` API、`packages/contracts` 共享校验与 DTO、`prisma` 迁移与 seed、`docs` 决策和过程记录。新粗野主义概念稿只作视觉参考，运行数据来自 API 与 PostgreSQL。
 
 ## 开发节奏与参赛证据
+
+10 月 21 日后续按用户要求切换为 [动态迭代](docs/ITERATION_PLAN.md)：每轮总结实际结果，再安排下一轮主要交付；原计划书保留目标与规则，第二周日排期转为候选参考。下一轮优先岗位申请及条件对照，不等待固定日期；验收后的自动 GitHub 归档继续执行。
 
 10 月 21 日完成首周复盘，当前应用代码保持 `5ad3f7f`。本日重新验收数据库 48 / 48、浏览器 21 / 21、类型 / 构建、启动 / 服务和专用 API 重启，全部通过。负责人自述本周约 4h 主要用于可行性验证，聚焦使用问题的试用仍待开展。[首周总结](docs/weekly/WEEK_01_REVIEW.md)与 [第二周计划](docs/weekly/WEEK_02_PLAN.md)已落盘，10 月 22—28 日优先申请审核与成员事务；当前尚无实际入队或群聊。
 
