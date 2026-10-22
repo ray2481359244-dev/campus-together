@@ -4,6 +4,11 @@ export const EligibilityInputSchema = z.object({ slotId: z.uuid().nullable().def
 export const CreateApplicationSchema = z.object({ requestKey: z.uuid(), slotId: z.uuid(), message: z.string().trim().max(1000), timeConfirmed: z.boolean() }).strict();
 export const WithdrawApplicationSchema = z.object({ revision: z.number().int().positive() }).strict();
 export const MyApplicationsQuerySchema = z.object({ teamId: z.uuid().optional() }).strict();
+export const ReviewApplicationSchema = z.object({ revision: z.number().int().positive(), decision: z.enum(['APPROVE', 'REJECT']), reason: z.string().trim().max(500).default('') }).strict();
+export const CaptainApplicationsQuerySchema = z.object({ status: z.enum(['PENDING', 'ALL']).default('PENDING'), cursor: z.uuid().optional() }).strict();
+export const NotificationsQuerySchema = z.object({ cursor: z.uuid().optional() }).strict();
+export const ReadNotificationSchema = z.object({}).strict();
+export type ReviewApplicationInput = z.infer<typeof ReviewApplicationSchema>;
 export type ApplicationInput = z.infer<typeof CreateApplicationSchema>;
 export type EligibilityInput = z.infer<typeof EligibilityInputSchema>;
 export type ConditionStatus = 'PASS' | 'FAIL' | 'UNKNOWN';
@@ -16,5 +21,17 @@ export interface ApplicationDTO {
   status: 'PENDING' | 'APPROVED' | 'REJECTED' | 'WITHDRAWN' | 'EXPIRED';
   message: string; timeConfirmed: boolean; revision: number; submission: number;
   submittedAt: string; resolvedAt: string | null; canWithdraw: boolean; reapplyAt: string | null;
-  eligibilitySnapshot: EligibilityDTO; reviewAvailable: false;
+  eligibilitySnapshot: EligibilityDTO; reviewAvailable: true;
+  review: null | { decision: ReviewApplicationInput['decision']; reason: string; reviewedAt: string; eligibilitySnapshot: EligibilityDTO | null };
+  membership: null | { status: 'ACTIVE' | 'LEFT' | 'REMOVED'; slotName: string; joinedAt: string };
 }
+export interface CaptainApplicationDTO extends ApplicationDTO {
+  applicant: { id: string; nickname: string; schoolName: string; skills: string[]; accountActive: boolean };
+  canReview: boolean;
+}
+export interface CaptainApplicationsPageDTO { items: CaptainApplicationDTO[]; nextCursor: string | null; pendingCount: number }
+export interface NotificationDTO {
+  id: string; applicationId: string; recruitmentId: string; recruitmentTitle: string; slotName: string;
+  kind: 'APPLICATION_APPROVED' | 'APPLICATION_REJECTED'; reason: string; createdAt: string; readAt: string | null;
+}
+export interface NotificationsPageDTO { items: NotificationDTO[]; nextCursor: string | null; unreadCount: number }

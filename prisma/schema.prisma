@@ -58,6 +58,8 @@ model User {
   memberships TeamMember[]
   applications Application[]
   applicationRequests ApplicationRequest[]
+  applicationReviews ApplicationReview[] @relation("ApplicationReviewer")
+  notifications Notification[]
   domainEvents DomainEvent[]
   createdAt    DateTime   @default(now()) @db.Timestamptz(3)
   updatedAt    DateTime   @updatedAt @db.Timestamptz(3)
@@ -290,6 +292,7 @@ model Application {
   submittedAt DateTime @default(now()) @db.Timestamptz(3)
   resolvedAt DateTime? @db.Timestamptz(3)
   requests ApplicationRequest[]
+  reviews ApplicationReview[]
 
   @@unique([teamId, applicantId])
   @@unique([id, applicantId])
@@ -310,4 +313,45 @@ model ApplicationRequest {
 
   @@id([applicantId, requestKey])
   @@index([applicationId])
+}
+
+enum ReviewDecision {
+  APPROVE
+  REJECT
+}
+
+model ApplicationReview {
+  id String @id @default(uuid()) @db.Uuid
+  applicationId String @db.Uuid
+  applicantId String @db.Uuid
+  application Application @relation(fields: [applicationId, applicantId], references: [id, applicantId], onDelete: Cascade)
+  reviewerId String @db.Uuid
+  reviewer User @relation("ApplicationReviewer", fields: [reviewerId], references: [id], onDelete: Restrict)
+  submission Int
+  expectedRevision Int
+  decision ReviewDecision
+  reason String @db.VarChar(500)
+  slotName String @db.VarChar(30)
+  recruitmentTitle String @db.VarChar(60)
+  eligibilitySnapshot Json?
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
+  notification Notification?
+
+  @@unique([applicationId, submission])
+  @@unique([applicationId, expectedRevision])
+  @@unique([id, applicantId])
+}
+
+model Notification {
+  id String @id @default(uuid()) @db.Uuid
+  recipientId String @db.Uuid
+  recipient User @relation(fields: [recipientId], references: [id], onDelete: Cascade)
+  reviewId String @unique @db.Uuid
+  review ApplicationReview @relation(fields: [reviewId, recipientId], references: [id, applicantId], onDelete: Cascade)
+  readAt DateTime? @db.Timestamptz(3)
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
+
+  @@index([recipientId, createdAt, id])
+  @@index([recipientId, readAt])
+  @@unique([reviewId, recipientId])
 }

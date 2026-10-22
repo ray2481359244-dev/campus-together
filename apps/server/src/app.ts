@@ -9,6 +9,7 @@ import { notFound, errorHandler } from './http.js';
 import { postsRouter } from './posts.js';
 import { recruitmentsRouter } from './recruitments.js';
 import { applicationsRouter } from './applications.js';
+import { notificationsRouter } from './notifications.js';
 import { resolve } from 'node:path';
 import { existsSync } from 'node:fs';
 
@@ -29,6 +30,7 @@ app.use('/api/v1/auth', authRouter);
 app.use('/api/v1', profileRouter);
 app.use('/api/v1', postsRouter);
 app.use('/api/v1', applicationsRouter);
+app.use('/api/v1', notificationsRouter);
 app.use('/api/v1', recruitmentsRouter);
 app.use('/api', notFound);
 if (process.env.SERVE_WEB === '1') {

@@ -110,9 +110,13 @@ export const profileRouter = Router();
 profileRouter.get('/me/profile', (_req, res) => { res.setHeader('Cache-Control', 'no-store'); res.json({ data: privateProfile(requireUser(res)) }); });
 profileRouter.patch('/me/profile', writeLimit, csrfGuard, async (req, res) => {
   const user = requireUser(res), input = parse(ProfileSchema, req.body);
-  if (!await db.school.findFirst({ where: { id: input.schoolId, active: true } })) throw new ApiError(400, 'INVALID_SCHOOL', '请选择可用的学校。');
-  await db.profile.update({ where: { userId: user.id }, data: input });
-  const updated = await db.user.findUniqueOrThrow({ where: { id: user.id }, include: userInclude });
+  const updated = await db.$transaction(async tx => {
+    await tx.$queryRaw`SELECT "id" FROM "User" WHERE "id" = ${user.id}::uuid FOR NO KEY UPDATE`;
+    if (!await tx.user.findFirst({ where: { id: user.id, status: 'ACTIVE' } })) throw new ApiError(401, 'AUTH_REQUIRED', '当前账号不可修改资料，请重新登录。');
+    if (!await tx.school.findFirst({ where: { id: input.schoolId, active: true } })) throw new ApiError(400, 'INVALID_SCHOOL', '请选择可用的学校。');
+    await tx.profile.update({ where: { userId: user.id }, data: input });
+    return tx.user.findUniqueOrThrow({ where: { id: user.id }, include: userInclude });
+  });
   res.json({ data: privateProfile(updated) });
 });
 profileRouter.get('/profiles/:userId', async (req, res) => {

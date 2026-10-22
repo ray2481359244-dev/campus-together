@@ -74,6 +74,7 @@ test('two independent accounts publish, read, edit, save profiles and revoke ses
     await a.getByRole('button', { name: '登录', exact: true }).click();
     await expect(a.locator('.account-link')).toContainText('浏览器甲');
     expect(runtimeErrors).toEqual([]);
+    await cb.storageState({ path: '.local/e2e-application-observer.json' });
   } finally { await ca.close(); await cb.close(); }
 });
 

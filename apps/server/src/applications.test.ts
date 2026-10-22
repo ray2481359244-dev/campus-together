@@ -95,7 +95,7 @@ describe('private applicant workflow and live eligibility', () => {
     const row = results[0].body.data;
     expect(results[1].body.data.id).toBe(row.id);
     expect(row.eligibilitySnapshot.ruleVersion).toBe('competition-application-v1');
-    expect(row.reviewAvailable).toBe(false);
+    expect(row.reviewAvailable).toBe(true);
     await submit(r, input).expect(200);
     await submit(r, { ...input, message: '不同内容不能覆盖原申请' }, key).expect(409);
     await submit(r, { ...input, message: '换标识也不能覆盖原申请' }).expect(409);

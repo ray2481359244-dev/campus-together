@@ -1,6 +1,6 @@
 # 碰个头 / CampusTogether
 
-校园兴趣社区与可解释组队平台，个人 Vibe Coding 参赛项目。账号、讨论、竞赛招募发布，以及条件对照 / 岗位申请 / 本人查看撤回已通过本机验收。审核批准、实际入队、群聊、AI 和管理仍在后续阶段。
+校园兴趣社区与可解释组队平台，个人 Vibe Coding 参赛项目。已接通账号、讨论、竞赛招募、条件对照、申请 / 撤回、队长审核、批准入队和站内审核结果通知。群聊、完整队伍管理、AI 和管理后台仍在后续阶段。当前验收范围见[动态计划](docs/ITERATION_PLAN.md)。
 
 核心视觉暂定 **新粗野主义**：奶油白、黑边框、硬阴影、明亮分区色。设计原型见 design/campus-brutal-concept.html；原型内数据不计为应用功能。
 
@@ -79,6 +79,7 @@ pnpm.cmd test
 pnpm.cmd test:e2e
 pnpm.cmd test:recruitment-recovery
 pnpm.cmd test:application-recovery
+pnpm.cmd test:review-recovery
 pnpm.cmd test:startup
 pnpm.cmd test:serve
 ```
@@ -93,6 +94,8 @@ pnpm.cmd test:serve
 
 `pnpm test:application-recovery` 同样在构建和测试演示 seed 后运行；两次重启专用 3102 API，验证申请、撤回、原请求与会话保留，以及待审不占位。只写独立测试库，结束时删除本脚本创建的招募及关联记录、回收自己的 API，不重启主 PostgreSQL。不要同时运行两个 3102 重启检查。
 
+`pnpm test:review-recovery` 验证批准 / 拒绝、有效成员与人数、结果通知 / 已读状态和原审核重试经过两次专用 API 重启后保持一致。使用相同的独立测试库、3102 端口和清理边界，不与其他重启检查同时运行。
+
 构建后可停止开发进程，执行 `pnpm start` 在 http://127.0.0.1:3001 同域运行构建产物；这条本地路径也支持写入。未来 HTTPS 部署需单独设置 `NODE_ENV=production` 与 `SERVE_ORIGIN`，不能直接将本地演示配置公开发布。
 
 `pnpm db:stop` 安全停止专用本地 PostgreSQL。数据不删除，之后用 `pnpm db:local` 再启动。
@@ -102,6 +105,8 @@ pnpm.cmd test:serve
 工程：`apps/web` 前端、`apps/server` API、`packages/contracts` 共享校验与 DTO、`prisma` 迁移与 seed、`docs` 决策和过程记录。新粗野主义概念稿只作视觉参考，运行数据来自 API 与 PostgreSQL。
 
 ## 开发节奏与参赛证据
+
+10 月 22 日继续完成 I-002：队长从大厅“我发起的招募”进入详情审核，查看私有申请与原始条件依据，填写说明后批准 / 拒绝。批准时重查实时条件、总人数与岗位余量，成员、审核、结果通知和事件同事务；旧版本或相反决定不能覆盖已处理 / 重提的申请。参与者刷新本人申请可见有效成员身份，“消息”页可分页读取自己的审核结果并标为已读。没有短信邮件或群聊投递，当前通知只覆盖审核结果。实际验证与失败记录见[本轮日志](docs/development/2026-10-22.md#i-002-队长审核正式入队与结果通知)。
 
 10 月 22 日完成动态迭代 I-001：登录参与者在竞赛招募详情选择岗位、确认本次时间，核对条件后提交；可在详情 / 大厅“我的岗位申请”查看与撤回。技能缺失标为待补充，学校和技能均为自述；待审不占名额，审核批准尚未开放。数据库 59 / 59、完整浏览器 22 / 22、类型 / 构建和两次专用 API 重启通过，增量迁移保留十三类原业务表。完整浏览器会复用前序成功流程的测试会话，并按真实 RateLimit 头等待写入窗口，不提高生产限流。见 [本轮日志](docs/development/2026-10-22.md)。
 

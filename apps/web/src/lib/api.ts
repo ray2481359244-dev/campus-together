@@ -9,7 +9,7 @@ export const setCsrfToken = (token: string | null) => { csrfToken = token; };
 export const setSessionUserId = (id: string | null | undefined) => { sessionContext = { userId: id, revision: sessionContext.revision + 1 }; };
 export async function api<T>(path: string, options: { method?: string; body?: unknown; signal?: AbortSignal } = {}, retryCsrf = true, expected = sessionContext): Promise<ApiResponse<T>> {
   const method = options.method || 'GET';
-  const accountBound = method !== 'GET' || path === '/auth/csrf' || path.startsWith('/me/') || /^\/recruitments\/[a-f0-9-]+(?:$|\?)/i.test(path);
+  const accountBound = method !== 'GET' || path === '/auth/csrf' || path.startsWith('/me/') || path.startsWith('/teams/') || /^\/recruitments\/[a-f0-9-]+(?:$|\?)/i.test(path);
   if (method !== 'GET' && !csrfToken) csrfToken = (await api<{ csrfToken: string }>('/auth/csrf', {}, false, expected)).data.csrfToken;
   let response: Response;
   try {

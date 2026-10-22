@@ -31,6 +31,10 @@
 | POST /teams/:id/applications | `{requestKey:UUID,slotId:UUID,message:0—1000字,timeConfirmed:boolean}`；重新检查条件，新提交 / 冷却后重提 201，同意向重试 200；待审核不占位 |
 | GET /me/applications | 仅本人，`teamId`可选，按提交时间倒序最多 50 条；返回申请状态、原说明、本人条件快照与可撤回状态，不返回他人的申请 |
 | POST /applications/:id/withdraw | 仅申请者本人，`{revision}`；撤回和事件同事务，原版本重试返回同一撤回结果；新一轮申请后旧撤回 409；非本人 404 |
+| GET /teams/:id/applications | 仅当前有效队长；`status=PENDING或ALL`，默认待审；`cursor` 为本队申请 UUID；每页 20 条，返回 items / nextCursor / pendingCount，含申请者必要自述资料和原始条件依据 |
+| POST /applications/:id/review | 仅当前有效队长；`{revision,decision:APPROVE或REJECT,reason?:0—500字}`，成功及原操作重试均 200；批准重查当前条件 / 总量 / 岗位，成员、状态、审核、通知与事件同事务；变化 409，条件不符 422 |
+| GET /me/notifications | 仅本人；可选本人通知 UUID `cursor`，每页 20 条，返回 items / nextCursor / unreadCount；当前仅审核批准 / 拒绝结果 |
+| POST /me/notifications/:id/read | 仅本人，严格空对象 `{}`；首次与重复标为已读均 200，不改写首次 readAt；非本人 404 |
 
 所有变更请求都带当前同源 Origin 和 X-CSRF-Token。注册/登录前也需要匿名上下文。会话 Cookie 为 HttpOnly、SameSite=Lax，生产要求 Secure / HTTPS；Cookie 不包含用户公开资料。
 
@@ -71,3 +75,15 @@
 截止或停止招募后，原 PENDING 的有效读取状态为 EXPIRED，不能撤回或新申请，过期记录不计有效待审限额；本轮没有后台状态调度，存储状态不会因读取自动重写。之后实现关闭 / 审核时仍须真实检查截止，不能依赖存储 PENDING。原申请和撤回重试均保留版本 / 轮次保护。
 
 申请端 DTO 均 no-store，只含本人的说明和必要条件快照，`reviewAvailable=false`。队长当前没有读取他人申请或批准接口。前端未知提交结果保留并锁定原请求，非 JSON 网关错误或限流不换键；明确拒绝才允许修正。页面刷新 / 关闭后不保证恢复未提交文字，已保存意向可在招募详情或大厅“我的岗位申请”核对。
+
+## I-002 审核、成员与结果通知（2026-10-22）
+
+上节末尾的 `reviewAvailable=false` 和无队长接口为 I-001 时点记录；当前为 `true`，申请 DTO 新增本次 `review` 和申请者当前 `membership`。本次审核包含决定、说明、时间和批准时复查依据；成员身份由真实 TeamMember 读取，不以 APPROVED 文案替代。只有队长私有列表 / 审核响应额外返回申请者必要自述资料，公开招募仍只返回人数与岗位占用，不公开申请说明、邮箱或通知。
+
+审核先查本队归属，再按 UUID 排序锁定申请者与队长 User（NO KEY UPDATE），随后 Recruitment → Team。本人资料修改也在 User 锁内完成，防止审核越过尚未提交的资料变更。批准检查账号、有效招募 / 截止、学校、成员 / 被移除状态、岗位、自述技能和原时间确认；只有 PASS 才创建或恢复有效成员，并按真实人数更新 OPEN / FULL。拒绝不占名额；截止 / 停止后的有效 EXPIRED 不可审核。完整生命周期和自动过期通知仍未实现。
+
+ApplicationReview 每个申请轮次唯一，并保留原 revision、审核人、决定 / 说明、岗位 / 招募标题快照及批准复查证据。相同原版本、相同决定 / 规范化说明重试返回已保存结果，不重复成员 / 通知 / 事件；相反决定、修改说明、已撤回或重提后的旧版本均 409 APPLICATION_CHANGED。422 ELIGIBILITY_NOT_PASSED 返回逐项未通过依据，申请仍待审。原创建 / 撤回的轮次保护继续生效。
+
+ApplicationReview、申请状态 / revision、成员、队伍人数状态、Notification 与领域事件在一个事务内。通知通过复合外键绑定原申请者，一次审核最多一条，保留当时摘要，不随之后重提的岗位改变。查询 / 已读只接受本人记录，游标也限定本人；队长列表游标限定本队。列表按时间与 UUID 倒序，最多每页 20 条；未读数统计全部本人未读，不限当前页。没有 Socket、短信或邮件，消息页打开 / 页面重新可见及手动刷新补取，已读失败可安全重试。
+
+队长前端把未知审核结果的原版本、决定和说明保留并锁定，非 JSON 网关错误 / 限流不换操作；可原样重试或刷新核对。明确状态 / 条件失败先刷新再选择申请。只有成功读取当前申请后才解除核对状态，旧“待审核”提示不覆盖新的审核或成员结果。跨标签页换号沿用既有清缓存与迟到响应保护，私有队长 GET 同样绑定当前账号。
