@@ -157,8 +157,9 @@ svg{flex-shrink:0}
 .publish-school span{display:block;font-size:12px;margin-top:8px;color:var(--campus-muted)}
 .route-stage{position:relative;min-width:0}
 .route-stage.with-overlay .route-base{position:absolute;inset:0;overflow:hidden;pointer-events:none}
-.route-overlay{position:relative;background:transparent;z-index:2;min-height:650px;overflow:hidden;padding:0 1px 7px}
-.swipe-panel{position:relative;background:var(--campus-bg);min-height:650px;touch-action:pan-y;will-change:transform;padding:0 3px 8px}
+/* Keep shadow space inside the moving panel; flow-root contains the header margin. */
+.route-overlay{position:relative;background:transparent;z-index:2;min-height:650px;overflow:hidden}
+.swipe-panel{display:flow-root;position:relative;background:var(--campus-bg);min-height:650px;touch-action:pan-y;will-change:transform;padding:0 8px 8px 3px}
 .detail-top{display:flex;align-items:center;gap:14px;margin:5px 0 25px}
 .swipe-hint{margin-left:auto;color:var(--campus-muted);font-size:11px}
 .post-detail{max-width:850px;margin:0 auto 20px;overflow-wrap:anywhere}
