@@ -1,10 +1,10 @@
 # 碰个头 / CampusTogether
 
-校园兴趣社区与可解释组队平台，个人 Vibe Coding 参赛项目。账号与基本讨论、最小竞赛招募草稿及事务发布已通过本机验收。申请审核、入队、群聊、AI 和管理仍在后续阶段。
+校园兴趣社区与可解释组队平台，个人 Vibe Coding 参赛项目。账号、讨论、竞赛招募发布，以及条件对照 / 岗位申请 / 本人查看撤回已通过本机验收。审核批准、实际入队、群聊、AI 和管理仍在后续阶段。
 
 核心视觉暂定 **新粗野主义**：奶油白、黑边框、硬阴影、明亮分区色。设计原型见 design/campus-brutal-concept.html；原型内数据不计为应用功能。
 
-记录入口：[动态迭代计划](docs/ITERATION_PLAN.md) · [持续开发日志](DEVELOPMENT_LOG.md) · [最新详细记录](docs/development/2026-10-21.md) · [首周总结](docs/weekly/WEEK_01_REVIEW.md) · [参赛材料核对表](docs/competition/SUBMISSION_CHECKLIST.md) · [AI 证据索引](docs/ai/README.md)。
+记录入口：[动态迭代计划](docs/ITERATION_PLAN.md) · [持续开发日志](DEVELOPMENT_LOG.md) · [最新详细记录](docs/development/2026-10-22.md) · [首周总结](docs/weekly/WEEK_01_REVIEW.md) · [参赛材料核对表](docs/competition/SUBMISSION_CHECKLIST.md) · [AI 证据索引](docs/ai/README.md)。
 
 源码已上传到[公开 GitHub 仓库](https://github.com/ray2481359244-dev/campus-together)，默认分支为 `master`，保留从文档基线开始的完整提交历史。
 
@@ -78,6 +78,7 @@ pnpm.cmd build
 pnpm.cmd test
 pnpm.cmd test:e2e
 pnpm.cmd test:recruitment-recovery
+pnpm.cmd test:application-recovery
 pnpm.cmd test:startup
 pnpm.cmd test:serve
 ```
@@ -90,6 +91,8 @@ pnpm.cmd test:serve
 
 `pnpm test:recruitment-recovery` 在构建和 `test:e2e` 生成测试演示数据后运行：仅在独立测试库写入两份验证草稿，重启专用 3102 API，验证创建标识、删除标记和会话保留。验证通过后删除本次仍存在的草稿，结束时回收该 API。它不重启主 PostgreSQL，不复用未知端口占用；需要测试库已有明确的 DEMO 账号。
 
+`pnpm test:application-recovery` 同样在构建和测试演示 seed 后运行；两次重启专用 3102 API，验证申请、撤回、原请求与会话保留，以及待审不占位。只写独立测试库，结束时删除本脚本创建的招募及关联记录、回收自己的 API，不重启主 PostgreSQL。不要同时运行两个 3102 重启检查。
+
 构建后可停止开发进程，执行 `pnpm start` 在 http://127.0.0.1:3001 同域运行构建产物；这条本地路径也支持写入。未来 HTTPS 部署需单独设置 `NODE_ENV=production` 与 `SERVE_ORIGIN`，不能直接将本地演示配置公开发布。
 
 `pnpm db:stop` 安全停止专用本地 PostgreSQL。数据不删除，之后用 `pnpm db:local` 再启动。
@@ -99,6 +102,8 @@ pnpm.cmd test:serve
 工程：`apps/web` 前端、`apps/server` API、`packages/contracts` 共享校验与 DTO、`prisma` 迁移与 seed、`docs` 决策和过程记录。新粗野主义概念稿只作视觉参考，运行数据来自 API 与 PostgreSQL。
 
 ## 开发节奏与参赛证据
+
+10 月 22 日完成动态迭代 I-001：登录参与者在竞赛招募详情选择岗位、确认本次时间，核对条件后提交；可在详情 / 大厅“我的岗位申请”查看与撤回。技能缺失标为待补充，学校和技能均为自述；待审不占名额，审核批准尚未开放。数据库 59 / 59、完整浏览器 22 / 22、类型 / 构建和两次专用 API 重启通过，增量迁移保留十三类原业务表。完整浏览器会复用前序成功流程的测试会话，并按真实 RateLimit 头等待写入窗口，不提高生产限流。见 [本轮日志](docs/development/2026-10-22.md)。
 
 10 月 21 日后续按用户要求切换为 [动态迭代](docs/ITERATION_PLAN.md)：每轮总结实际结果，再安排下一轮主要交付；原计划书保留目标与规则，第二周日排期转为候选参考。下一轮优先岗位申请及条件对照，不等待固定日期；验收后的自动 GitHub 归档继续执行。
 

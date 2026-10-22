@@ -1,0 +1,19 @@
+{
+  "exportedAt": "2026-10-22T03:52:42.697Z",
+  "source": "Actual I-001 request and visible progress",
+  "firstMessage": "2026-10-22T03:15:47.393Z",
+  "lastMessage": "2026-10-22T03:47:27.998Z",
+  "messages": 8,
+  "userMessages": 1,
+  "sha256": "35957fbd7838af3eb8905567a2ca0b2c6f3333bcce79d5f7c58b567c3f6869f7",
+  "textReconstruction": false,
+  "formatting": "Message whitespace trimmed; browser context wrapper removed",
+  "excluded": [
+    "system/developer instructions",
+    "reasoning",
+    "tools and outputs",
+    "environment and browser state",
+    "images and attachments",
+    "final reply and later archive status"
+  ]
+}
