@@ -27,6 +27,7 @@
     "test:e2e": "playwright test",
     "test:persistence": "node scripts/check-persistence.mjs",
     "test:recruitment-recovery": "node scripts/check-recruitment-recovery.mjs",
+    "test:application-recovery": "node scripts/check-application-recovery.mjs",
     "check": "pnpm typecheck && pnpm test && pnpm build"
   },
   "devDependencies": {

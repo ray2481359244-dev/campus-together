@@ -6,6 +6,7 @@ import { db } from './db.js';
 import { csrfGuard, requireUser, writeLimit } from './auth.js';
 import { parse, ApiError } from './http.js';
 import { userInclude } from './dto.js';
+import { acceptingStatus } from './team-rules.js';
 import type { Prisma } from './generated/prisma/client.js';
 
 const include = { school: true, topic: true, sourcePost: { select: { status: true } }, author: { include: userInclude }, team: { include: { slots: { orderBy: { position: 'asc' as const } }, members: { where: { status: 'ACTIVE' as const }, select: { userId: true, slotId: true, role: true } } } } } as const;
@@ -19,7 +20,7 @@ function dto(row: Record, userId?: string): RecruitmentDTO {
     canEditDraft: row.publicationStatus === 'DRAFT' && row.authorId === userId, sourceAvailable: row.sourcePost?.status === 'PUBLISHED',
     createdAt: row.createdAt.toISOString(), updatedAt: row.updatedAt.toISOString(), publishedAt: row.publishedAt?.toISOString() ?? null,
     draft, team: row.team ? { id: row.team.id, status: row.team.status, memberCount: row.team.members.length, capacity: row.capacity,
-      captainUserId: row.team.captainUserId, acceptingStatus: row.joinDeadline && row.joinDeadline > new Date() ? 'OPEN' : 'CLOSED', chatAvailable: false,
+      captainUserId: row.team.captainUserId, acceptingStatus: acceptingStatus(row.team.status, row.joinDeadline, row.team.members.length, row.capacity), chatAvailable: false,
       slots: row.team.slots.map(s => ({ id: s.id, name: s.name, capacity: s.capacity, requiredSkills: s.requiredSkills, occupied: row.team!.members.filter(m => m.slotId === s.id).length })),
     } : null };
 }

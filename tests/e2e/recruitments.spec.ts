@@ -1,6 +1,7 @@
 import { test, expect } from '@playwright/test';
 import type { Page } from '@playwright/test';
 import type { RecruitmentDTO } from '@campus/contracts';
+import { writeFileSync } from 'node:fs';
 
 async function register(page: Page, email: string, nickname: string) {
   await page.goto('/register');
@@ -108,7 +109,9 @@ test('an author converts a discussion, resumes a draft and safely retries a comm
     await a.screenshot({ path: '.local/screenshots/recruitment-detail-390.png', fullPage: true });
     await b.goto(a.url()); await expect(b.getByRole('heading', { name: title, exact: true })).toBeVisible();
     await expect(b.getByRole('link', { name: /继续编辑/ })).toHaveCount(0);
-    await expect(b.getByRole('button', { name: /加入|申请|群聊/ })).toHaveCount(0);
+    await expect(b.getByRole('button', { name: /加入|群聊/ })).toHaveCount(0);
+    await expect(b.getByRole('button', { name: '提交岗位申请', exact: true })).toBeDisabled();
+    await expect(b.getByRole('button', { name: '核对申请条件', exact: true })).toBeEnabled();
     await noOverflow(b); await b.screenshot({ path: '.local/screenshots/recruitment-detail-1440.png', fullPage: true });
     await b.goto('/recruitments');
     await expect(b.locator('.recruitment-grid')).toContainText(title);
@@ -122,6 +125,10 @@ test('an author converts a discussion, resumes a draft and safely retries a comm
     await expect(b.getByText('来源讨论已不可用；这份已发布招募仍独立保留。', { exact: true })).toBeVisible();
     await expect(b.getByRole('link', { name: '查看来源讨论', exact: true })).toHaveCount(0);
     expect(errors).toEqual([]);
+    // Continue the same verified user journey without another registration burst.
+    await owner.storageState({ path: '.local/e2e-application-owner.json' });
+    await observer.storageState({ path: '.local/e2e-application-participant.json' });
+    writeFileSync('.local/e2e-application-recruitment.json', JSON.stringify((await (await a.request.get('/api/v1/recruitments/' + id)).json()).data));
   } finally { await owner.close(); await observer.close(); }
 });
 

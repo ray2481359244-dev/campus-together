@@ -56,6 +56,8 @@ model User {
   captainTeams Team[] @relation("TeamCaptain")
   recruitmentCreateRequests RecruitmentCreateRequest[]
   memberships TeamMember[]
+  applications Application[]
+  applicationRequests ApplicationRequest[]
   domainEvents DomainEvent[]
   createdAt    DateTime   @default(now()) @db.Timestamptz(3)
   updatedAt    DateTime   @updatedAt @db.Timestamptz(3)
@@ -210,6 +212,7 @@ model Team {
   members TeamMember[]
   chatSpace ChatSpace?
   events DomainEvent[]
+  applications Application[]
 }
 
 model TeamSlot {
@@ -221,6 +224,7 @@ model TeamSlot {
   requiredSkills String[] @default([])
   position Int
   members TeamMember[]
+  applications Application[]
 
   @@unique([id, teamId])
   @@unique([teamId, position])
@@ -258,4 +262,52 @@ model DomainEvent {
   kind String @db.VarChar(60)
   payload Json
   createdAt DateTime @default(now()) @db.Timestamptz(3)
+}
+
+enum ApplicationStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  WITHDRAWN
+  EXPIRED
+}
+
+model Application {
+  id String @id @default(uuid()) @db.Uuid
+  teamId String @db.Uuid
+  team Team @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  applicantId String @db.Uuid
+  applicant User @relation(fields: [applicantId], references: [id], onDelete: Cascade)
+  slotId String @db.Uuid
+  slot TeamSlot @relation(fields: [slotId, teamId], references: [id, teamId], onDelete: NoAction)
+  status ApplicationStatus @default(PENDING)
+  message String @db.VarChar(1000)
+  timeConfirmed Boolean
+  eligibilitySnapshot Json
+  submissionHash String @db.Char(64)
+  submission Int @default(1)
+  revision Int @default(1)
+  submittedAt DateTime @default(now()) @db.Timestamptz(3)
+  resolvedAt DateTime? @db.Timestamptz(3)
+  requests ApplicationRequest[]
+
+  @@unique([teamId, applicantId])
+  @@unique([id, applicantId])
+  @@index([applicantId, status, submittedAt])
+  @@index([teamId, status])
+}
+
+model ApplicationRequest {
+  applicantId String @db.Uuid
+  applicant User @relation(fields: [applicantId], references: [id], onDelete: Cascade)
+  requestKey String @db.Uuid
+  requestHash String @db.Char(64)
+  applicationId String @db.Uuid
+  application Application @relation(fields: [applicationId, applicantId], references: [id, applicantId], onDelete: Cascade)
+  submission Int
+  snapshot Json
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
+
+  @@id([applicantId, requestKey])
+  @@index([applicationId])
 }
