@@ -13,7 +13,7 @@ export type ApplicationInput = z.infer<typeof CreateApplicationSchema>;
 export type EligibilityInput = z.infer<typeof EligibilityInputSchema>;
 export type ConditionStatus = 'PASS' | 'FAIL' | 'UNKNOWN';
 export interface EligibilityDTO {
-  ruleVersion: 'competition-application-v1'; assessedAt: string; status: ConditionStatus;
+  ruleVersion: 'competition-application-v1' | 'competition-application-v2'; assessedAt: string; status: ConditionStatus;
   checks: { code: string; label: string; status: ConditionStatus; reason: string }[];
 }
 export interface ApplicationDTO {
@@ -31,7 +31,7 @@ export interface CaptainApplicationDTO extends ApplicationDTO {
 }
 export interface CaptainApplicationsPageDTO { items: CaptainApplicationDTO[]; nextCursor: string | null; pendingCount: number }
 export interface NotificationDTO {
-  id: string; applicationId: string; recruitmentId: string; recruitmentTitle: string; slotName: string;
-  kind: 'APPLICATION_APPROVED' | 'APPLICATION_REJECTED'; reason: string; createdAt: string; readAt: string | null;
+  id: string; applicationId: string | null; teamId: string; recruitmentId: string; recruitmentTitle: string; slotName: string;
+  kind: 'APPLICATION_APPROVED' | 'APPLICATION_REJECTED' | 'MEMBER_LEFT' | 'MEMBER_REMOVED' | 'RECRUITMENT_CLOSED'; reason: string; createdAt: string; readAt: string | null;
 }
 export interface NotificationsPageDTO { items: NotificationDTO[]; nextCursor: string | null; unreadCount: number }

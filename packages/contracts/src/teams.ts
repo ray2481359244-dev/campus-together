@@ -1,0 +1,18 @@
+import { z } from 'zod';
+
+export const MyTeamsQuerySchema = z.object({ cursor: z.uuid().optional() }).strict();
+export const LeaveTeamSchema = z.object({ revision: z.number().int().positive() }).strict();
+export const RemoveMemberSchema = LeaveTeamSchema.extend({ reason: z.string().trim().min(1, '请填写移除原因').max(500) }).strict();
+export const CloseRecruitmentSchema = z.object({ revision: z.number().int().positive(), reason: z.string().trim().max(500).default('') }).strict();
+export interface TeamSummaryDTO {
+  id: string; recruitmentId: string; title: string; captainUserId: string; status: string; closedAt: string | null;
+  acceptingStatus: 'OPEN' | 'FULL' | 'CLOSED'; capacity: number; memberCount: number; recruitmentRevision: number;
+  myMembership: { id: string; role: 'CAPTAIN' | 'MEMBER'; revision: number; slotName: string; joinedAt: string };
+}
+export interface TeamDetailDTO extends TeamSummaryDTO {
+  canLeave: boolean; canClose: boolean;
+  members: { id: string; userId: string; nickname: string; schoolName: string; skills: string[]; role: 'CAPTAIN' | 'MEMBER'; revision: number; slotName: string; joinedAt: string; canRemove: boolean }[];
+}
+export interface MyTeamsPageDTO { items: TeamSummaryDTO[]; nextCursor: string | null }
+export interface MembershipChangeDTO { teamId: string; recruitmentId: string; memberId: string; status: 'LEFT' | 'REMOVED'; revision: number; reason: string; changedAt: string }
+export interface RecruitmentClosureDTO { teamId: string; closedAt: string; expiredCount: number; reason: string }

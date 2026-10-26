@@ -32,10 +32,10 @@ async function eligibility(tx: Prisma.TransactionClient, team: Team, userId: str
   const add = (code: string, label: string, status: 'PASS' | 'FAIL' | 'UNKNOWN', reason: string) => checks.push({ code, label, status, reason });
   add('ACCOUNT', '账号状态', user.status === 'ACTIVE' ? 'PASS' : 'FAIL', user.status === 'ACTIVE' ? '当前账号可提交申请。' : '当前账号不可申请。');
   const members = team.members.filter(m => m.status === 'ACTIVE');
-  const open = recruitingWindow(team.status, team.recruitment.joinDeadline, now);
+  const open = recruitingWindow(team.status, team.recruitment.joinDeadline, now, team.recruitmentClosedAt);
   add('RECRUITING', '招募时间与总名额', open && members.length < team.recruitment.capacity ? 'PASS' : 'FAIL', !open ? '招募已停止或截止，不能提交新申请。' : members.length >= team.recruitment.capacity ? '当前队伍已满，不接收新申请。' : '招募进行中，待审核申请不占名额。');
   const member = team.members.find(m => m.userId === userId);
-  add('MEMBERSHIP', '成员身份', member && ['ACTIVE', 'REMOVED'].includes(member.status) ? 'FAIL' : 'PASS', member?.status === 'ACTIVE' ? '你已是队伍成员，无需申请。' : member?.status === 'REMOVED' ? '被移除后不能再次申请同一队伍。' : '你目前不是该队有效成员。');
+  add('MEMBERSHIP', '成员身份', member ? 'FAIL' : 'PASS', member?.status === 'ACTIVE' ? '你已是队伍成员，无需申请。' : member?.status === 'REMOVED' ? '被移除后不能再次申请同一队伍。' : member?.status === 'LEFT' ? '本版本退出后不能再次加入同一队伍。' : '你目前不是该队有效成员。');
   const profile = user.profile;
   add('SCHOOL', '学校范围（自述）', !profile?.school.active ? 'UNKNOWN' : team.recruitment.allowCrossSchool || profile.schoolId === team.recruitment.schoolId ? 'PASS' : 'FAIL', !profile?.school.active ? '请先补充有效的学校资料。' : team.recruitment.allowCrossSchool ? '发布者接受跨校意向；学校资料未核验。' : profile.schoolId === team.recruitment.schoolId ? '你的自述学校符合仅同校范围，未做认证。' : '你的身份资料学校不符合同校范围，浏览学校筛选不能替代身份资料。');
   const slot = team.slots.find(s => s.id === input.slotId);
@@ -45,10 +45,10 @@ async function eligibility(tx: Prisma.TransactionClient, team: Team, userId: str
   const missing = slot?.requiredSkills.filter(s => !normalized.has(s.normalize('NFKC').trim().toLowerCase())) || [];
   add('SKILLS', '岗位技能（自述）', !slot || missing.length ? 'UNKNOWN' : 'PASS', !slot ? '选定岗位后才能核对技能。' : missing.length ? `资料尚未声明：${missing.join('、')}。请补充真实技能后重查；缺失不代表你没有能力。` : slot.requiredSkills.length ? '资料中的自述技能覆盖该岗位标签，仅作信息对照，不代表能力认证。' : '该岗位没有额外技能标签要求。');
   add('TIME', '本次时间确认', input.timeConfirmed === null ? 'UNKNOWN' : input.timeConfirmed ? 'PASS' : 'FAIL', input.timeConfirmed === null ? '请阅读协作起止、每周投入与时段，确认本次能否安排。' : input.timeConfirmed ? '你已确认本次可以安排所列协作时间与投入；不从自由文本自动推断时间匹配。' : '你本次无法安排所列协作时间，请选择其他招募。');
-  return { ruleVersion: 'competition-application-v1', assessedAt: now.toISOString(), status: checks.some(c => c.status === 'FAIL') ? 'FAIL' : checks.some(c => c.status === 'UNKNOWN') ? 'UNKNOWN' : 'PASS', checks };
+  return { ruleVersion: 'competition-application-v2', assessedAt: now.toISOString(), status: checks.some(c => c.status === 'FAIL') ? 'FAIL' : checks.some(c => c.status === 'UNKNOWN') ? 'UNKNOWN' : 'PASS', checks };
 }
 function dto(row: Application, now = new Date()): ApplicationDTO {
-  const status = row.status === 'PENDING' && !recruitingWindow(row.team.status, row.team.recruitment.joinDeadline, now) ? 'EXPIRED' : row.status;
+  const status = row.status === 'PENDING' && !recruitingWindow(row.team.status, row.team.recruitment.joinDeadline, now, row.team.recruitmentClosedAt) ? 'EXPIRED' : row.status;
   const review = row.reviews.find(r => r.submission === row.submission), member = row.team.members.find(m => m.userId === row.applicantId);
   return { id: row.id, teamId: row.teamId, recruitmentId: row.team.recruitmentId, recruitmentTitle: row.team.recruitment.title,
     slotId: row.slotId, slotName: row.slot.name, status, message: row.message, timeConfirmed: row.timeConfirmed,
@@ -84,7 +84,7 @@ applicationsRouter.get('/teams/:id/applications', privateRead, async (req, res) 
   const user = requireUser(res), teamId = parse(IdSchema, req.params.id), input = parse(CaptainApplicationsQuerySchema, req.query);
   const result = await db.$transaction(async tx => {
     const team = await publishedTeam(tx, teamId); requireCaptain(team, user.id);
-    const now = new Date(), open = recruitingWindow(team.status, team.recruitment.joinDeadline, now);
+    const now = new Date(), open = recruitingWindow(team.status, team.recruitment.joinDeadline, now, team.recruitmentClosedAt);
     const cursor = input.cursor ? await tx.application.findFirst({ where: { id: input.cursor, teamId } }) : null;
     if (input.cursor && !cursor) throw new ApiError(400, 'INVALID_CURSOR', '分页位置无效，请重新读取申请。');
     const where: Prisma.ApplicationWhereInput = { teamId, ...(input.status === 'PENDING' ? { status: { in: open ? ['PENDING'] : [] } } : {}),
@@ -119,7 +119,7 @@ applicationsRouter.post('/applications/:id/review', privateRead, writeLimit, csr
       if (assessment.status !== 'PASS') throw new ApiError(422, 'ELIGIBILITY_NOT_PASSED', '当前条件或名额未通过，未批准也未占位。请核对下列依据。', Object.fromEntries(assessment.checks.filter(c => c.status !== 'PASS').map(c => [c.code, [c.reason]])));
       await tx.teamMember.upsert({ where: { teamId_userId: { teamId: current.teamId, userId: current.applicantId } },
         create: { teamId: current.teamId, userId: current.applicantId, slotId: current.slotId, role: 'MEMBER', joinedAt: now },
-        update: { slotId: current.slotId, role: 'MEMBER', status: 'ACTIVE', joinedAt: now, leftAt: null } });
+        update: { slotId: current.slotId, role: 'MEMBER', status: 'ACTIVE', joinedAt: now, leftAt: null, revision: { increment: 1 } } });
       await tx.team.update({ where: { id: team.id }, data: { status: team.members.filter(m => m.status === 'ACTIVE').length + 1 >= team.recruitment.capacity ? 'FULL' : 'OPEN' } });
     }
     await tx.application.update({ where: { id }, data: { status: input.decision === 'APPROVE' ? 'APPROVED' : 'REJECTED', revision: { increment: 1 }, resolvedAt: now } });
@@ -154,7 +154,7 @@ applicationsRouter.post('/teams/:id/applications', privateRead, writeLimit, csrf
       if (assessment.status !== 'PASS') throw new ApiError(422, 'ELIGIBILITY_NOT_PASSED', '条件尚未通过，请重新核对并补齐信息。', Object.fromEntries(assessment.checks.filter(c => c.status !== 'PASS').map(c => [c.code, [c.reason]])));
       if (row && ['APPROVED'].includes(row.status)) throw new ApiError(409, 'APPLICATION_NOT_OPEN', '这份申请已处理，请核对当前状态。');
       if (row?.resolvedAt && ['WITHDRAWN', 'REJECTED'].includes(row.status) && now.getTime() < row.resolvedAt.getTime() + cooldownMs) throw new ApiError(409, 'APPLICATION_COOLDOWN', '撤回或被拒绝后需等待 10 分钟才能再次申请。');
-      const pending = { status: 'PENDING' as const, team: { status: { in: ['OPEN', 'FULL'] as ('OPEN' | 'FULL')[] }, recruitment: { joinDeadline: { gt: now } } } };
+      const pending = { status: 'PENDING' as const, team: { status: { in: ['OPEN', 'FULL'] as ('OPEN' | 'FULL')[] }, recruitmentClosedAt: null, recruitment: { joinDeadline: { gt: now } } } };
       if (await tx.application.count({ where: { ...pending, applicantId: user.id } }) >= 10 || await tx.application.count({ where: { ...pending, teamId } }) >= 100) throw new ApiError(409, 'APPLICATION_LIMIT', '待审核申请已达上限（每人 10 条、每队 100 条）。');
       const values = { slotId: input.slotId, message: input.message, timeConfirmed: input.timeConfirmed, eligibilitySnapshot: assessment as unknown as Prisma.InputJsonValue, submissionHash: hash, status: 'PENDING' as const, submittedAt: now, resolvedAt: null };
       row = row ? await tx.application.update({ where: { id: row.id }, data: { ...values, revision: { increment: 1 }, submission: { increment: 1 } }, include: applicationInclude })

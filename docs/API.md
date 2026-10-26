@@ -1,6 +1,6 @@
 # 已实现 API
 
-前缀 `/api/v1`。成功 `{data, meta?}`，失败 `{error:{code,message,fields?},requestId}`。更新至 2026-10-20 W1-06 草稿创建恢复，未列出的入队 / 审核 / 聊天 / AI 业务仍未实现，返回 404。
+前缀 `/api/v1`。成功 `{data, meta?}`，失败 `{error:{code,message,fields?},requestId}`。更新至 2026-10-26 I-003 成员管理与关闭招募。未列出的队长转交、开始 / 结束 / 取消、聊天和 AI 业务仍未实现。
 
 | 方法与路径 | 当前行为 |
 | --- | --- |
@@ -33,8 +33,13 @@
 | POST /applications/:id/withdraw | 仅申请者本人，`{revision}`；撤回和事件同事务，原版本重试返回同一撤回结果；新一轮申请后旧撤回 409；非本人 404 |
 | GET /teams/:id/applications | 仅当前有效队长；`status=PENDING或ALL`，默认待审；`cursor` 为本队申请 UUID；每页 20 条，返回 items / nextCursor / pendingCount，含申请者必要自述资料和原始条件依据 |
 | POST /applications/:id/review | 仅当前有效队长；`{revision,decision:APPROVE或REJECT,reason?:0—500字}`，成功及原操作重试均 200；批准重查当前条件 / 总量 / 岗位，成员、状态、审核、通知与事件同事务；变化 409，条件不符 422 |
-| GET /me/notifications | 仅本人；可选本人通知 UUID `cursor`，每页 20 条，返回 items / nextCursor / unreadCount；当前仅审核批准 / 拒绝结果 |
+| GET /me/notifications | 仅本人；可选本人通知 UUID `cursor`，每页 20 条，返回 items / nextCursor / unreadCount；当前审核批准 / 拒绝、退出、移除和关闭待审结果 |
 | POST /me/notifications/:id/read | 仅本人，严格空对象 `{}`；首次与重复标为已读均 200，不改写首次 readAt；非本人 404 |
+| GET /me/teams | 本人有效成员队伍，不受浏览学校筛选影响；可选本人有效队伍 UUID `cursor`，每页 20 条，返回 items / nextCursor |
+| GET /teams/:id | 仅当前有效成员；返回本人角色、当前有效成员的必要自述资料、人数和操作能力；待审 / 退出 / 移除 / 旁观者及无成员身份的管理员均 404 |
+| POST /teams/:id/leave | 本人普通成员，`{revision:成员版本}`；成功及原操作重试均 200；队长 409 CAPTAIN_CANNOT_LEAVE；后续版本 409 MEMBERSHIP_CHANGED |
+| POST /teams/:id/members/:memberId/remove | 当前有效队长，`{revision:目标成员版本,reason:1—500字}`；同版、同原因原操作幂等；不能移除队长、跨队目标或已失效成员 |
+| POST /teams/:id/close-recruitment | 当前有效队长，`{revision:招募版本,reason?:0—500字}`；关闭标记、招募版本、待审 EXPIRED / 版本、本人通知、事件同事务；不取消队伍，不移出现有成员，不支持重开 |
 
 所有变更请求都带当前同源 Origin 和 X-CSRF-Token。注册/登录前也需要匿名上下文。会话 Cookie 为 HttpOnly、SameSite=Lax，生产要求 Secure / HTTPS；Cookie 不包含用户公开资料。
 
@@ -87,3 +92,15 @@ ApplicationReview 每个申请轮次唯一，并保留原 revision、审核人�
 ApplicationReview、申请状态 / revision、成员、队伍人数状态、Notification 与领域事件在一个事务内。通知通过复合外键绑定原申请者，一次审核最多一条，保留当时摘要，不随之后重提的岗位改变。查询 / 已读只接受本人记录，游标也限定本人；队长列表游标限定本队。列表按时间与 UUID 倒序，最多每页 20 条；未读数统计全部本人未读，不限当前页。没有 Socket、短信或邮件，消息页打开 / 页面重新可见及手动刷新补取，已读失败可安全重试。
 
 队长前端把未知审核结果的原版本、决定和说明保留并锁定，非 JSON 网关错误 / 限流不换操作；可原样重试或刷新核对。明确状态 / 条件失败先刷新再选择申请。只有成功读取当前申请后才解除核对状态，旧“待审核”提示不覆盖新的审核或成员结果。跨标签页换号沿用既有清缓存与迟到响应保护，私有队长 GET 同样绑定当前账号。
+
+## I-003 成员管理与关闭招募（2026-10-26）
+
+条件新快照为 `competition-application-v2`，旧 v1 快照仍原样可读。v2 明确 ACTIVE / LEFT / REMOVED 都不能新申请同一队伍；退出后禁止重新入队，避免没有成员任期 / 聊天历史权限方案时重用身份。原批准请求只返回当前成员状态，不再次激活已退出 / 移除的成员。
+
+成员改动沿 UUID 排序 User → Recruitment → Team 锁顺序。TeamMember 新增正整数 revision；MembershipChange 保留成员、原版本、操作者、类型、原因和摘要。原版本、同操作 / 同原因且仍是该次结果时重试返回原回执；退出与移除竞争只有一个成功，旧版本不能改写后来状态。OPEN / FULL 按有效人数恢复空位，IN_PROGRESS 保持原阶段；终态不接受新成员改动。队长不能普通退出或被移除，转交和取消留待后续。
+
+关闭招募使用独立 `Team.recruitmentClosedAt` 与唯一 RecruitmentClosure；关闭不等于 CANCELLED，现有有效成员仍可查看队伍。截止检查、条件对照、队长列表和有效待审限额均识别关闭标记。关闭锁内把全部原始 PENDING 写为 EXPIRED、递增版本并设置处理时间，只给受影响申请者保存关闭通知；已批准 / 撤回 / 拒绝记录不被改写。相同原招募版本与原因可重试，不重复通知；不同版本 / 说明为 409 RECRUITMENT_CHANGED。关闭后释放成员名额也不清除关闭标记。
+
+Notification 增加退出、移除和关闭三种来源；保留旧审核关联与数据。互斥来源 CHECK 和复合外键确保成员通知属于当事人、关闭通知属于相同队伍的申请者，每次变化 / 关闭每人至多一条。DTO 的 `applicationId` 在成员变化时可为 null，新增 `teamId`；通知摘要是历史结果，当前身份以详情为准。新申请通知和 Socket 仍未实现。
+
+队伍列表 / 详情在一致读快照中检查有效成员，只返回必要字段，不返回邮箱、口令、私有申请说明或成员变更原因。退出 / 移除提交后新读取立即 404；客户端重新可见或手动刷新后收起旧页面，不宣称 Socket 实时撤权。未知操作保留原版本与原因，原样重试；离开成功清除队内缓存并返回我的队伍。直接页面读取失权时不展示旧成员列表。

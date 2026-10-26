@@ -19,8 +19,8 @@ function dto(row: Record, userId?: string): RecruitmentDTO {
     author: { id: row.authorId, nickname: row.author.profile?.nickname || '校园用户' },
     canEditDraft: row.publicationStatus === 'DRAFT' && row.authorId === userId, sourceAvailable: row.sourcePost?.status === 'PUBLISHED',
     createdAt: row.createdAt.toISOString(), updatedAt: row.updatedAt.toISOString(), publishedAt: row.publishedAt?.toISOString() ?? null,
-    draft, team: row.team ? { id: row.team.id, status: row.team.status, memberCount: row.team.members.length, capacity: row.capacity,
-      captainUserId: row.team.captainUserId, acceptingStatus: acceptingStatus(row.team.status, row.joinDeadline, row.team.members.length, row.capacity), chatAvailable: false,
+    draft, team: row.team ? { id: row.team.id, status: row.team.status, closedAt: row.team.recruitmentClosedAt?.toISOString() ?? null, memberCount: row.team.members.length, capacity: row.capacity,
+      captainUserId: row.team.captainUserId, acceptingStatus: acceptingStatus(row.team.status, row.joinDeadline, row.team.members.length, row.capacity, row.team.recruitmentClosedAt), chatAvailable: false,
       slots: row.team.slots.map(s => ({ id: s.id, name: s.name, capacity: s.capacity, requiredSkills: s.requiredSkills, occupied: row.team!.members.filter(m => m.slotId === s.id).length })),
     } : null };
 }

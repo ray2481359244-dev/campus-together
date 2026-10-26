@@ -1,6 +1,7 @@
 import { z } from 'zod';
 export * from './recruitments.js';
 export * from './applications.js';
+export * from './teams.js';
 
 export const categories = ['GAME', 'STUDY', 'COMPETITION', 'OUTDOOR'] as const;
 export const CategorySchema = z.enum(categories);

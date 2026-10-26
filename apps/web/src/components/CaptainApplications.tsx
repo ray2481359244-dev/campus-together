@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { useInfiniteQuery, useQueryClient } from '@tanstack/react-query';
 import type { CaptainApplicationDTO, CaptainApplicationsPageDTO, RecruitmentDTO, ReviewApplicationInput } from '@campus/contracts';
 import { api, ApiError, messageOf } from '../lib/api';
@@ -47,7 +48,7 @@ export function CaptainApplications({ recruitment: r }: { recruitment: Recruitme
   if (result.isPending) return <Loading label="正在读取本队申请……" />;
   if (result.isError && !result.data) return <ErrorState message={messageOf(result.error)} retry={() => void result.refetch()} />;
   const items = result.data?.pages.flatMap(p => p.data.items) || [], locked = busy || !!pending.current;
-  return <section className="application-panel" aria-label="队长申请管理"><h2>处理岗位申请。</h2><p className="form-note">仅本队队长可查看申请说明。待审核不占名额；批准时会重新核对资料、时间与岗位余量。</p>
+  return <section className="application-panel" aria-label="队长申请管理"><h2>处理岗位申请。</h2><Link className="text-button" to={'/teams/' + teamId}>查看队伍与成员管理 →</Link><p className="form-note">仅本队队长可查看申请说明。待审核不占名额；批准时会重新核对资料、时间与岗位余量。</p>
     <div className="review-toolbar"><div className="button-row"><button className="button secondary" aria-pressed={filter === 'PENDING'} disabled={locked} onClick={() => setFilter('PENDING')}>待审核（{result.data?.pages[0].data.pendingCount || 0}）</button><button className="button secondary" aria-pressed={filter === 'ALL'} disabled={locked} onClick={() => setFilter('ALL')}>全部申请</button></div><button className="text-button" disabled={busy || result.isFetching} onClick={() => void refresh()}>刷新并核对申请</button></div>
     {result.isError && <ErrorState message={messageOf(result.error)} retry={() => void refresh()} />}
     {notice && <p className="success-notice" role="status">{notice}</p>}

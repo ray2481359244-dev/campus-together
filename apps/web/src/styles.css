@@ -267,6 +267,13 @@ svg{flex-shrink:0}
 .notification-card.unread{border-left:7px solid var(--campus-competition)}
 .notification-empty{margin-top:23px}
 .notification-empty p{margin:15px 0}
+.my-teams-link{margin:0 0 22px}
+.team-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,320px),1fr));gap:22px;padding-right:5px;margin:24px 0}
+.team-grid h2{font-size:23px;line-height:1.6;margin:14px 0;overflow-wrap:anywhere}
+.team-members{display:grid;gap:16px;margin:26px 0}
+.team-member{border:2px solid var(--campus-text);background:var(--campus-bg);padding:18px;min-width:0;overflow-wrap:anywhere}
+.team-member h3{font-size:19px;line-height:1.6}
+.team-member .field-note{margin-top:12px}
 @media(max-width:767px){.review-card{padding:15px}.review-toolbar{gap:12px}.review-card-heading h3,.notification-card h2{font-size:18px}.review-toolbar .button-row{gap:10px}}
 @media(max-width:767px){.recruitment-intro{align-items:stretch;flex-direction:column;gap:17px}.recruitment-intro .button{align-self:flex-start}.recruitment-grid{grid-template-columns:1fr}.recruitment-fields h2{font-size:20px}.slot-editor{padding:14px}.recruitment-facts>div{grid-template-columns:82px minmax(0,1fr);gap:10px}.recruitment-facts dd{font-size:13px}.slot-summary{flex-direction:column;align-items:flex-start;padding:13px}.recruitment-detail .post-card-top{align-items:flex-start;flex-direction:column}.recruitment-detail .post-card-top>span:last-child{font-size:12px}.draft-row{gap:10px;padding:12px}.draft-row strong{font-size:13px}}
 

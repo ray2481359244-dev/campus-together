@@ -91,6 +91,9 @@ export function ApplicationPanel({ recruitment: r }: { recruitment: RecruitmentD
     {current && <div className="application-current" aria-label="已保存申请"><strong>申请状态：{labels[current.status]}</strong><p>{current.slotName} · 提交于 {beijingTime(current.submittedAt)}（北京时间）</p><p className="post-body">{current.message || '未填写申请说明'}</p>
       {current.status === 'PENDING' && <p>等待队长审核，当前不占名额。</p>}
       {current.membership?.status === 'ACTIVE' && <p className="success-notice" role="status">已入队 · 当前有效成员 · {current.membership.slotName} · 加入于 {beijingTime(current.membership.joinedAt)}（北京时间）</p>}
+      {current.membership?.status === 'ACTIVE' && <Link className="button secondary" to={'/teams/' + team.id}>进入我的队伍 →</Link>}
+      {current.membership?.status === 'LEFT' && <p className="stage-explanation">当前已退出队伍，队内查看权限已收回。本版本不能重新加入同一队伍。</p>}
+      {current.membership?.status === 'REMOVED' && <p className="stage-explanation">当前已被移除，队内查看权限已收回。本版本不能再次加入同一队伍。</p>}
       {current.review && <div className="review-result"><p>队长于 {beijingTime(current.review.reviewedAt)}（北京时间）{current.review.decision === 'APPROVE' ? '批准了本次申请。' : '拒绝了本次申请。'}</p><p>{current.review.reason || '队长未填写额外说明。'}</p>{current.review.eligibilitySnapshot && <p>批准时条件复查：{conditionLabels[current.review.eligibilitySnapshot.status]}</p>}<Link className="text-button" to="/messages">查看结果通知 →</Link></div>}
       {cooldown && <p>撤回 / 拒绝后需等待 10 分钟，可在 {beijingTime(current.reapplyAt)}（北京时间）后刷新核对。</p>}
       {(current.canWithdraw || withdrawal.current) && <button className="button secondary" disabled={!!busy || blocked || own.isError} onClick={() => void withdraw()}>{withdrawal.current ? '重试撤回申请' : '撤回申请'}</button>}

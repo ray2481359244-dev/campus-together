@@ -60,6 +60,8 @@ model User {
   applicationRequests ApplicationRequest[]
   applicationReviews ApplicationReview[] @relation("ApplicationReviewer")
   notifications Notification[]
+  membershipChanges MembershipChange[] @relation("MembershipChangeActor")
+  recruitmentClosures RecruitmentClosure[]
   domainEvents DomainEvent[]
   createdAt    DateTime   @default(now()) @db.Timestamptz(3)
   updatedAt    DateTime   @updatedAt @db.Timestamptz(3)
@@ -209,12 +211,14 @@ model Team {
   captainUserId String @db.Uuid
   captain User @relation("TeamCaptain", fields: [captainUserId], references: [id], onDelete: Restrict)
   status TeamStatus @default(OPEN)
+  recruitmentClosedAt DateTime? @db.Timestamptz(3)
   createdAt DateTime @default(now()) @db.Timestamptz(3)
   slots TeamSlot[]
   members TeamMember[]
   chatSpace ChatSpace?
   events DomainEvent[]
   applications Application[]
+  closure RecruitmentClosure?
 }
 
 model TeamSlot {
@@ -244,8 +248,11 @@ model TeamMember {
   status MemberStatus @default(ACTIVE)
   joinedAt DateTime @default(now()) @db.Timestamptz(3)
   leftAt DateTime? @db.Timestamptz(3)
+  revision Int @default(1)
+  changes MembershipChange[]
 
   @@unique([teamId, userId])
+  @@unique([id, userId])
 }
 
 model ChatSpace {
@@ -293,9 +300,11 @@ model Application {
   resolvedAt DateTime? @db.Timestamptz(3)
   requests ApplicationRequest[]
   reviews ApplicationReview[]
+  closureNotifications Notification[] @relation("ClosedApplicationNotification")
 
   @@unique([teamId, applicantId])
   @@unique([id, applicantId])
+  @@unique([id, teamId, applicantId])
   @@index([applicantId, status, submittedAt])
   @@index([teamId, status])
 }
@@ -346,12 +355,61 @@ model Notification {
   id String @id @default(uuid()) @db.Uuid
   recipientId String @db.Uuid
   recipient User @relation(fields: [recipientId], references: [id], onDelete: Cascade)
-  reviewId String @unique @db.Uuid
-  review ApplicationReview @relation(fields: [reviewId, recipientId], references: [id, applicantId], onDelete: Cascade)
+  reviewId String? @unique @db.Uuid
+  review ApplicationReview? @relation(fields: [reviewId, recipientId], references: [id, applicantId], onDelete: Cascade)
+  memberChangeId String? @unique @db.Uuid
+  memberChange MembershipChange? @relation(fields: [memberChangeId, recipientId], references: [id, memberUserId], onDelete: Cascade)
+  closureId String? @db.Uuid
+  teamId String? @db.Uuid
+  applicationId String? @db.Uuid
+  closure RecruitmentClosure? @relation(fields: [closureId, teamId], references: [id, teamId], onDelete: Cascade)
+  closedApplication Application? @relation("ClosedApplicationNotification", fields: [applicationId, teamId, recipientId], references: [id, teamId, applicantId], onDelete: Cascade)
   readAt DateTime? @db.Timestamptz(3)
   createdAt DateTime @default(now()) @db.Timestamptz(3)
 
   @@index([recipientId, createdAt, id])
   @@index([recipientId, readAt])
   @@unique([reviewId, recipientId])
+  @@unique([memberChangeId, recipientId])
+  @@unique([closureId, recipientId])
+}
+
+enum MembershipChangeKind {
+  LEFT
+  REMOVED
+}
+
+model MembershipChange {
+  id String @id @default(uuid()) @db.Uuid
+  memberId String @db.Uuid
+  memberUserId String @db.Uuid
+  member TeamMember @relation(fields: [memberId, memberUserId], references: [id, userId], onDelete: Cascade)
+  actorId String @db.Uuid
+  actor User @relation("MembershipChangeActor", fields: [actorId], references: [id], onDelete: Restrict)
+  kind MembershipChangeKind
+  expectedRevision Int
+  reason String @db.VarChar(500)
+  slotName String @db.VarChar(30)
+  recruitmentTitle String @db.VarChar(60)
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
+  notification Notification?
+
+  @@unique([memberId, expectedRevision])
+  @@unique([id, memberUserId])
+}
+
+model RecruitmentClosure {
+  id String @id @default(uuid()) @db.Uuid
+  teamId String @unique @db.Uuid
+  team Team @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  actorId String @db.Uuid
+  actor User @relation(fields: [actorId], references: [id], onDelete: Restrict)
+  expectedRevision Int
+  reason String @db.VarChar(500)
+  expiredCount Int
+  recruitmentTitle String @db.VarChar(60)
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
+  notifications Notification[]
+
+  @@unique([id, teamId])
 }

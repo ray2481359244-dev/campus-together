@@ -1,10 +1,10 @@
 # 碰个头 / CampusTogether
 
-校园兴趣社区与可解释组队平台，个人 Vibe Coding 参赛项目。已接通账号、讨论、竞赛招募、条件对照、申请 / 撤回、队长审核、批准入队和站内审核结果通知。群聊、完整队伍管理、AI 和管理后台仍在后续阶段。当前验收范围见[动态计划](docs/ITERATION_PLAN.md)。
+校园兴趣社区与可解释组队平台，个人 Vibe Coding 参赛项目。已接通账号、讨论、竞赛招募、申请审核入队、我的队伍、成员退出 / 移除、关闭招募和相关本人通知。队长转交、完整生命周期、群聊、AI 和管理后台仍在后续阶段。当前验收范围见[动态计划](docs/ITERATION_PLAN.md)。
 
 核心视觉暂定 **新粗野主义**：奶油白、黑边框、硬阴影、明亮分区色。设计原型见 design/campus-brutal-concept.html；原型内数据不计为应用功能。
 
-记录入口：[动态迭代计划](docs/ITERATION_PLAN.md) · [持续开发日志](DEVELOPMENT_LOG.md) · [最新详细记录](docs/development/2026-10-22.md) · [首周总结](docs/weekly/WEEK_01_REVIEW.md) · [参赛材料核对表](docs/competition/SUBMISSION_CHECKLIST.md) · [AI 证据索引](docs/ai/README.md)。
+记录入口：[动态迭代计划](docs/ITERATION_PLAN.md) · [持续开发日志](DEVELOPMENT_LOG.md) · [最新详细记录](docs/development/2026-10-26.md) · [首周总结](docs/weekly/WEEK_01_REVIEW.md) · [参赛材料核对表](docs/competition/SUBMISSION_CHECKLIST.md) · [AI 证据索引](docs/ai/README.md)。
 
 源码已上传到[公开 GitHub 仓库](https://github.com/ray2481359244-dev/campus-together)，默认分支为 `master`，保留从文档基线开始的完整提交历史。
 
@@ -80,6 +80,7 @@ pnpm.cmd test:e2e
 pnpm.cmd test:recruitment-recovery
 pnpm.cmd test:application-recovery
 pnpm.cmd test:review-recovery
+pnpm.cmd test:team-recovery
 pnpm.cmd test:startup
 pnpm.cmd test:serve
 ```
@@ -96,6 +97,10 @@ pnpm.cmd test:serve
 
 `pnpm test:review-recovery` 验证批准 / 拒绝、有效成员与人数、结果通知 / 已读状态和原审核重试经过两次专用 API 重启后保持一致。使用相同的独立测试库、3102 端口和清理边界，不与其他重启检查同时运行。
 
+`pnpm test:team-recovery` 验证退出 / 移除后的名额和队内权限、关闭与待审失效、本人通知 / 已读，以及旧操作重试经过两次专用 API 重启后保留；同样只写独立测试库并清理自己的验证队伍。不要同时运行多个 3102 重启检查。
+
+Windows 若浏览器在追踪文件写入 / 回收时出现工作盘 `EBUSY`，可保留原断言与追踪，改用系统临时目录：`pnpm.cmd test:e2e --output "$env:TEMP/campus-together-e2e"`。10 月 26 日完整回归使用了这条输出目录覆盖，不修改全局追踪策略。
+
 构建后可停止开发进程，执行 `pnpm start` 在 http://127.0.0.1:3001 同域运行构建产物；这条本地路径也支持写入。未来 HTTPS 部署需单独设置 `NODE_ENV=production` 与 `SERVE_ORIGIN`，不能直接将本地演示配置公开发布。
 
 `pnpm db:stop` 安全停止专用本地 PostgreSQL。数据不删除，之后用 `pnpm db:local` 再启动。
@@ -105,6 +110,8 @@ pnpm.cmd test:serve
 工程：`apps/web` 前端、`apps/server` API、`packages/contracts` 共享校验与 DTO、`prisma` 迁移与 seed、`docs` 决策和过程记录。新粗野主义概念稿只作视觉参考，运行数据来自 API 与 PostgreSQL。
 
 ## 开发节奏与参赛证据
+
+10 月 26 日完成 I-003：“我的 → 我的队伍”查看当前有效队伍与成员，普通成员退出，队长填写原因后移除普通成员或关闭招募。成员变化释放名额并收回队内读取权限；关闭保留现有队伍、停止申请 / 批准，未处理申请失效并通知。首版退出或被移除后不能重新加入同一队伍，队长不能直接退出；开始 / 结束 / 取消、转交和群聊仍待后续。详见[本轮记录](docs/development/2026-10-26.md)。
 
 10 月 22 日继续完成 I-002：队长从大厅“我发起的招募”进入详情审核，查看私有申请与原始条件依据，填写说明后批准 / 拒绝。批准时重查实时条件、总人数与岗位余量，成员、审核、结果通知和事件同事务；旧版本或相反决定不能覆盖已处理 / 重提的申请。参与者刷新本人申请可见有效成员身份，“消息”页可分页读取自己的审核结果并标为已读。没有短信邮件或群聊投递，当前通知只覆盖审核结果。实际验证与失败记录见[本轮日志](docs/development/2026-10-22.md#i-002-队长审核正式入队与结果通知)。
 

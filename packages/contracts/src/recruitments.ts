@@ -48,6 +48,6 @@ export interface RecruitmentDTO {
   category: 'COMPETITION'; school: { id: string; name: string; isDemo: boolean }; topic: { id: string; name: string } | null;
   author: { id: string; nickname: string }; canEditDraft: boolean; sourceAvailable: boolean; createdAt: string; updatedAt: string; publishedAt: string | null;
   draft: RecruitmentDraft;
-  team: null | { id: string; status: string; memberCount: number; capacity: number; captainUserId: string; acceptingStatus: 'OPEN' | 'FULL' | 'CLOSED';
+  team: null | { id: string; status: string; closedAt: string | null; memberCount: number; capacity: number; captainUserId: string; acceptingStatus: 'OPEN' | 'FULL' | 'CLOSED';
     slots: { id: string; name: string; capacity: number; occupied: number; requiredSkills: string[] }[]; chatAvailable: false };
 }

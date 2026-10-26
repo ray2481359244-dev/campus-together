@@ -6,11 +6,17 @@ import { db } from './db.js';
 import { requireUser, csrfGuard, writeLimit } from './auth.js';
 import { parse, ApiError } from './http.js';
 
-const include = { review: { include: { application: { select: { team: { select: { recruitmentId: true } } } } } } } as const;
+const teamLink = { select: { id: true, recruitmentId: true } } as const;
+const include = { review: { include: { application: { select: { team: teamLink } } } }, memberChange: { include: { member: { select: { team: teamLink } } } }, closure: { include: { team: teamLink } }, closedApplication: { select: { slot: { select: { name: true } } } } } as const;
 function dto(row: Prisma.NotificationGetPayload<{ include: typeof include }>): NotificationDTO {
-  return { id: row.id, applicationId: row.review.applicationId, recruitmentId: row.review.application.team.recruitmentId,
-    recruitmentTitle: row.review.recruitmentTitle, slotName: row.review.slotName, kind: row.review.decision === 'APPROVE' ? 'APPLICATION_APPROVED' : 'APPLICATION_REJECTED',
-    reason: row.review.reason, createdAt: row.createdAt.toISOString(), readAt: row.readAt?.toISOString() ?? null };
+  const base = { id: row.id, createdAt: row.createdAt.toISOString(), readAt: row.readAt?.toISOString() ?? null };
+  if (row.review) return { ...base, applicationId: row.review.applicationId, teamId: row.review.application.team.id, recruitmentId: row.review.application.team.recruitmentId,
+    recruitmentTitle: row.review.recruitmentTitle, slotName: row.review.slotName, kind: row.review.decision === 'APPROVE' ? 'APPLICATION_APPROVED' : 'APPLICATION_REJECTED', reason: row.review.reason };
+  if (row.memberChange) return { ...base, applicationId: null, teamId: row.memberChange.member.team.id, recruitmentId: row.memberChange.member.team.recruitmentId,
+    recruitmentTitle: row.memberChange.recruitmentTitle, slotName: row.memberChange.slotName, kind: row.memberChange.kind === 'LEFT' ? 'MEMBER_LEFT' : 'MEMBER_REMOVED', reason: row.memberChange.reason };
+  if (row.closure && row.closedApplication) return { ...base, applicationId: row.applicationId, teamId: row.closure.teamId, recruitmentId: row.closure.team.recruitmentId,
+    recruitmentTitle: row.closure.recruitmentTitle, slotName: row.closedApplication.slot.name, kind: 'RECRUITMENT_CLOSED', reason: row.closure.reason };
+  throw new Error('Notification source invariant missing');
 }
 export const notificationsRouter = Router();
 notificationsRouter.use('/me/notifications', (_req, res, next) => { requireUser(res); res.setHeader('Cache-Control', 'no-store'); next(); });
