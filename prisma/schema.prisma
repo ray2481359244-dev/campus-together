@@ -62,6 +62,8 @@ model User {
   notifications Notification[]
   membershipChanges MembershipChange[] @relation("MembershipChangeActor")
   recruitmentClosures RecruitmentClosure[]
+  teamActions TeamAction[]
+  teamActionNotices TeamActionNotice[]
   domainEvents DomainEvent[]
   createdAt    DateTime   @default(now()) @db.Timestamptz(3)
   updatedAt    DateTime   @updatedAt @db.Timestamptz(3)
@@ -212,6 +214,11 @@ model Team {
   captain User @relation("TeamCaptain", fields: [captainUserId], references: [id], onDelete: Restrict)
   status TeamStatus @default(OPEN)
   recruitmentClosedAt DateTime? @db.Timestamptz(3)
+  revision Int @default(1)
+  startedAt DateTime? @db.Timestamptz(3)
+  completedAt DateTime? @db.Timestamptz(3)
+  cancelledAt DateTime? @db.Timestamptz(3)
+  actions TeamAction[]
   createdAt DateTime @default(now()) @db.Timestamptz(3)
   slots TeamSlot[]
   members TeamMember[]
@@ -365,6 +372,8 @@ model Notification {
   closure RecruitmentClosure? @relation(fields: [closureId, teamId], references: [id, teamId], onDelete: Cascade)
   closedApplication Application? @relation("ClosedApplicationNotification", fields: [applicationId, teamId, recipientId], references: [id, teamId, applicantId], onDelete: Cascade)
   readAt DateTime? @db.Timestamptz(3)
+  actionNoticeId String? @unique @db.Uuid
+  actionNotice TeamActionNotice? @relation(fields: [actionNoticeId, recipientId], references: [id, recipientId], onDelete: Cascade)
   createdAt DateTime @default(now()) @db.Timestamptz(3)
 
   @@index([recipientId, createdAt, id])
@@ -372,6 +381,50 @@ model Notification {
   @@unique([reviewId, recipientId])
   @@unique([memberChangeId, recipientId])
   @@unique([closureId, recipientId])
+  @@unique([actionNoticeId, recipientId])
+}
+
+enum TeamActionKind {
+  TRANSFER
+  START
+  COMPLETE
+  CANCEL
+}
+
+model TeamAction {
+  id String @id @default(uuid()) @db.Uuid
+  teamId String @db.Uuid
+  team Team @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  actorId String @db.Uuid
+  actor User @relation(fields: [actorId], references: [id], onDelete: Restrict)
+  expectedRevision Int
+  kind TeamActionKind
+  targetMemberId String? @db.Uuid
+  targetRevision Int?
+  captainUserId String @db.Uuid
+  fromStatus TeamStatus
+  toStatus TeamStatus
+  reason String @db.VarChar(500)
+  recruitmentTitle String @db.VarChar(60)
+  expiredCount Int
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
+  notices TeamActionNotice[]
+
+  @@unique([teamId, expectedRevision])
+}
+
+model TeamActionNotice {
+  id String @id @default(uuid()) @db.Uuid
+  actionId String @db.Uuid
+  action TeamAction @relation(fields: [actionId], references: [id], onDelete: Cascade)
+  recipientId String @db.Uuid
+  recipient User @relation(fields: [recipientId], references: [id], onDelete: Cascade)
+  applicationId String? @db.Uuid
+  slotName String @db.VarChar(30)
+  notification Notification?
+
+  @@unique([actionId, recipientId])
+  @@unique([id, recipientId])
 }
 
 enum MembershipChangeKind {

@@ -1,6 +1,6 @@
 import { Router, type RequestHandler } from 'express';
-import { CloseRecruitmentSchema, IdSchema, LeaveTeamSchema, MyTeamsQuerySchema, RemoveMemberSchema } from '@campus/contracts';
-import type { MembershipChangeDTO, TeamDetailDTO, TeamSummaryDTO } from '@campus/contracts';
+import { CloseRecruitmentSchema, IdSchema, LeaveTeamSchema, MyTeamsQuerySchema, RemoveMemberSchema, TeamActionSchema } from '@campus/contracts';
+import type { MembershipChangeDTO, TeamActionDTO, TeamActionInput, TeamDetailDTO, TeamSummaryDTO } from '@campus/contracts';
 import type { Prisma } from './generated/prisma/client.js';
 import { db } from './db.js';
 import { csrfGuard, requireUser, writeLimit } from './auth.js';
@@ -9,7 +9,8 @@ import { acceptingStatus } from './team-rules.js';
 
 const include = { recruitment: true, slots: true, members: { include: { user: { select: { profile: { select: { nickname: true, skills: true, school: { select: { name: true } } } } } } } } } as const;
 type Team = Prisma.TeamGetPayload<{ include: typeof include }>;
-const editable = (team: Team) => ['OPEN', 'FULL', 'IN_PROGRESS'].includes(team.status);
+const effectiveStatus = (team: Team) => ['OPEN', 'FULL'].includes(team.status) && (!team.recruitment.joinDeadline || team.recruitment.joinDeadline <= new Date()) ? 'EXPIRED' : team.status;
+const editable = (team: Team) => ['OPEN', 'FULL', 'IN_PROGRESS'].includes(effectiveStatus(team));
 const privateRead: RequestHandler = (_req, res, next) => { requireUser(res); res.setHeader('Cache-Control', 'no-store'); next(); };
 function captain(team: Team, userId: string) {
   if (team.captainUserId !== userId || !team.members.some(m => m.userId === userId && m.role === 'CAPTAIN' && m.status === 'ACTIVE')) throw new ApiError(404, 'NOT_FOUND', '这支队伍不存在或无管理权限。');
@@ -17,17 +18,20 @@ function captain(team: Team, userId: string) {
 function summary(team: Team, userId: string): TeamSummaryDTO {
   const mine = team.members.find(m => m.userId === userId && m.status === 'ACTIVE');
   if (!mine) throw new ApiError(404, 'NOT_FOUND', '这支队伍不存在或你当前不是有效成员。');
-  return { id: team.id, recruitmentId: team.recruitmentId, title: team.recruitment.title, captainUserId: team.captainUserId, status: team.status,
+  return { id: team.id, recruitmentId: team.recruitmentId, title: team.recruitment.title, captainUserId: team.captainUserId, status: effectiveStatus(team),
+    revision: team.revision, startedAt: team.startedAt?.toISOString() ?? null, completedAt: team.completedAt?.toISOString() ?? null, cancelledAt: team.cancelledAt?.toISOString() ?? null,
     closedAt: team.recruitmentClosedAt?.toISOString() ?? null, capacity: team.recruitment.capacity, memberCount: team.members.filter(m => m.status === 'ACTIVE').length,
     acceptingStatus: acceptingStatus(team.status, team.recruitment.joinDeadline, team.members.filter(m => m.status === 'ACTIVE').length, team.recruitment.capacity, team.recruitmentClosedAt),
     recruitmentRevision: team.recruitment.revision, myMembership: { id: mine.id, role: mine.role, revision: mine.revision, slotName: team.slots.find(s => s.id === mine.slotId)!.name, joinedAt: mine.joinedAt.toISOString() } };
 }
 function detail(team: Team, userId: string): TeamDetailDTO {
   const base = summary(team, userId), isCaptain = base.myMembership.role === 'CAPTAIN' && team.captainUserId === userId;
-  return { ...base, canLeave: !isCaptain && editable(team), canClose: isCaptain && !team.recruitmentClosedAt && ['OPEN', 'FULL'].includes(team.status),
+  return { ...base, canLeave: !isCaptain && editable(team), canClose: isCaptain && !team.recruitmentClosedAt && ['OPEN', 'FULL'].includes(base.status),
+    canStart: isCaptain && ['OPEN', 'FULL'].includes(base.status) && base.memberCount >= 2, canComplete: isCaptain && base.status === 'IN_PROGRESS', canCancel: isCaptain && editable(team),
     members: team.members.filter(m => m.status === 'ACTIVE').sort((a, b) => Number(b.role === 'CAPTAIN') - Number(a.role === 'CAPTAIN') || a.joinedAt.getTime() - b.joinedAt.getTime() || a.id.localeCompare(b.id)).map(m => ({
       id: m.id, userId: m.userId, nickname: m.user.profile?.nickname || '校园用户', schoolName: m.user.profile?.school.name || '未填写', skills: m.user.profile?.skills || [], role: m.role,
-      revision: m.revision, slotName: team.slots.find(s => s.id === m.slotId)!.name, joinedAt: m.joinedAt.toISOString(), canRemove: isCaptain && editable(team) && m.role === 'MEMBER' && m.userId !== userId })) };
+      revision: m.revision, slotName: team.slots.find(s => s.id === m.slotId)!.name, joinedAt: m.joinedAt.toISOString(), canRemove: isCaptain && editable(team) && m.role === 'MEMBER' && m.userId !== userId,
+      canTransfer: isCaptain && editable(team) && m.role === 'MEMBER' && m.userId !== userId })) };
 }
 async function lockedTeam(tx: Prisma.TransactionClient, id: string, userIds: string[]) {
   for (const userId of [...new Set(userIds)].sort()) await tx.$queryRaw`SELECT "id" FROM "User" WHERE "id" = ${userId}::uuid FOR NO KEY UPDATE`;
@@ -49,7 +53,7 @@ async function changeMember(input: { teamId: string; actorId: string; memberId?:
     const team = await lockedTeam(tx, input.teamId, [input.actorId, identity.userId]); await activeActor(tx, input.actorId);
     if (input.kind === 'REMOVED') captain(team, input.actorId);
     const member = team.members.find(m => m.id === identity.id)!;
-    if (member.role === 'CAPTAIN' || member.userId === team.captainUserId) throw new ApiError(409, 'CAPTAIN_CANNOT_LEAVE', '队长不能直接退出或被移除；当前可关闭招募，队长转交与取消队伍将在后续开放。');
+    if (member.role === 'CAPTAIN' || member.userId === team.captainUserId) throw new ApiError(409, 'CAPTAIN_CANNOT_LEAVE', '队长不能直接退出或被移除，请先向有效成员转交队长。');
     const prior = await tx.membershipChange.findUnique({ where: { memberId_expectedRevision: { memberId: member.id, expectedRevision: input.revision } } });
     if (prior) {
       if (prior.actorId !== input.actorId || prior.kind !== input.kind || prior.reason !== input.reason || member.revision !== input.revision + 1 || member.status !== input.kind) throw new ApiError(409, 'MEMBERSHIP_CHANGED', '原版本已有操作或成员状态再次变化，请刷新核对。');
@@ -69,6 +73,59 @@ async function changeMember(input: { teamId: string; actorId: string; memberId?:
 }
 
 export const teamsRouter = Router();
+function actionReceipt(row: Prisma.TeamActionGetPayload<object>): TeamActionDTO {
+  return { id: row.id, teamId: row.teamId, kind: row.kind, revision: row.expectedRevision + 1, status: row.toStatus, captainUserId: row.captainUserId, expiredCount: row.expiredCount, reason: row.reason, changedAt: row.createdAt.toISOString() };
+}
+async function manageTeam(teamId: string, actorId: string, input: TeamActionInput): Promise<TeamActionDTO> {
+  return db.$transaction(async tx => {
+    const targetIdentity = input.kind === 'TRANSFER' ? await tx.teamMember.findFirst({ where: { id: input.targetMemberId, teamId }, select: { userId: true } }) : null;
+    const team = await lockedTeam(tx, teamId, [actorId, ...(targetIdentity ? [targetIdentity.userId] : [])]);
+    await activeActor(tx, actorId);
+    const prior = await tx.teamAction.findUnique({ where: { teamId_expectedRevision: { teamId, expectedRevision: input.revision } } });
+    // A transfer receipt is readable to its actor after losing authority, without reapplying it.
+    if (prior) {
+      if (prior.actorId !== actorId || prior.kind !== input.kind || prior.reason !== input.reason || team.revision !== input.revision + 1 ||
+        prior.targetMemberId !== (input.kind === 'TRANSFER' ? input.targetMemberId : null) || prior.targetRevision !== (input.kind === 'TRANSFER' ? input.targetRevision : null)) throw new ApiError(409, 'TEAM_CHANGED', '原版本已有其他操作或队伍再次变化，请刷新核对。');
+      return actionReceipt(prior);
+    }
+    captain(team, actorId);
+    if (team.revision !== input.revision) throw new ApiError(409, 'TEAM_CHANGED', '队伍版本已有变化，请刷新核对。');
+    if (!editable(team)) throw new ApiError(409, 'TEAM_NOT_EDITABLE', '队伍已结束、取消或截止，不能继续管理。');
+    const active = team.members.filter(m => m.status === 'ACTIVE'), now = new Date();
+    let nextStatus = team.status, captainUserId = team.captainUserId;
+    if (input.kind === 'TRANSFER') {
+      const target = active.find(m => m.id === input.targetMemberId && m.role === 'MEMBER');
+      if (!target || target.revision !== input.targetRevision) throw new ApiError(409, 'MEMBERSHIP_CHANGED', '接任成员身份或版本已有变化，请刷新核对。');
+      if (!await tx.user.findFirst({ where: { id: target.userId, status: 'ACTIVE' } })) throw new ApiError(409, 'MEMBERSHIP_CHANGED', '接任成员的账号当前不可操作，请选择其他有效成员。');
+      const former = active.find(m => m.userId === actorId && m.role === 'CAPTAIN')!;
+      // Demote first for the partial unique index; both role changes share this transaction.
+      await tx.teamMember.update({ where: { id: former.id }, data: { role: 'MEMBER', revision: { increment: 1 } } });
+      await tx.teamMember.update({ where: { id: target.id }, data: { role: 'CAPTAIN', revision: { increment: 1 } } });
+      captainUserId = target.userId;
+    } else if (input.kind === 'START') {
+      if (!['OPEN', 'FULL'].includes(team.status) || active.length < 2) throw new ApiError(409, 'TEAM_NOT_EDITABLE', '仅招募阶段且至少两名有效成员时可开始活动。');
+      nextStatus = 'IN_PROGRESS';
+    } else if (input.kind === 'COMPLETE') {
+      if (team.status !== 'IN_PROGRESS') throw new ApiError(409, 'TEAM_NOT_EDITABLE', '仅进行中的活动可结束。');
+      nextStatus = 'COMPLETED';
+    } else nextStatus = 'CANCELLED';
+    const pending = input.kind === 'TRANSFER' ? [] : await tx.application.findMany({ where: { teamId, status: 'PENDING' }, select: { id: true, applicantId: true, slot: { select: { name: true } } } });
+    await tx.team.update({ where: { id: teamId }, data: { status: nextStatus, captainUserId, revision: { increment: 1 },
+      ...(input.kind === 'START' ? { startedAt: now } : input.kind === 'COMPLETE' ? { completedAt: now } : input.kind === 'CANCEL' ? { cancelledAt: now } : {}) } });
+    if (pending.length) await tx.application.updateMany({ where: { teamId, status: 'PENDING' }, data: { status: 'EXPIRED', revision: { increment: 1 }, resolvedAt: now } });
+    const action = await tx.teamAction.create({ data: { teamId, actorId, expectedRevision: input.revision, kind: input.kind, reason: input.reason,
+      targetMemberId: input.kind === 'TRANSFER' ? input.targetMemberId : null, targetRevision: input.kind === 'TRANSFER' ? input.targetRevision : null,
+      captainUserId, fromStatus: team.status, toStatus: nextStatus, expiredCount: pending.length, recruitmentTitle: team.recruitment.title, createdAt: now } });
+    const recipients = active.map(m => ({ recipientId: m.userId, slotName: team.slots.find(s => s.id === m.slotId)!.name, applicationId: null as string | null }));
+    for (const row of pending) if (!recipients.some(r => r.recipientId === row.applicantId)) recipients.push({ recipientId: row.applicantId, slotName: row.slot.name, applicationId: row.id });
+    for (const recipient of recipients) {
+      const notice = await tx.teamActionNotice.create({ data: { actionId: action.id, ...recipient } });
+      await tx.notification.create({ data: { recipientId: recipient.recipientId, actionNoticeId: notice.id, createdAt: now } });
+    }
+    await tx.domainEvent.create({ data: { teamId, actorId, kind: 'TEAM_' + input.kind, payload: { actionId: action.id, fromStatus: team.status, toStatus: nextStatus, captainUserId, expiredCount: pending.length } } });
+    return actionReceipt(action);
+  }, { maxWait: 5000, timeout: 10000 });
+}
 teamsRouter.get('/me/teams', privateRead, async (req, res) => {
   const user = requireUser(res), input = parse(MyTeamsQuerySchema, req.query);
   const result = await db.$transaction(async tx => {
@@ -93,6 +150,10 @@ teamsRouter.get('/teams/:id', async (req, res) => {
 teamsRouter.post('/teams/:id/leave', writeLimit, csrfGuard, async (req, res) => {
   const user = requireUser(res), teamId = parse(IdSchema, req.params.id), input = parse(LeaveTeamSchema, req.body);
   res.json({ data: await changeMember({ teamId, actorId: user.id, revision: input.revision, kind: 'LEFT', reason: '成员主动退出队伍。' }) });
+});
+teamsRouter.post('/teams/:id/actions', writeLimit, csrfGuard, async (req, res) => {
+  const user = requireUser(res), teamId = parse(IdSchema, req.params.id), input = parse(TeamActionSchema, req.body);
+  res.json({ data: await manageTeam(teamId, user.id, input) });
 });
 teamsRouter.post('/teams/:id/members/:memberId/remove', writeLimit, csrfGuard, async (req, res) => {
   const user = requireUser(res), teamId = parse(IdSchema, req.params.id), memberId = parse(IdSchema, req.params.memberId), input = parse(RemoveMemberSchema, req.body);

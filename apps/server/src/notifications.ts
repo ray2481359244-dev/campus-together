@@ -7,7 +7,7 @@ import { requireUser, csrfGuard, writeLimit } from './auth.js';
 import { parse, ApiError } from './http.js';
 
 const teamLink = { select: { id: true, recruitmentId: true } } as const;
-const include = { review: { include: { application: { select: { team: teamLink } } } }, memberChange: { include: { member: { select: { team: teamLink } } } }, closure: { include: { team: teamLink } }, closedApplication: { select: { slot: { select: { name: true } } } } } as const;
+const include = { actionNotice: { include: { action: { include: { team: teamLink } } } }, review: { include: { application: { select: { team: teamLink } } } }, memberChange: { include: { member: { select: { team: teamLink } } } }, closure: { include: { team: teamLink } }, closedApplication: { select: { slot: { select: { name: true } } } } } as const;
 function dto(row: Prisma.NotificationGetPayload<{ include: typeof include }>): NotificationDTO {
   const base = { id: row.id, createdAt: row.createdAt.toISOString(), readAt: row.readAt?.toISOString() ?? null };
   if (row.review) return { ...base, applicationId: row.review.applicationId, teamId: row.review.application.team.id, recruitmentId: row.review.application.team.recruitmentId,
@@ -16,6 +16,12 @@ function dto(row: Prisma.NotificationGetPayload<{ include: typeof include }>): N
     recruitmentTitle: row.memberChange.recruitmentTitle, slotName: row.memberChange.slotName, kind: row.memberChange.kind === 'LEFT' ? 'MEMBER_LEFT' : 'MEMBER_REMOVED', reason: row.memberChange.reason };
   if (row.closure && row.closedApplication) return { ...base, applicationId: row.applicationId, teamId: row.closure.teamId, recruitmentId: row.closure.team.recruitmentId,
     recruitmentTitle: row.closure.recruitmentTitle, slotName: row.closedApplication.slot.name, kind: 'RECRUITMENT_CLOSED', reason: row.closure.reason };
+  if (row.actionNotice) {
+    const notice = row.actionNotice, action = notice.action;
+    const kinds = { TRANSFER: 'CAPTAIN_TRANSFERRED', START: 'TEAM_STARTED', COMPLETE: 'TEAM_COMPLETED', CANCEL: 'TEAM_CANCELLED' } as const;
+    return { ...base, applicationId: notice.applicationId, teamId: action.teamId, recruitmentId: action.team.recruitmentId, recruitmentTitle: action.recruitmentTitle,
+      slotName: notice.slotName, kind: notice.applicationId ? 'APPLICATION_EXPIRED' : kinds[action.kind], reason: action.reason };
+  }
   throw new Error('Notification source invariant missing');
 }
 export const notificationsRouter = Router();

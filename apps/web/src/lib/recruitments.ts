@@ -11,3 +11,5 @@ export const beijingTime = (value: string | null) => value ? new Date(value).toL
 export const beijingInput = (value: string | null) => value ? new Date(Date.parse(value) + 8 * 3600_000).toISOString().slice(0, 16) : '';
 export const fromBeijingInput = (value: string) => value ? new Date(value + (value.length === 16 ? ':00+08:00' : '+08:00')).toISOString() : null;
 export const recruitmentError = (e: unknown) => e instanceof ApiError && e.fields ? Object.values(e.fields).flat().slice(0, 5).join('；') : messageOf(e);
+
+export const teamStatusLabel = (status: string) => ({ OPEN: '招募阶段', FULL: '已满员，待开始', IN_PROGRESS: '活动进行中', COMPLETED: '活动已结束', CANCELLED: '活动已取消', EXPIRED: '已截止，未开始' } as Record<string, string>)[status] || status;

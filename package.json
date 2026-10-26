@@ -30,6 +30,7 @@
     "test:application-recovery": "node scripts/check-application-recovery.mjs",
     "test:review-recovery": "node scripts/check-review-recovery.mjs",
     "test:team-recovery": "node scripts/check-team-recovery.mjs",
+    "test:lifecycle-recovery": "node scripts/check-lifecycle-recovery.mjs",
     "check": "pnpm typecheck && pnpm test && pnpm build"
   },
   "devDependencies": {

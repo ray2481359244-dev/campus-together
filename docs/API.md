@@ -40,6 +40,7 @@
 | POST /teams/:id/leave | 本人普通成员，`{revision:成员版本}`；成功及原操作重试均 200；队长 409 CAPTAIN_CANNOT_LEAVE；后续版本 409 MEMBERSHIP_CHANGED |
 | POST /teams/:id/members/:memberId/remove | 当前有效队长，`{revision:目标成员版本,reason:1—500字}`；同版、同原因原操作幂等；不能移除队长、跨队目标或已失效成员 |
 | POST /teams/:id/close-recruitment | 当前有效队长，`{revision:招募版本,reason?:0—500字}`；关闭标记、招募版本、待审 EXPIRED / 版本、本人通知、事件同事务；不取消队伍，不移出现有成员，不支持重开 |
+| POST /teams/:id/actions | 当前有效队长，`{kind:TRANSFER或START或COMPLETE或CANCEL,revision:队伍版本,reason}`；TRANSFER 另需 `targetMemberId` / `targetRevision`，说明可空；其他操作说明 1—500 字。成功 / 原操作重试 200，后续版本或相反操作 409 TEAM_CHANGED，阶段 / 人数不符 409 TEAM_NOT_EDITABLE |
 
 所有变更请求都带当前同源 Origin 和 X-CSRF-Token。注册/登录前也需要匿名上下文。会话 Cookie 为 HttpOnly、SameSite=Lax，生产要求 Secure / HTTPS；Cookie 不包含用户公开资料。
 
@@ -104,3 +105,17 @@ ApplicationReview、申请状态 / revision、成员、队伍人数状态、Noti
 Notification 增加退出、移除和关闭三种来源；保留旧审核关联与数据。互斥来源 CHECK 和复合外键确保成员通知属于当事人、关闭通知属于相同队伍的申请者，每次变化 / 关闭每人至多一条。DTO 的 `applicationId` 在成员变化时可为 null，新增 `teamId`；通知摘要是历史结果，当前身份以详情为准。新申请通知和 Socket 仍未实现。
 
 队伍列表 / 详情在一致读快照中检查有效成员，只返回必要字段，不返回邮箱、口令、私有申请说明或成员变更原因。退出 / 移除提交后新读取立即 404；客户端重新可见或手动刷新后收起旧页面，不宣称 Socket 实时撤权。未知操作保留原版本与原因，原样重试；离开成功清除队内缓存并返回我的队伍。直接页面读取失权时不展示旧成员列表。
+
+## I-004 队长转交与活动状态（2026-10-26）
+
+队伍 DTO 新增独立 `revision`、`startedAt` / `completedAt` / `cancelledAt`、开始 / 结束 / 取消能力；成员新增 `canTransfer`。队伍版本用于新管理操作，成员版本用于退出 / 移除与接任身份检查，招募版本仍用于关闭招募，三者不可混用。
+
+转交在排序 User → Recruitment → Team 锁内检查当前有效队长、目标同队 ACTIVE MEMBER、目标账号 ACTIVE、目标成员版本与队伍版本。先降原队长、再升接任者，同事务更新 captainUserId；双方岗位和人数不变，唯一有效队长约束保留。发起作者不变，审核权始终跟随当前队长；新队长从“我的队伍”进入管理。旧成员版本不能在转交后误退出；原队长须按新成员版本确认退出。
+
+START 仅未截止的 OPEN / FULL 且至少两名有效成员，允许未满员或先关闭招募后开始；FULL 不自动开始。COMPLETE 仅 IN_PROGRESS；CANCEL 允许未截止 OPEN / FULL 或 IN_PROGRESS。本轮仅开放队长操作，管理员无越权例外。COMPLETED / CANCELLED / EXPIRED 不再转交、开始、结束、取消、退出或移除。终态 ACTIVE 成员可只读查看队伍；不开放复制或重开入口。
+
+每次管理增加队伍版本，TeamAction 记录原版本 / 操作者 / 决定 / 说明 / 接任目标及成员版本和当时结果。原操作完全相同、且尚无后续管理版本时返回原回执，不重新执行；这包括已经失去队长权限的原转交者核对自己那次转交。修改目标 / 说明 / 决定或后续管理版本均 409。新的操作仍严格验证当前队长。回执只证明当时结果，当前状态须重新读取。
+
+开始 / 结束 / 取消把当时全部原 PENDING 同事务写为 EXPIRED 并更新版本 / 处理时间；有效成员收到状态通知，受影响申请者收到失效通知。转交通知发给当时有效成员，不改变待审申请。TeamActionNotice 每操作每接收者唯一，Notification 复合外键绑定接收者且来源互斥；旧通知保持原样。新增 kind 为 CAPTAIN_TRANSFERRED、TEAM_STARTED、TEAM_COMPLETED、TEAM_CANCELLED、APPLICATION_EXPIRED，仍使用本人分页与幂等已读接口。状态、角色、通知和领域事件任一失败整体回滚。
+
+截止已到的未开始队伍在私有读取显示有效 EXPIRED，管理和成员改动即时拒绝。当前仍无每分钟自动过期、重启补偿扫描、归档期限或群聊；原显式关闭接口仍可把截止后的待审失效落库。领域事件与站内通知不表示已写入群聊系统消息。未知响应在页面冻结原决定 / 说明 / 版本再核对，未提交说明不保证跨整页刷新恢复。
