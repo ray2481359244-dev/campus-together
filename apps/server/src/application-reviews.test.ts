@@ -85,7 +85,8 @@ describe('captain review, membership and private result notifications', () => {
     await b.get('/api/v1/teams/' + r.team.id + '/applications').expect(404);
     await db.recruitment.update({ where: { id: r.id }, data: { joinDeadline: new Date(Date.now() - 1) } });
     await review(row.id).expect(200);
-    expect(await db.notification.count()).toBe(1);
+    expect(await db.notification.count({ where: { reviewId: { not: null } } })).toBe(1);
+    expect(await db.notification.count({ where: { actionNoticeId: { not: null } } })).toBe(2);
   });
   it('rejects without occupying a seat, preserves historical notices and refuses old reviews after reapplication', async () => {
     const r = await team(3, true), row = (await submit(r).expect(201)).body.data;

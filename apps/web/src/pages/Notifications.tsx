@@ -7,7 +7,7 @@ import { useAuth } from '../lib/auth';
 import { beijingTime } from '../lib/recruitments';
 import { ErrorState, FormError, Loading, LoginGate, PageTitle } from '../components/UI';
 
-const titles: Record<NotificationDTO['kind'], string> = { APPLICATION_APPROVED: '申请已通过，已加入队伍。', APPLICATION_REJECTED: '本次岗位申请未通过。', MEMBER_LEFT: '你已退出这支队伍。', MEMBER_REMOVED: '你已被移出这支队伍。', RECRUITMENT_CLOSED: '招募已关闭，本次待审申请已失效。', CAPTAIN_TRANSFERRED: '队长已转交，请到队伍查看当前负责人。', TEAM_STARTED: '活动已开始，队伍停止招人。', TEAM_COMPLETED: '活动已结束，队伍信息转为只读。', TEAM_CANCELLED: '活动已取消，队伍信息转为只读。', APPLICATION_EXPIRED: '活动状态已变化，本次待审申请已失效。' };
+const titles: Record<NotificationDTO['kind'], string> = { APPLICATION_APPROVED: '申请已通过，已加入队伍。', APPLICATION_REJECTED: '本次岗位申请未通过。', MEMBER_LEFT: '你已退出这支队伍。', MEMBER_REMOVED: '你已被移出这支队伍。', RECRUITMENT_CLOSED: '招募已关闭，本次待审申请已失效。', CAPTAIN_TRANSFERRED: '队长已转交，请到队伍查看当前负责人。', TEAM_STARTED: '活动已开始，队伍停止招人。', TEAM_COMPLETED: '活动已结束，队伍信息转为只读。', TEAM_CANCELLED: '活动已取消，队伍信息转为只读。', APPLICATION_EXPIRED: '活动状态已变化，本次待审申请已失效。', TEAM_EXPIRED: '招募截止已到，队伍已自动到期。' };
 
 export function Notifications() {
   const { user, loading } = useAuth(), client = useQueryClient();

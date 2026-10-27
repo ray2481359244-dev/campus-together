@@ -11,6 +11,7 @@ import { recruitmentsRouter } from './recruitments.js';
 import { applicationsRouter } from './applications.js';
 import { notificationsRouter } from './notifications.js';
 import { teamsRouter } from './teams.js';
+import { expiryFallback } from './expiry.js';
 import { resolve } from 'node:path';
 import { existsSync } from 'node:fs';
 
@@ -26,6 +27,7 @@ app.get('/api/v1/ready', async (_req, res) => {
   catch { res.status(503).json({ error: { code: 'DATABASE_UNAVAILABLE', message: '数据库尚未就绪，请稍后重试。' } }); }
 });
 app.use('/api/v1', loadSession);
+app.use('/api/v1', expiryFallback);
 app.get('/api/v1/schools', async (_req, res) => res.json({ data: await db.school.findMany({ where: { active: true }, select: { id: true, name: true, city: true, isDemo: true }, orderBy: { name: 'asc' } }) }));
 app.use('/api/v1/auth', authRouter);
 app.use('/api/v1', profileRouter);

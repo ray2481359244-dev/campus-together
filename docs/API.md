@@ -119,3 +119,7 @@ START 仅未截止的 OPEN / FULL 且至少两名有效成员，允许未满员�
 开始 / 结束 / 取消把当时全部原 PENDING 同事务写为 EXPIRED 并更新版本 / 处理时间；有效成员收到状态通知，受影响申请者收到失效通知。转交通知发给当时有效成员，不改变待审申请。TeamActionNotice 每操作每接收者唯一，Notification 复合外键绑定接收者且来源互斥；旧通知保持原样。新增 kind 为 CAPTAIN_TRANSFERRED、TEAM_STARTED、TEAM_COMPLETED、TEAM_CANCELLED、APPLICATION_EXPIRED，仍使用本人分页与幂等已读接口。状态、角色、通知和领域事件任一失败整体回滚。
 
 截止已到的未开始队伍在私有读取显示有效 EXPIRED，管理和成员改动即时拒绝。当前仍无每分钟自动过期、重启补偿扫描、归档期限或群聊；原显式关闭接口仍可把截止后的待审失效落库。领域事件与站内通知不表示已写入群聊系统消息。未知响应在页面冻结原决定 / 说明 / 版本再核对，未提交说明不保证跨整页刷新恢复。
+
+## I-005 自动到期（2026-10-27）
+
+启动补偿和每分钟扫描每批至多 100 队，失败单队下次重试；目标队伍 / 申请 / 招募请求先执行同一到期事务。数据库 epoch 时间避免驱动时区歧义；Recruitment → Team 锁保证与手动活动 / 审核竞争一致。EXPIRE 只由系统产生，TeamAction.actorId 可空，用户 actions Schema 不接受该类型。到期成员通知 TEAM_EXPIRED，原待审申请者通知 APPLICATION_EXPIRED；不再允许截止后的显式关闭改写终态。仅保留原审核结果回执，不重复批准或恢复成员。

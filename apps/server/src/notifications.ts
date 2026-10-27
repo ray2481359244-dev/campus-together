@@ -18,7 +18,7 @@ function dto(row: Prisma.NotificationGetPayload<{ include: typeof include }>): N
     recruitmentTitle: row.closure.recruitmentTitle, slotName: row.closedApplication.slot.name, kind: 'RECRUITMENT_CLOSED', reason: row.closure.reason };
   if (row.actionNotice) {
     const notice = row.actionNotice, action = notice.action;
-    const kinds = { TRANSFER: 'CAPTAIN_TRANSFERRED', START: 'TEAM_STARTED', COMPLETE: 'TEAM_COMPLETED', CANCEL: 'TEAM_CANCELLED' } as const;
+    const kinds = { TRANSFER: 'CAPTAIN_TRANSFERRED', START: 'TEAM_STARTED', COMPLETE: 'TEAM_COMPLETED', CANCEL: 'TEAM_CANCELLED', EXPIRE: 'TEAM_EXPIRED' } as const;
     return { ...base, applicationId: notice.applicationId, teamId: action.teamId, recruitmentId: action.team.recruitmentId, recruitmentTitle: action.recruitmentTitle,
       slotName: notice.slotName, kind: notice.applicationId ? 'APPLICATION_EXPIRED' : kinds[action.kind], reason: action.reason };
   }

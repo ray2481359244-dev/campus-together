@@ -161,13 +161,14 @@ describe('private teams, membership changes and recruitment closure', () => {
     const closedAt = current.team.closedAt; await leave(r.team.id).expect(200);
     expect((await a.get('/api/v1/recruitments/' + r.id)).body.data.team).toMatchObject({ closedAt, acceptingStatus: 'CLOSED', memberCount: 1 });
   });
-  it('allows an explicit closure after deadline to persist the derived expiry and its result', async () => {
+  it('persists automatic expiry before a late closure, without emitting a duplicate closure notice', async () => {
     const r = await team(), row = (await submit(r).expect(201)).body.data;
     await db.recruitment.update({ where: { id: r.id }, data: { joinDeadline: new Date(Date.now() - 1) } });
     expect((await b.get('/api/v1/me/applications')).body.data[0].status).toBe('EXPIRED');
     expect((await db.application.findUniqueOrThrow({ where: { id: row.id } })).status).toBe('PENDING');
-    await close(r).expect(200); expect((await db.application.findUniqueOrThrow({ where: { id: row.id } })).status).toBe('EXPIRED');
-    expect((await b.get('/api/v1/me/notifications')).body.data.items[0].kind).toBe('RECRUITMENT_CLOSED');
+    await close(r).expect(409); expect((await db.application.findUniqueOrThrow({ where: { id: row.id } })).status).toBe('EXPIRED');
+    expect((await b.get('/api/v1/me/notifications')).body.data.items[0].kind).toBe('APPLICATION_EXPIRED');
+    expect(await db.recruitmentClosure.count()).toBe(0); expect(await db.teamAction.count({ where: { kind: 'EXPIRE' } })).toBe(1);
   });
   it('resolves closure versus approval atomically, with no half membership or duplicate notice', async () => {
     const r = await team(), row = (await submit(r).expect(201)).body.data;

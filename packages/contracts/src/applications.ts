@@ -32,6 +32,6 @@ export interface CaptainApplicationDTO extends ApplicationDTO {
 export interface CaptainApplicationsPageDTO { items: CaptainApplicationDTO[]; nextCursor: string | null; pendingCount: number }
 export interface NotificationDTO {
   id: string; applicationId: string | null; teamId: string; recruitmentId: string; recruitmentTitle: string; slotName: string;
-  kind: 'APPLICATION_APPROVED' | 'APPLICATION_REJECTED' | 'MEMBER_LEFT' | 'MEMBER_REMOVED' | 'RECRUITMENT_CLOSED' | 'CAPTAIN_TRANSFERRED' | 'TEAM_STARTED' | 'TEAM_COMPLETED' | 'TEAM_CANCELLED' | 'APPLICATION_EXPIRED'; reason: string; createdAt: string; readAt: string | null;
+  kind: 'APPLICATION_APPROVED' | 'APPLICATION_REJECTED' | 'MEMBER_LEFT' | 'MEMBER_REMOVED' | 'RECRUITMENT_CLOSED' | 'CAPTAIN_TRANSFERRED' | 'TEAM_STARTED' | 'TEAM_COMPLETED' | 'TEAM_CANCELLED' | 'APPLICATION_EXPIRED' | 'TEAM_EXPIRED'; reason: string; createdAt: string; readAt: string | null;
 }
 export interface NotificationsPageDTO { items: NotificationDTO[]; nextCursor: string | null; unreadCount: number }

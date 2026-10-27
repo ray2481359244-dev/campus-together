@@ -9,7 +9,7 @@ export const TeamActionSchema = z.discriminatedUnion('kind', [
   z.object({ kind: z.enum(['START', 'COMPLETE', 'CANCEL']), revision: z.number().int().positive(), reason: z.string().trim().min(1, '请填写操作说明').max(500) }).strict()
 ]);
 export type TeamActionInput = z.infer<typeof TeamActionSchema>;
-export interface TeamActionDTO { id: string; teamId: string; kind: TeamActionInput['kind']; revision: number; status: string; captainUserId: string; expiredCount: number; reason: string; changedAt: string }
+export interface TeamActionDTO { id: string; teamId: string; kind: TeamActionInput['kind'] | 'EXPIRE'; revision: number; status: string; captainUserId: string; expiredCount: number; reason: string; changedAt: string }
 export interface TeamSummaryDTO {
   id: string; recruitmentId: string; title: string; captainUserId: string; status: string; closedAt: string | null;
   acceptingStatus: 'OPEN' | 'FULL' | 'CLOSED'; capacity: number; memberCount: number; recruitmentRevision: number;
