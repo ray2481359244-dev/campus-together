@@ -1,10 +1,10 @@
 # 碰个头 / CampusTogether
 
-校园兴趣社区与可解释组队平台，个人 Vibe Coding 参赛项目。已接通账号、讨论、竞赛招募 / 申请审核、队伍管理、自动到期、文字群聊、默认 30 天只读归档和竞赛条件排序。草稿辅助与条件说明支持明确标注的规则模式，模型适配器已实现；真实 AI 服务配置与实测、其他三区及管理后台仍待完成。见[动态计划](docs/ITERATION_PLAN.md)与[最新日志](docs/development/2026-10-27.md)。
+校园兴趣社区与可解释组队平台。已接通账号、四区讨论与图片 / 评论 / 点赞 / 收藏、四区招募 / 申请审核 / 直接入队、队伍管理、自动到期、文字群聊与 30 天归档、竞赛条件排序，以及举报、主题审核和管理员封禁。部署入口、发布包、加密备份与隔离恢复已准备，正式部署留到下一阶段。AI 按负责人要求暂缓配置，保持规则模式；不是当前前置条件。见[部署交接](docs/DEPLOYMENT.md)、[动态计划](docs/ITERATION_PLAN.md)和[最新日志](docs/development/2026-10-27.md)。
 
 核心视觉暂定 **新粗野主义**：奶油白、黑边框、硬阴影、明亮分区色。设计原型见 design/campus-brutal-concept.html；原型内数据不计为应用功能。
 
-记录入口：[动态迭代计划](docs/ITERATION_PLAN.md) · [持续开发日志](DEVELOPMENT_LOG.md) · [最新详细记录](docs/development/2026-10-26.md) · [首周总结](docs/weekly/WEEK_01_REVIEW.md) · [参赛材料核对表](docs/competition/SUBMISSION_CHECKLIST.md) · [AI 证据索引](docs/ai/README.md)。
+记录入口：[动态迭代计划](docs/ITERATION_PLAN.md) · [持续开发日志](DEVELOPMENT_LOG.md) · [最新详细记录](docs/development/2026-10-27.md) · [首周总结](docs/weekly/WEEK_01_REVIEW.md) · [参赛材料核对表](docs/competition/SUBMISSION_CHECKLIST.md) · [AI 证据索引](docs/ai/README.md)。
 
 源码已上传到[公开 GitHub 仓库](https://github.com/ray2481359244-dev/campus-together)，默认分支为 `master`，保留从文档基线开始的完整提交历史。
 
@@ -148,3 +148,11 @@ docs/ai 包含过程摘要和真实可见文本对话快照，两者均明确范
 招募大厅“按我的条件找队伍”提供条件排序与信息完整度；编辑页可先整理原文、核对后填入文字字段；详情可整理本人条件说明。不会自动发布或批准。
 
 当前未配置真实模型。启用自己的兼容服务时，在本机 .env 填 AI_BASE_URL（/v1 基址）、AI_MODEL、AI_API_KEY，设 AI_MODE=LIVE 后重启本地服务。密钥不要写入 VITE_ 变量或公开仓库。服务需支持 Chat Completions 的 JSON Schema 输出；未配置 / 失败会明确降级 RULES_ONLY，普通表单仍可用。日限额和超时见 .env.example / docs/API.md；受控替身测试不代表真实模型质量或连通性已验收。
+
+## 部署准备与备份
+
+本轮停在部署之前，尚无公网部署结论。下一次直接按 [部署交接](docs/DEPLOYMENT.md) 配置实际主机、HTTPS、学校与管理员，执行 `pnpm deploy:preflight`。本地开发环境运行此预检应报告尚不满足生产条件，不能据此直接对外发布。模板见 `infra/production.env.example`、Caddy 和 systemd 服务文件，均未自动安装。
+
+`pnpm backup:key` 首次生成忽略保存的独立密钥，`pnpm backup:create` 从一致性只读快照生成加密应用数据备份。`pnpm test:backup` 在独立测试数据上演练空恢复库还原与重启；不会覆盖主库。较大数据量、集群角色和数据库服务器配置另用 PostgreSQL 原生备份体系。密钥、备份与运行数据不上传 GitHub。
+
+`pnpm release:prepare` 在提交后生成不带凭据和运行数据的发布目录，`pnpm release:verify <目录>` 核验清单。目录安装依赖仍需 `pnpm install --frozen-lockfile`；Windows 已验证的本机缓存复现不代表新云主机安装通过。完整功能边界以[当前验收](docs/ACCEPTANCE.md)为准，旧日期开发记录保留当时范围。

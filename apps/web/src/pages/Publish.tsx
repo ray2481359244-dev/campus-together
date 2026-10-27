@@ -18,7 +18,7 @@ export function Publish({ edit = false }: { edit?: boolean }) {
   const [base, setBase] = useState<PostDTO | null>(null), [review, setReview] = useState<PostDTO | null>(null);
   const [checking, setChecking] = useState(false), [confirmLoad, setConfirmLoad] = useState(false), [blocked, setBlocked] = useState(false);
   const [pending, setPending] = useState<CreatePost | null>(null), [isSubmitting, setSubmitting] = useState(false);
-  const [imageIds, setImageIds] = useState<string[]>([]);
+  const [imageIds, setImageIds] = useState<string[]>([]), [uploading, setUploading] = useState(false);
   const saving = useRef(false);
   const post = useQuery({ queryKey: ['post', id], queryFn: ({ signal }) => api<PostDTO>('/posts/' + id, { signal }), enabled: edit && !!id, retry: false });
   const topics = useQuery({ queryKey: ['topics', category], queryFn: () => api<TopicDTO[]>('/topics?category=' + category) });
@@ -41,7 +41,7 @@ export function Publish({ edit = false }: { edit?: boolean }) {
   if (edit && base?.id !== id) return <Loading label="正在读取讨论……" />;
   if (edit && post.data && !post.data.data.canEdit) return <ErrorState message="只有作者可以编辑这条讨论。" />;
   async function save(values: PostContent) {
-    if (blocked || checking || saving.current) return;
+    if (blocked || checking || uploading || saving.current) return;
     saving.current = true;
     setSubmitting(true); setError(''); setIsDirtyAfterFailure(false);
     const submission = edit ? null : pending ?? { ...values, ...(imageIds.length ? { imageIds } : {}), requestKey: crypto.randomUUID() };
@@ -55,7 +55,7 @@ export function Publish({ edit = false }: { edit?: boolean }) {
       if (e instanceof ApiError) {
         if (edit && ['REVISION_CONFLICT', 'NOT_FOUND'].includes(e.code)) { setBlocked(true); setReview(null); setConfirmLoad(false); }
         // These responses establish that no post exists for this request; allow correction.
-        if (!edit && [400, 422].includes(e.status) && ['INVALID_INPUT', 'TOPIC_UNAVAILABLE', 'PROFILE_INCOMPLETE'].includes(e.code)) setPending(null);
+        if (!edit && [400, 422].includes(e.status) && ['INVALID_INPUT', 'TOPIC_UNAVAILABLE', 'PROFILE_INCOMPLETE', 'IMAGE_UNAVAILABLE'].includes(e.code)) setPending(null);
         if (!edit && ['REQUEST_KEY_CONFLICT', 'POST_UNAVAILABLE'].includes(e.code)) setBlocked(true);
       }
     } finally { saving.current = false; setSubmitting(false); }
@@ -86,12 +86,12 @@ export function Publish({ edit = false }: { edit?: boolean }) {
       {errors.topicId && <FormError>请选择可用的讨论主题。</FormError>}
       <div className="form-field"><label htmlFor="post-title">标题</label><input id="post-title" aria-describedby="post-title-note" {...register('title')} maxLength={60} placeholder="用一句话，让大家知道你想聊什么" /><span id="post-title-note" className="field-note">5—60 个字 · {title?.length || 0}/60</span></div>{errors.title && <FormError>标题需要 5—60 个字。</FormError>}
       <div className="form-field"><label htmlFor="post-body">正文</label><textarea id="post-body" aria-describedby="post-body-note" {...register('body')} rows={8} maxLength={5000} placeholder="分享具体的问题、经历或想法。清晰一点，更容易遇到同频的人。" /><span id="post-body-note" className="field-note">10—5000 个字 · {body?.length || 0}/5000</span></div>{errors.body && <FormError>正文需要 10—5000 个字。</FormError>}
-      <ImagePicker ids={imageIds} onChange={setImageIds} disabled={isSubmitting || !!pending} />
+      <ImagePicker onBusyChange={setUploading} ids={imageIds} onChange={setImageIds} disabled={isSubmitting || !!pending} />
       <div className="publish-school">发布到：<strong>{edit ? post.data?.data.school.name : user.school.name}</strong><span>学校为本人自述。支持最多六张图片、评论、点赞与收藏。</span></div>
       </fieldset>
       <FormError>{error}</FormError>{isDirtyAfterFailure && <p className="form-note">输入已保留在当前页面。{edit ? '若版本冲突，请核对已保存版本后决定如何继续。' : pending ? blocked ? '无法继续核对，请返回讨论板确认现状。' : '发布结果尚未确认，内容暂时锁定；点击“核对并完成发布”可安全重试同一次提交，成功后可编辑。' : '请修正提示的问题后再次发布。'}关闭或刷新页面前请自行保留内容。</p>}
       {pending && blocked && <Link className="button secondary" to="/discover">返回讨论板</Link>}
-      <button type="submit" className="button wide" disabled={isSubmitting || checking || (!pending && topics.isError) || blocked}>{isSubmitting ? '正在保存……' : edit ? '保存修改' : pending ? '核对并完成发布' : '发布讨论'}<ArrowUpRight size={19} /></button>
+      <button type="submit" className="button wide" disabled={isSubmitting || uploading || checking || (!pending && topics.isError) || blocked}>{isSubmitting ? '正在保存……' : edit ? '保存修改' : pending ? '核对并完成发布' : '发布讨论'}<ArrowUpRight size={19} /></button>
     </form>
   </section>;
 }

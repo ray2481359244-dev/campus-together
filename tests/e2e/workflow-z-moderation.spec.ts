@@ -4,7 +4,7 @@ import { test,expect } from '@playwright/test';
 import { flows } from './flow-support';
 test('手机举报和主题申请、管理员隐藏审批与封禁撤权',async({browser})=>{
   test.setTimeout(120000);const f=await flows(browser),url=process.env.TEST_DATABASE_URL;
-  if(!url||!new URL(url).pathname.endsWith('_test')||url===process.env.DATABASE_URL)throw new Error('Separate test DB required');const database=new Client({connectionString:url});await database.connect();let failed=false;
+  if(!url||!new URL(url).pathname.endsWith('_test')||url===process.env.DATABASE_URL)throw new Error('Separate test DB required');const database=new Client({connectionString:url});await database.connect();let failed=false; const originalSessions=(await database.query('SELECT "id" FROM "Session" WHERE "userId"=$1 AND "revokedAt" IS NULL',[f.sessions[1].user.id])).rows.map(r=>r.id);
   try {
     await f.create('管理功能浏览器验收窗口');const [owner,reader,admin]=f.pages;
     await database.query('UPDATE "User" SET "role"=\'ADMIN\' WHERE "id"=$1',[f.sessions[2].user.id]);
@@ -16,5 +16,6 @@ test('手机举报和主题申请、管理员隐藏审批与封禁撤权',async(
     await admin.getByRole('button',{name:'主题申请',exact:true}).click();await admin.getByRole('button',{name:'批准主题',exact:true}).click();await expect(admin.getByRole('button',{name:'批准主题',exact:true})).toHaveCount(0);await reader.goto('/topic-requests');await expect(reader.getByText(/已通过/)).toBeVisible();
     await admin.getByRole('button',{name:'用户',exact:true}).click();await admin.getByLabel('按昵称查找',{exact:true}).fill(f.sessions[1].user.nickname);await admin.getByRole('button',{name:'查找用户',exact:true}).click();await admin.getByRole('button',{name:'封禁账号',exact:true}).click();await reader.goto('/me');await expect(reader.getByRole('link',{name:'去登录',exact:true})).toBeVisible();
     await admin.screenshot({path:'.local/admin-mobile.png',fullPage:true});
-  }catch(e){failed=true;throw e;}finally{await database.query('UPDATE "User" SET "role"=\'USER\',"status"=\'ACTIVE\' WHERE "id"=ANY($1::uuid[])',[f.sessions.map(s=>s.user.id)]);await database.end();try{await f.close();}catch(e){if(!failed)throw e;}}
+  }catch(e){failed=true;throw e;}finally{await database.query('UPDATE "User" SET "role"=\'USER\',"status"=\'ACTIVE\' WHERE "id"=ANY($1::uuid[])',[f.sessions.map(s=>s.user.id)]);// Restore only the synthetic fixture sessions captured before this test; production unban keeps sessions revoked (covered by API tests).
+    await database.query('UPDATE "Session" SET "revokedAt"=NULL WHERE "id"=ANY($1::uuid[]) AND "userId"=$2',[originalSessions,f.sessions[1].user.id]);await database.end();try{await f.close();}catch(e){if(!failed)throw e;}}
 });

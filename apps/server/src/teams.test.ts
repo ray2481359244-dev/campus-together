@@ -368,7 +368,11 @@ describe('captain transfer and activity lifecycle', () => {
     const row = await db.application.findUniqueOrThrow({ where: { id: pending.id } });
     expect(['APPROVED', 'EXPIRED']).toContain(row.status);
     expect((await getTeam(r.team.id)).body.data).toMatchObject({ status: 'IN_PROGRESS', memberCount: row.status === 'APPROVED' ? 3 : 2, acceptingStatus: 'CLOSED' });
-    expect(await db.notification.count({ where: { recipientId: userC } })).toBe(1);
+    const notices = await db.notification.findMany({ where: { recipientId: userC } });
+    // Approval may commit first, followed by the separate START notification.
+    expect(notices.filter(n => n.reviewId)).toHaveLength(row.status === 'APPROVED' ? 1 : 0);
+    expect(notices.filter(n => n.actionNoticeId)).toHaveLength(1);
+    expect(notices).toHaveLength(row.status === 'APPROVED' ? 2 : 1);
   });
   for (const kind of ['TRANSFER', 'START'] as const) for (const table of ['Notification', 'DomainEvent']) {
     it(`rolls back ${kind} if ${table} persistence fails`, async () => {

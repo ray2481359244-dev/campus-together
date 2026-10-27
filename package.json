@@ -4,7 +4,9 @@
   "private": true,
   "type": "module",
   "packageManager": "pnpm@11.5.1",
-  "engines": { "node": ">=24.0.0 <25" },
+  "engines": {
+    "node": ">=24.0.0 <25"
+  },
   "scripts": {
     "setup": "node scripts/setup.mjs",
     "local": "node scripts/local.mjs",
@@ -36,7 +38,17 @@
     "test:archive-recovery": "node scripts/check-archive-recovery.mjs",
     "test:ai-protocol": "tsx scripts/check-ai-protocol.ts",
     "test:assistance-recovery": "node scripts/check-assistance-recovery.mjs",
-    "check": "pnpm typecheck && pnpm test && pnpm build"
+    "check": "pnpm typecheck && pnpm test && pnpm build",
+    "backup:key": "node scripts/backup.mjs init-key",
+    "backup:create": "node scripts/backup.mjs create",
+    "backup:restore": "node scripts/backup.mjs restore",
+    "test:backup": "node scripts/check-backup-recovery.mjs",
+    "test:release": "node --test tests/release.test.mjs",
+    "release:prepare": "pnpm build && node scripts/release.mjs",
+    "deploy:preflight": "node scripts/preflight.mjs",
+    "bootstrap:school": "node scripts/bootstrap.mjs school",
+    "bootstrap:admin": "node scripts/bootstrap.mjs admin",
+    "release:verify": "node scripts/verify-release.mjs"
   },
   "devDependencies": {
     "@playwright/test": "1.64.1",
@@ -51,5 +63,7 @@
     "typescript": "7.0.2",
     "vitest": "5.0.4"
   },
-  "dependencies": { "pg": "8.23.1" }
+  "dependencies": {
+    "pg": "8.23.1"
+  }
 }

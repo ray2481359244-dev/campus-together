@@ -12,7 +12,8 @@ const names = {
   COMPETITION: ['应用开发', '数学建模', '创意设计'], OUTDOOR: ['城市摄影', '轻徒步', '校园跑步'],
 };
 try {
-  for (const s of schools) await db.school.upsert({ where: { id: s.id }, update: {}, create: { ...s, isDemo: true } });
+  if(process.env.NODE_ENV === 'production' && process.env.APP_MODE === 'DEMO') throw new Error('Production must not seed public demo accounts.');
+  if(process.env.NODE_ENV !== 'production') for (const s of schools) await db.school.upsert({ where: { id: s.id }, update: {}, create: { ...s, isDemo: true } });
   for (const category of categories) for (const name of names[category]) {
     await db.topic.upsert({ where: { category_normalizedName: { category, normalizedName: name.normalize('NFKC').toLowerCase() } }, update: {}, create: { category, name, normalizedName: name.normalize('NFKC').toLowerCase(), description: `围绕${name}交流想法，找到一起行动的人。` } });
   }

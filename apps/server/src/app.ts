@@ -22,11 +22,12 @@ import { existsSync } from 'node:fs';
 
 export const app = express();
 app.disable('x-powered-by');
+if(process.env.TRUST_PROXY === 'loopback')app.set('trust proxy','loopback');
 app.use(helmet());
 app.use((_req, res, next) => { res.locals.requestId = randomUUID(); res.setHeader('X-Request-Id', res.locals.requestId); next(); });
 app.use((req, res, next) => req.path === '/api/v1/media' ? next() : express.json({ limit: '64kb' })(req, res, next));
 app.use(cookieParser());
-app.get('/api/v1/health', (_req, res) => res.json({ data: { status: 'ok', appMode: config.demo ? 'DEMO' : 'STANDARD', milestone: 'W1_COMMUNITY_FOUNDATION', ...(!config.production && process.env.CAMPUS_DEV_INSTANCE ? { devInstance: process.env.CAMPUS_DEV_INSTANCE } : {}) } }));
+app.get('/api/v1/health', (_req, res) => res.json({ data: { status: 'ok', appMode: config.demo ? 'DEMO' : 'STANDARD', milestone: 'PREDEPLOY_CORE', ...(!config.production && process.env.CAMPUS_DEV_INSTANCE ? { devInstance: process.env.CAMPUS_DEV_INSTANCE } : {}) } }));
 app.get('/api/v1/ready', async (_req, res) => {
   try { await db.$queryRaw`SELECT 1`; res.json({ data: { ready: true } }); }
   catch { res.status(503).json({ error: { code: 'DATABASE_UNAVAILABLE', message: '数据库尚未就绪，请稍后重试。' } }); }

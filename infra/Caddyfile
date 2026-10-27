@@ -1,0 +1,7 @@
+# Replace this environment variable on the selected host; Caddy owns HTTPS.
+{$CAMPUS_DOMAIN} {
+    request_body {
+        max_size 8MB
+    }
+    reverse_proxy 127.0.0.1:3001
+}

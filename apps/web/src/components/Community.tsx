@@ -9,7 +9,7 @@ import { Loading, ErrorState, FormError } from './UI';
 export function SaveRecruitment({id}:{id:string}) {
   const {user}=useAuth();const [notice,setNotice]=useState(''),[busy,setBusy]=useState(false);
   if(!user)return null;
-  return <div><button className="button secondary" disabled={busy} onClick={async()=>{setBusy(true);try{await api('/favorites',{method:'PUT',body:{type:'RECRUITMENT',id,active:true}});setNotice('已收藏，可在我的收藏中取消。');}catch(e){setNotice(messageOf(e));}finally{setBusy(false);}}}>收藏招募</button><p role="status">{notice}</p></div>;
+  return <div><button className="button secondary" disabled={busy} onClick={async()=>{setBusy(true);try{await api('/favorites',{method:'PUT',body:{type:'RECRUITMENT',id,active:true}});setNotice('已收藏，可在我的收藏中取消。');}catch(e){setNotice(messageOf(e));}finally{setBusy(false);}}}>收藏招募</button>{notice && <p role="status">{notice}</p>}</div>;
 }
 export function Community({postId}:{postId:string}) {
   const {user}=useAuth(),client=useQueryClient();

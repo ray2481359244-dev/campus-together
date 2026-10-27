@@ -8,6 +8,7 @@ test('四区表单发布、手机核对条件并直接入队', async ({ browser 
     const owner=f.pages[0], participant=f.pages[1];
     await owner.goto('/recruitments/new'); await owner.getByLabel('招募区域',{exact:true}).selectOption('STUDY');
     await owner.getByLabel('招募主题',{exact:true}).selectOption({index:1});
+    await owner.getByLabel('队伍总人数（含队长）',{exact:true}).fill('2'); await expect(owner.getByText('岗位合计 2 人 / 队伍 2 人。每位成员占一个岗位，我也占一个名额。',{exact:true})).toBeVisible();
     await owner.getByLabel('招募标题',{exact:true}).fill('本周一起复习高等数学'); await owner.getByLabel('招募说明',{exact:true}).fill('一起复习高等数学的积分与导数内容，先安静自习，再集中讨论疑问，尊重彼此时间。');
     await owner.getByLabel('本次目标',{exact:true}).fill('完成复习'); await owner.getByLabel('协作时段说明',{exact:true}).fill('周六下午共同复习');
     await owner.getByLabel('协作开始时间',{exact:true}).fill(beijingInput(new Date(Date.now()+86400000).toISOString())); await owner.getByLabel('协作结束时间',{exact:true}).fill(beijingInput(new Date(Date.now()+90000000).toISOString()));

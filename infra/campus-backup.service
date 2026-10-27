@@ -1,0 +1,16 @@
+[Unit]
+Description=CampusTogether encrypted application backup
+
+[Service]
+Type=oneshot
+User=campus
+Group=campus
+WorkingDirectory=/opt/campus/current
+EnvironmentFile=/etc/campus/campus.env
+ExecStart=/usr/bin/node scripts/backup.mjs create
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/var/lib/campus/backups
+UMask=0077

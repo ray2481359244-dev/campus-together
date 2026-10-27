@@ -1,0 +1,24 @@
+[Unit]
+Description=CampusTogether application
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=campus
+Group=campus
+WorkingDirectory=/opt/campus/current
+EnvironmentFile=/etc/campus/campus.env
+ExecStart=/usr/bin/node scripts/serve.mjs
+Restart=on-failure
+RestartSec=5
+TimeoutStopSec=30
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/var/lib/campus
+UMask=0077
+
+[Install]
+WantedBy=multi-user.target
