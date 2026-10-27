@@ -65,6 +65,7 @@ model User {
   teamActions TeamAction[]
   teamActionNotices TeamActionNotice[]
   chatMessages ChatMessage[]
+  aiRequests AiRequest[]
   domainEvents DomainEvent[]
   createdAt    DateTime   @default(now()) @db.Timestamptz(3)
   updatedAt    DateTime   @updatedAt @db.Timestamptz(3)
@@ -82,6 +83,22 @@ model Profile {
   interests Category[] @default([])
   createdAt DateTime @default(now()) @db.Timestamptz(3)
   updatedAt DateTime @updatedAt @db.Timestamptz(3)
+}
+
+model AiRequest {
+  id String @id @default(uuid()) @db.Uuid
+  userId String @db.Uuid
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  requestKey String @db.Uuid
+  operation String @db.VarChar(10)
+  requestHash String @db.VarChar(64)
+  attempted Boolean @default(false)
+  fallback Json
+  result Json?
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
+  @@unique([userId, requestKey])
+  @@index([userId, operation, createdAt])
+  @@index([attempted, createdAt])
 }
 
 model Session {

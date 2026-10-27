@@ -10,6 +10,8 @@ import { postsRouter } from './posts.js';
 import { recruitmentsRouter } from './recruitments.js';
 import { applicationsRouter } from './applications.js';
 import { notificationsRouter } from './notifications.js';
+import { aiRouter } from './ai.js';
+import { matchingRouter } from './matching.js';
 import { chatRouter } from './chat.js';
 import { teamsRouter } from './teams.js';
 import { expiryFallback } from './expiry.js';
@@ -37,6 +39,8 @@ app.use('/api/v1', applicationsRouter);
 app.use('/api/v1', notificationsRouter);
 app.use('/api/v1', teamsRouter);
 app.use('/api/v1', chatRouter);
+app.use('/api/v1', matchingRouter);
+app.use('/api/v1', aiRouter);
 app.use('/api/v1', recruitmentsRouter);
 app.use('/api', notFound);
 if (process.env.SERVE_WEB === '1') {

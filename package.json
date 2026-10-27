@@ -31,6 +31,11 @@
     "test:review-recovery": "node scripts/check-review-recovery.mjs",
     "test:team-recovery": "node scripts/check-team-recovery.mjs",
     "test:lifecycle-recovery": "node scripts/check-lifecycle-recovery.mjs",
+    "test:expiry-recovery": "node scripts/check-expiry-recovery.mjs",
+    "test:chat-recovery": "node scripts/check-chat-recovery.mjs",
+    "test:archive-recovery": "node scripts/check-archive-recovery.mjs",
+    "test:ai-protocol": "tsx scripts/check-ai-protocol.ts",
+    "test:assistance-recovery": "node scripts/check-assistance-recovery.mjs",
     "check": "pnpm typecheck && pnpm test && pnpm build"
   },
   "devDependencies": {

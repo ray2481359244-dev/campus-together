@@ -1,0 +1,12 @@
+import { useRef,useState } from 'react';
+import type { AiExplainDTO,RecruitmentDTO } from '@campus/contracts';
+import { api,messageOf } from '../lib/api';
+import { useAuth } from '../lib/auth';
+import { FormError } from './UI';
+export function MatchExplanation({recruitment:r}:{recruitment:RecruitmentDTO}){
+  const {user}=useAuth(),[slot,setSlot]=useState(''),[time,setTime]=useState(''),[consent,setConsent]=useState(false),[busy,setBusy]=useState(false),[error,setError]=useState(''),[result,setResult]=useState<AiExplainDTO|null>(null);
+  const pending=useRef<{requestKey:string;slotId:string;timeConfirmed:boolean|null;consent:true}|null>(null);
+  if(!user||!r.team||r.team.captainUserId===user.id)return null;
+  async function explain(){if(busy)return;pending.current??={requestKey:crypto.randomUUID(),slotId:slot,timeConfirmed:time===''?null:time==='yes',consent:true};setBusy(true);setError('');try{setResult((await api<AiExplainDTO>('/ai/recruitments/'+r.id+'/explanation',{method:'POST',body:pending.current})).data);pending.current=null;}catch(e){setError(messageOf(e));}finally{setBusy(false);}}
+  return <details className="assistance paper"><summary>整理条件说明（可选）</summary><form className="form-stack" aria-label="条件说明辅助" onSubmit={e=>{e.preventDefault();void explain();}}><label>说明对应岗位<select aria-label="说明对应岗位" value={slot} disabled={busy||!!pending.current} onChange={e=>{setSlot(e.target.value);setResult(null);}}><option value="">请选择</option>{r.team.slots.map(s=><option key={s.id} value={s.id}>{s.name}</option>)}</select></label><label>本次时间安排<select aria-label="本次时间安排" value={time} disabled={busy||!!pending.current} onChange={e=>{setTime(e.target.value);setResult(null);}}><option value="">尚未确认</option><option value="yes">我能安排上方所列时间与投入</option><option value="no">本次无法安排</option></select></label><label className="checkbox-field"><input type="checkbox" checked={consent} disabled={busy||!!pending.current} onChange={e=>setConsent(e.target.checked)}/>我同意启用模型时发送本次必要条件依据用于梳理重点</label><p className="form-note">不发送邮箱、聊天或完整申请说明；辅助说明不代替申请时的实时检查。</p><FormError>{error}</FormError><button className="button secondary" disabled={busy||!slot||!consent}>{busy?'正在核对……':pending.current?'核对原说明请求':'整理条件说明'}</button></form>{result&&<div aria-label="条件说明结果"><p className="stage-explanation">{result.mode} · {result.assessment.status==='PASS'?'条件通过':result.assessment.status==='FAIL'?'当前不符合':'需补充确认'}</p><p>{result.reason}</p><ul>{result.sentences.map(s=><li key={s.evidenceId}>{s.text}</li>)}</ul></div>}</details>;
+}

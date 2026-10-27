@@ -133,3 +133,13 @@ GET /teams/:id/chat 接受 after（增量）或 before（更早），互斥，li
 ## I-007 聊天归档（2026-10-27）
 
 终态 Team.archiveUntil 与聊天 DTO 的 archiveUntil 明确只读期限。到期后所有聊天接口返回 410 CHAT_ARCHIVE_EXPIRED，先隐藏正文和公告，不依赖清理执行。默认终态起 30 天，EXPIRED 从原截止起算。启动 / 每分钟清理到期正文、内容摘要和公告，保留必要序号占位；ChatSpace.purgedAt 防重复。清理事务失败整体回滚并后续重试。普通队伍详情仍保留必要成员关系和公开招募入口。
+
+## I-008 条件排序与辅助（2026-10-27）
+
+POST /matching/recruitments 接受 {schoolId,goal?,mode?:ONLINE或OFFLINE或null,confirmations?:{招募UUID:boolean}}，仅本人 no-store、Origin / CSRF。响应 items 含岗位、实时条件 assessment、四维依据、score（可 null）及 completeness。按硬条件状态再按已知软分排序；不接受客户端技能、账号或学校身份替代资料。每活动时间确认仅影响本次对照，申请仍独立复核。
+
+GET /ai/status 返回配置模式与每日次数，不返回模型密钥。POST /ai/recruitment-draft 使用 {requestKey,text:1—2000字,consent:true}，POST /ai/recruitments/:id/explanation 使用 {requestKey,slotId,timeConfirmed?:boolean或null,consent:true}。每个结果的 mode 表示本次实际路径：LIVE 为模型成功且结构 / 来源通过，RULES_ONLY 为原文或条件规则。状态接口的 mode 仅表示配置选择，不代表调用成功。
+
+原键同内容返回原 id / 时间 / 内容；不同内容 409 REQUEST_KEY_CONFLICT，仍处理 409 AI_IN_PROGRESS；中断超过 15 秒仅恢复持久化 fallback，不重新调用模型。每日草稿 10、说明 20 次，超限 429 AI_DAILY_LIMIT；原结果核对不再次占次数。全站 LIVE 默认 100 次 / 北京日，数据库预约协调，网络调用在事务外。默认 8 秒超时，不自动重试服务；来源 / schema / 大小错误安全降级。不提供自动发帖 / 批准 / URL 抓取或群聊读取能力。
+
+配置示例见 .env.example：AI_MODE=LIVE，AI_BASE_URL 填兼容服务的 /v1 基址，AI_MODEL 填自己的可用模型，AI_API_KEY 仅在本机服务端配置；支持 JSON Schema 的 Chat Completions 服务。当前没有实际模型配置或真实调用验收。接口参考 [OpenAI Docs](https://developers.openai.com/api/reference/resources/chat/subresources/completions/methods/create)及[结构化输出](https://developers.openai.com/api/docs/guides/structured-outputs?api-mode=chat)。

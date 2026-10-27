@@ -26,7 +26,7 @@ async function publishedTeam(tx: Prisma.TransactionClient, id: string, lock = fa
   if (!team || team.recruitment.publicationStatus !== 'PUBLISHED') throw new ApiError(404, 'NOT_FOUND', '该招募不存在或尚未公开。');
   return team;
 }
-async function eligibility(tx: Prisma.TransactionClient, team: Team, userId: string, input: EligibilityInput, now: Date): Promise<EligibilityDTO> {
+export async function eligibility(tx: Prisma.TransactionClient, team: Team, userId: string, input: EligibilityInput, now: Date): Promise<EligibilityDTO> {
   const user = await tx.user.findUniqueOrThrow({ where: { id: userId }, include: { profile: { include: { school: true } } } });
   const checks: EligibilityDTO['checks'] = [];
   const add = (code: string, label: string, status: 'PASS' | 'FAIL' | 'UNKNOWN', reason: string) => checks.push({ code, label, status, reason });

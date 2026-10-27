@@ -294,3 +294,5 @@ svg{flex-shrink:0}
 .chat-messages{display:grid;gap:14px;margin:20px 0}.chat-message{min-width:0}.chat-message .post-body{overflow-wrap:anywhere}.chat-system{background:var(--paper,#fffdf7);border-left:5px solid #bba5f2}.chat-message .review-card-heading{gap:12px}
 
 .team-chat .post-body{min-height:0;margin:12px 0}.team-chat .chat-message{padding:18px}.team-chat h3{margin-top:18px}.team-chat .form-stack{margin-top:16px}
+
+.assistance{margin:18px 5px 18px 0}.assistance summary{cursor:pointer;font-weight:850;min-height:40px}.assistance .post-body{min-height:0}.assistance small{display:block;overflow-wrap:anywhere}.assistance .checkbox-field{display:flex;align-items:flex-start;gap:10px;margin:14px 0}.assistance input[type=checkbox]{width:20px;min-height:20px;flex-shrink:0}.match-card{margin-top:18px}.match-card summary{cursor:pointer}.match-card ul{padding-left:20px;overflow-wrap:anywhere}

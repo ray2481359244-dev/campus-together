@@ -9,6 +9,8 @@ import { emptyRecruitment, splitSkills, beijingInput, fromBeijingInput, beijingT
 import { useAuth } from '../lib/auth';
 import { PageTitle, Loading, LoginGate, ErrorState, FormError } from '../components/UI';
 
+import { DraftAssistant } from '../components/DraftAssistant';
+
 export function RecruitmentEditor() {
   const { id } = useParams(), [params] = useSearchParams(), sourceId = !id ? params.get('sourcePost') : null;
   const { user, loading, error: authError, reload } = useAuth(), navigate = useNavigate(), location = useLocation(), client = useQueryClient();
@@ -92,11 +94,12 @@ export function RecruitmentEditor() {
     {(record.isError || source.isError) && <ErrorState message={recruitmentError(record.error || source.error) + '。本页尚未保存的输入仍保留，重新读取不会替换输入。'} retry={retryReads} />}
     {unavailable && <div className="inline-error" role="status">这份草稿已发布、删除或不可编辑，本页输入仍保留，已停止保存和发布。{record.data?.data.publicationStatus === 'PUBLISHED' && <Link to={'/recruitments/' + id}>查看已发布招募</Link>}</div>}
     {hasDraft && !unavailable && record.data && record.data.data.revision !== saved.current!.revision && <p className="form-note" role="status">草稿已在其他页面更新。本页输入仍基于原版本；保存时会检查版本，不能覆盖其他页面的修改。</p>}
-    <p className="form-note recruitment-form-note">草稿仅自己可见。确认发布后内容公开，并创建队伍与队长关系。当前尚不能申请入队或群聊。</p>
+    <p className="form-note recruitment-form-note">草稿仅自己可见。确认发布后内容公开，并创建队伍与队长关系。发布后可申请审核入队并使用队伍群聊。</p>
     {createAttempt.current && error && <p className="form-note" role="status">上次创建结果尚未确认。你可以继续修改；再次保存会先找回上次创建的草稿，再保存本页修改，不会另建一份。</p>}
     {recoveryBlocked && <p className="form-note" role="status">本次恢复已停止保存和发布。当前输入仍在，关闭或刷新前请自行复制保留。</p>}
     {!preview && !id && saved.current && error && <Link className="text-button" to={'/recruitments/' + saved.current.id + (saved.current.publicationStatus === 'DRAFT' ? '/edit' : '')} target="_blank" rel="noopener noreferrer">在新标签页核对已保存内容</Link>}
     {!preview && location.state?.draftSaved && <div className="success-notice" role="status">草稿已保存到数据库，仅自己可见。继续修改后请再次保存。</div>}
+    {!preview && <DraftAssistant disabled={busy || unavailable || recoveryBlocked || !!createAttempt.current} onApply={fields => { setDraft(current => ({ ...current, ...fields })); setPreview(null); }} />}
     {preview ? <div className="paper form-stack" aria-label="招募发布预览"><h2>{preview.title}</h2><p className="post-body">{preview.description}</p><dl className="recruitment-facts"><div><dt>竞赛主题</dt><dd>{topics.data?.data.find(t => t.id === preview.topicId)?.name || "正在读取主题"}</dd></div><div><dt>比赛与方向</dt><dd>{preview.competitionName} · {preview.direction}</dd></div><div><dt>学校与形式</dt><dd>{user.school.name} · {preview.mode === 'ONLINE' ? '线上' : preview.locationPublic}</dd></div><div><dt>协作时间</dt><dd>{beijingTime(preview.startAt)} 至 {beijingTime(preview.endAt)}（北京时间）</dd></div><div><dt>招募截止</dt><dd>{beijingTime(preview.joinDeadline || preview.startAt)}（北京时间）</dd></div><div><dt>比赛截止</dt><dd>{beijingTime(preview.competitionDeadline)}（北京时间）</dd></div><div><dt>投入与时段</dt><dd>每周 {preview.weeklyHours} 小时 · {preview.collaboration}</dd></div><div><dt>目标</dt><dd>{preview.goal}</dd></div><div><dt>已有技能</dt><dd>{preview.existingSkills.join("、") || "未填写"}（自述）</dd></div><div><dt>学校范围</dt><dd>{preview.allowCrossSchool ? "接受跨校意向" : "仅限同校意向"}</dd></div>{preview.officialUrl && <div><dt>比赛链接</dt><dd><a href={preview.officialUrl} target="_blank" rel="noopener noreferrer">{preview.officialUrl}</a></dd></div>}<div><dt>队伍总人数</dt><dd>{preview.capacity} 人，包含我作为队长</dd></div></dl><div className="slot-list">{preview.slots.map(s => <div className="slot-summary" key={s.key}><strong>{s.name}{s.key === preview.captainSlotKey ? ' · 我负责' : ''}</strong><span>{s.capacity} 人{s.requiredSkills.length ? ' · ' + s.requiredSkills.join('、') : ''}</span></div>)}</div><FormError>{error}</FormError><div className="button-row"><button className="button secondary" disabled={busy} onClick={() => { setPreview(null); setError(''); }}>返回修改</button><button className="button" disabled={busy || unavailable || recoveryBlocked} onClick={async () => {
       if (busy || unavailable || recoveryBlocked) return;
       setBusy(true); setError('');

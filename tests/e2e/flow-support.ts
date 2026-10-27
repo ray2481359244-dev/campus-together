@@ -18,7 +18,7 @@ export async function flows(browser: Browser) {
   let first = true;
   async function create(title: string) {
     const key = crypto.randomUUID(), at = (h: number) => new Date(Date.now() + h * 3600_000).toISOString();
-    const draft = RecruitmentDraftSchema.parse({ topicId, title, description: '验证到期、群聊、归档与匹配功能的真实协作流程；内容仅用于本次自动化测试。', competitionName: '校园协作赛', direction: '校园应用', goal: '完成作品', collaboration: '周二周四晚间协作', startAt: at(24), endAt: at(48), joinDeadline: at(12), competitionDeadline: at(72), capacity: 3, slots: [{ key, name: '统筹', capacity: 1 }, { key: crypto.randomUUID(), name: '协作', capacity: 2 }], captainSlotKey: key });
+    const draft = RecruitmentDraftSchema.parse({ topicId, title, description: '验证到期、群聊、归档与匹配功能的真实协作流程；内容仅用于本次自动化测试。', competitionName: '校园协作赛', allowCrossSchool: true, direction: '校园应用', goal: '完成作品', collaboration: '周二周四晚间协作', startAt: at(24), endAt: at(48), joinDeadline: at(12), competitionDeadline: at(72), capacity: 3, slots: [{ key, name: '统筹', capacity: 1 }, { key: crypto.randomUUID(), name: '协作', capacity: 2 }], captainSlotKey: key });
     const body = { requestKey: crypto.randomUUID(), draft }; let response = await post(0, '/recruitments', body);
     if (first) { first = false; const limit = response.headers()['ratelimit'] || '', r = limit.match(/\br=(\d+)/), t = limit.match(/\bt=(\d+)/); expect(r).not.toBeNull(); expect(t).not.toBeNull(); if (response.status() === 429 || Number(r![1]) < 30) { expect(Number(t![1])).toBeLessThanOrEqual(60); await new Promise(resolve => setTimeout(resolve, (Number(t![1]) + 1) * 1000)); if (response.status() === 429) response = await post(0, '/recruitments', body); } }
     expect(response.status()).toBe(201); const id = (await response.json()).data.id;
