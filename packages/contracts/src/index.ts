@@ -25,7 +25,7 @@ export const ProfileSchema = z.object({
   skills: z.array(z.string().trim().min(1).max(30)).max(15),
   interests: z.array(CategorySchema).max(4).refine(a => new Set(a).size === a.length, '兴趣不能重复'),
 }).strict();
-export const PostContentSchema = z.object({ topicId: IdSchema, title: z.string().trim().min(5, '标题至少 5 个字').max(60), body: z.string().trim().min(10, '正文至少 10 个字').max(5000) }).strict();
+export const PostContentSchema = z.object({ topicId: IdSchema, title: z.string().trim().min(5, '标题至少 5 个字').max(60), body: z.string().trim().min(10, '正文至少 10 个字').max(5000), imageIds: z.array(IdSchema).max(6).refine(a => new Set(a).size === a.length).optional() }).strict();
 export type PostContent = z.infer<typeof PostContentSchema>;
 export const CreatePostSchema = PostContentSchema.extend({ requestKey: IdSchema }).strict();
 export type CreatePost = z.infer<typeof CreatePostSchema>;
@@ -41,6 +41,10 @@ export interface SchoolDTO { id: string; name: string; city: string; isDemo: boo
 export interface TopicDTO { id: string; category: Category; name: string; description: string; active: boolean }
 export interface PublicProfileDTO { id: string; nickname: string; bio: string; grade: string; skills: string[]; interests: Category[]; school: SchoolDTO; identityStatus: 'SELF_REPORTED' }
 export interface MeDTO extends PublicProfileDTO { email: string; emailVerified: false; role: 'USER' | 'ADMIN' }
-export interface PostDTO { id: string; title: string; body: string; revision: number; topic: TopicDTO; school: SchoolDTO; author: PublicProfileDTO; createdAt: string; updatedAt: string; canEdit: boolean }
+export interface PostDTO { id: string; title: string; body: string; revision: number; topic: TopicDTO; school: SchoolDTO; author: PublicProfileDTO; createdAt: string; updatedAt: string; canEdit: boolean; images: { id: string; width: number; height: number }[]; counts: { comments: number; likes: number } }
 export interface ApiErrorBody { error: { code: string; message: string; fields?: Record<string, string[]> }; requestId: string }
 export interface ApiResponse<T> { data: T; meta?: { nextCursor?: string | null; appMode?: 'DEMO' | 'STANDARD' } }
+
+export interface CommentDTO { id: string; body: string; replyId: string | null; reply: { body: string; nickname: string } | null; nickname: string; canDelete: boolean; createdAt: string }
+export interface CommunityDTO { likes: number; liked: boolean; saved: boolean; comments: CommentDTO[]; nextCursor: string | null }
+export interface SavedDTO { id: string; postId: string | null; recruitmentId: string | null; title: string; available: boolean }

@@ -22,8 +22,8 @@ export function PostCard({ post }: { post: PostDTO }) {
   const location = useLocation();
   return <Link className="post-card" data-post-id={post.id} to={'/posts/' + post.id} state={{ backgroundLocation: location }} onClick={() => rememberScroll(location.key, post.id)}>
     <div className="post-card-top"><span className={'topic-badge cat-' + post.topic.category}>{post.topic.name}</span><span className="metadata">{new Date(post.createdAt).toLocaleDateString('zh-CN', { timeZone: 'Asia/Shanghai', month: 'short', day: 'numeric' })}</span></div>
-    <h3>{post.title}</h3><p className="post-excerpt">{post.body.slice(0, 120)}{post.body.length > 120 ? '……' : ''}</p>
-    <div className="post-card-footer"><span className="author-line"><span className="avatar">{post.author.nickname.slice(0, 1)}</span>{post.author.nickname}</span><ArrowUpRight size={20} aria-hidden="true" /></div>
+    {post.images[0] && <img className="post-cover" src={'/api/v1/media/'+post.images[0].id} alt="讨论封面" loading="lazy" />}<h3>{post.title}</h3><p className="post-excerpt">{post.body.slice(0, 120)}{post.body.length > 120 ? '……' : ''}</p>
+    <div className="post-card-footer"><span className="author-line"><span className="avatar">{post.author.nickname.slice(0, 1)}</span>{post.author.nickname} · {post.counts.comments} 评论 · {post.counts.likes} 赞</span><ArrowUpRight size={20} aria-hidden="true" /></div>
   </Link>;
 }
 export function Discover() {
@@ -56,7 +56,7 @@ export function Discover() {
         const next = e.key === 'Home' ? 0 : e.key === 'End' ? order.length - 1 : (index + (e.key === 'ArrowRight' ? 1 : -1) + order.length) % order.length;
         e.currentTarget.querySelectorAll('button')[next]?.focus(); choose(order[next]);
       }}><motion.span aria-hidden="true" className="tab-indicator" data-testid="category-indicator" initial={false} animate={{ x: `calc(${order.indexOf(category) * 100}% + ${order.indexOf(category) * 4}px)` }} transition={reduce ? { duration: 0 } : { type: 'spring', stiffness: 440, damping: 34 }} />{order.map(c => <button key={c} aria-pressed={c === category} onClick={() => choose(c)}><span>{categoryInfo[c].short}</span></button>)}</div>
-      <div className="board-tabs"><span aria-current="page">讨论</span><Link to="/recruitments">{category === 'COMPETITION' ? '竞赛招募' : '查看竞赛招募'}<ArrowUpRight size={14} /></Link></div>
+      <div className="board-tabs"><span aria-current="page">讨论</span><Link to="/recruitments">查看招募<ArrowUpRight size={14} /></Link></div>
       <div className="filter-row"><label className="topic-picker">主题<select aria-label="筛选讨论主题" disabled={topics.isPending} value={topicId} onChange={e => setParams({ category, ...(e.target.value ? { topic: e.target.value } : {}), ...(q ? { q } : {}) })}><option value="">全部主题</option>{topics.data?.data.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}</select></label><form className="search-form" onSubmit={e => { e.preventDefault(); setParams({ category, ...(topicId ? { topic: topicId } : {}), ...(search.trim() ? { q: search.trim() } : {}) }); }}><label className="visually-hidden" htmlFor="discussion-search">搜索讨论</label><input id="discussion-search" placeholder="搜索讨论" maxLength={100} value={search} onChange={e => setSearch(e.target.value)} />{q && <button type="button" aria-label="清除讨论搜索" onClick={() => { document.getElementById('discussion-search')?.focus(); setSearch(''); setParams({ category, ...(topicId ? { topic: topicId } : {}) }); }}><X size={18} /></button>}<button type="submit" aria-label="搜索讨论"><Search size={19} /></button></form></div>
       {topics.isError && <ErrorState message={messageOf(topics.error)} retry={() => void topics.refetch()} />}
       <div className="results-status" role={posts.isPlaceholderData ? 'status' : undefined} aria-live="polite">{posts.isPlaceholderData ? `正在更新${categoryInfo[category].short}讨论，暂显示上次结果……` : ''}</div>

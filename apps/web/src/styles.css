@@ -296,3 +296,14 @@ svg{flex-shrink:0}
 .team-chat .post-body{min-height:0;margin:12px 0}.team-chat .chat-message{padding:18px}.team-chat h3{margin-top:18px}.team-chat .form-stack{margin-top:16px}
 
 .assistance{margin:18px 5px 18px 0}.assistance summary{cursor:pointer;font-weight:850;min-height:40px}.assistance .post-body{min-height:0}.assistance small{display:block;overflow-wrap:anywhere}.assistance .checkbox-field{display:flex;align-items:flex-start;gap:10px;margin:14px 0}.assistance input[type=checkbox]{width:20px;min-height:20px;flex-shrink:0}.match-card{margin-top:18px}.match-card summary{cursor:pointer}.match-card ul{padding-left:20px;overflow-wrap:anywhere}
+
+.post-images { display:grid;gap:12px;margin:20px 0; }
+.post-images img { max-width:100%;width:auto;height:auto;max-height:650px;object-fit:contain; }
+.post-cover { width:100%;height:180px;object-fit:cover;display:block;margin-bottom:12px; }
+.image-picker-list { display:flex;gap:12px;flex-wrap:wrap; }
+.image-picker-list img { width:90px;height:90px;object-fit:cover; }
+.community-comments { padding:20px 0;border-top:1px solid var(--ink);margin-top:20px; }
+.community-comment { padding:14px 0;border-bottom:1px solid #ddd;overflow-wrap:anywhere; }
+.community-comment p { white-space:pre-wrap; }
+
+.post-detail:has(.post-images img) > .post-body { min-height: 0; }

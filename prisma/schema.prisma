@@ -66,6 +66,10 @@ model User {
   teamActionNotices TeamActionNotice[]
   chatMessages ChatMessage[]
   aiRequests AiRequest[]
+  postImages PostImage[]
+  comments Comment[]
+  reactions PostReaction[]
+  favorites Favorite[]
   domainEvents DomainEvent[]
   createdAt    DateTime   @default(now()) @db.Timestamptz(3)
   updatedAt    DateTime   @updatedAt @db.Timestamptz(3)
@@ -147,6 +151,10 @@ model Post {
   createRequestKey String? @db.Uuid
   createRequestHash String? @db.Char(64)
   recruitments Recruitment[]
+  images PostImage[]
+  comments Comment[]
+  reactions PostReaction[]
+  favorites Favorite[]
 
   @@unique([authorId, createRequestKey])
   @@index([schoolId, status, createdAt, id])
@@ -179,6 +187,7 @@ enum MemberStatus {
 }
 
 model Recruitment {
+  favorites Favorite[]
   id String @id @default(uuid()) @db.Uuid
   authorId String @db.Uuid
   author User @relation(fields: [authorId], references: [id], onDelete: Restrict)
@@ -516,4 +525,58 @@ model RecruitmentClosure {
   notifications Notification[]
 
   @@unique([id, teamId])
+}
+
+model PostImage {
+  id String @id @default(uuid()) @db.Uuid
+  authorId String @db.Uuid
+  author User @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  postId String? @db.Uuid
+  post Post? @relation(fields: [postId], references: [id], onDelete: Cascade)
+  requestKey String @db.Uuid
+  requestHash String @db.Char(64)
+  bytes Bytes
+  width Int
+  height Int
+  position Int @default(0)
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
+  @@unique([authorId, requestKey])
+  @@index([postId, position])
+  @@index([authorId, createdAt])
+}
+model Comment {
+  id String @id @default(uuid()) @db.Uuid
+  postId String @db.Uuid
+  post Post @relation(fields: [postId], references: [id], onDelete: Cascade)
+  authorId String @db.Uuid
+  author User @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  requestKey String @db.Uuid
+  requestHash String @db.Char(64)
+  body String @db.VarChar(1000)
+  replyId String? @db.Uuid
+  status ContentStatus @default(PUBLISHED)
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
+  @@unique([authorId, requestKey])
+  @@index([postId, status, createdAt, id])
+}
+model PostReaction {
+  userId String @db.Uuid
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  postId String @db.Uuid
+  post Post @relation(fields: [postId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
+  @@id([userId, postId])
+}
+model Favorite {
+  id String @id @default(uuid()) @db.Uuid
+  userId String @db.Uuid
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  postId String? @db.Uuid
+  post Post? @relation(fields: [postId], references: [id], onDelete: Cascade)
+  recruitmentId String? @db.Uuid
+  recruitment Recruitment? @relation(fields: [recruitmentId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
+  @@unique([userId, postId])
+  @@unique([userId, recruitmentId])
+  @@index([userId, createdAt, id])
 }

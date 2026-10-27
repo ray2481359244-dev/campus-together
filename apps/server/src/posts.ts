@@ -1,3 +1,4 @@
+import { attachImages } from './community.js';
 import { Router } from 'express';
 import { createHash, randomUUID } from 'node:crypto';
 import { CategorySchema, CreatePostSchema, EditPostSchema, DeletePostSchema, IdSchema, PostsQuerySchema, PostCursorSchema } from '@campus/contracts';
@@ -7,10 +8,10 @@ import { parse, ApiError } from './http.js';
 import { publicProfile, userInclude } from './dto.js';
 import type { Prisma } from './generated/prisma/client.js';
 
-const postInclude = { topic: true, school: true, author: { include: userInclude } } as const;
+const postInclude = { images: { select: { id: true, width: true, height: true }, orderBy: { position: 'asc' as const } }, _count: { select: { comments: { where: { status: 'PUBLISHED' as const } }, reactions: true } }, topic: true, school: true, author: { include: userInclude } } as const;
 type PostRecord = Prisma.PostGetPayload<{ include: typeof postInclude }>;
 function postDTO(post: PostRecord, userId?: string) {
-  return { id: post.id, title: post.title, body: post.body, revision: post.revision,
+  return { images: post.images, counts: { comments: post._count.comments, likes: post._count.reactions }, id: post.id, title: post.title, body: post.body, revision: post.revision,
     topic: { id: post.topic.id, name: post.topic.name, category: post.topic.category, description: post.topic.description, active: post.topic.active },
     school: { id: post.school.id, name: post.school.name, city: post.school.city, isDemo: post.school.isDemo },
     author: publicProfile(post.author), createdAt: post.createdAt.toISOString(), updatedAt: post.updatedAt.toISOString(), canEdit: userId === post.authorId };
@@ -61,13 +62,18 @@ postsRouter.post('/posts', async (req, res) => {
   }
   const result = await db.$transaction(async tx => {
     // Resolve a committed request before checking references that may since have changed.
+    await tx.$queryRaw`SELECT "id" FROM "User" WHERE "id"=${user.id}::uuid FOR NO KEY UPDATE`;
+    if (!await tx.user.findFirst({ where: { id: user.id, status: 'ACTIVE' } })) throw new ApiError(401,'AUTH_REQUIRED','账号不可用。');
     const existing = await tx.post.findUnique({ where, include: postInclude });
     if (existing) return { post: replay(existing), created: false };
     const topic = await tx.topic.findFirst({ where: { id: content.topicId, active: true } });
     if (!topic) throw new ApiError(422, 'TOPIC_UNAVAILABLE', '主题已停用或不存在，请重新选择。');
     const profile = await tx.profile.findUnique({ where: { userId: user.id }, include: { school: true } });
     if (!profile?.school.active) throw new ApiError(422, 'PROFILE_INCOMPLETE', '请先完善有效的学校资料。');
-    const created = await tx.post.createMany({ data: [{ id: randomUUID(), ...content, authorId: user.id, schoolId: profile.schoolId, createRequestKey: requestKey, createRequestHash: hash }], skipDuplicates: true });
+    const { imageIds, ...fields } = content;
+    const created = await tx.post.createMany({ data: [{ id: randomUUID(), ...fields, authorId: user.id, schoolId: profile.schoolId, createRequestKey: requestKey, createRequestHash: hash }], skipDuplicates: true });
+    const stored = await tx.post.findUniqueOrThrow({ where });
+    if(created.count && imageIds) await attachImages(tx, stored.id, user.id, imageIds);
     const post = replay(await tx.post.findUniqueOrThrow({ where, include: postInclude }));
     return { post, created: created.count === 1 };
   });
@@ -81,6 +87,7 @@ postsRouter.patch('/posts/:id', async (req, res) => {
   const updated = await db.$transaction(async tx => {
     const result = await tx.post.updateMany({ where: { id, authorId: user.id, revision: input.revision, status: 'PUBLISHED' }, data: { title: input.title, body: input.body, revision: { increment: 1 } } });
     if (!result.count) throw new ApiError(409, 'REVISION_CONFLICT', '讨论已在其他页面更新，请核对已保存版本后编辑。');
+    if (input.imageIds) await attachImages(tx, id, user.id, input.imageIds);
     // Hold the update's row lock until the matching response snapshot has been read.
     return tx.post.findUniqueOrThrow({ where: { id }, include: postInclude });
   });

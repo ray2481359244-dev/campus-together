@@ -1,3 +1,4 @@
+import { ImagePicker } from '../components/ImagePicker';
 import { useEffect, useRef, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -17,6 +18,7 @@ export function Publish({ edit = false }: { edit?: boolean }) {
   const [base, setBase] = useState<PostDTO | null>(null), [review, setReview] = useState<PostDTO | null>(null);
   const [checking, setChecking] = useState(false), [confirmLoad, setConfirmLoad] = useState(false), [blocked, setBlocked] = useState(false);
   const [pending, setPending] = useState<CreatePost | null>(null), [isSubmitting, setSubmitting] = useState(false);
+  const [imageIds, setImageIds] = useState<string[]>([]);
   const saving = useRef(false);
   const post = useQuery({ queryKey: ['post', id], queryFn: ({ signal }) => api<PostDTO>('/posts/' + id, { signal }), enabled: edit && !!id, retry: false });
   const topics = useQuery({ queryKey: ['topics', category], queryFn: () => api<TopicDTO[]>('/topics?category=' + category) });
@@ -27,7 +29,7 @@ export function Publish({ edit = false }: { edit?: boolean }) {
   useEffect(() => {
     if (edit && post.data && post.data.data.id === id && base?.id !== id) {
       const p = post.data.data;
-      setBase(p); setCategory(p.topic.category); reset({ title: p.title, body: p.body, topicId: p.topic.id });
+      setImageIds(p.images.map(i => i.id)); setBase(p); setCategory(p.topic.category); reset({ title: p.title, body: p.body, topicId: p.topic.id });
       setReview(null); setConfirmLoad(false); setBlocked(false); setError(''); setIsDirtyAfterFailure(false);
     }
   }, [post.data, edit, id, base?.id, reset]);
@@ -42,10 +44,10 @@ export function Publish({ edit = false }: { edit?: boolean }) {
     if (blocked || checking || saving.current) return;
     saving.current = true;
     setSubmitting(true); setError(''); setIsDirtyAfterFailure(false);
-    const submission = edit ? null : pending ?? { ...values, requestKey: crypto.randomUUID() };
+    const submission = edit ? null : pending ?? { ...values, ...(imageIds.length ? { imageIds } : {}), requestKey: crypto.randomUUID() };
     if (submission) setPending(submission);
     try {
-      const r = await api<PostDTO>(edit ? '/posts/' + id : '/posts', { method: edit ? 'PATCH' : 'POST', body: edit ? { title: values.title, body: values.body, revision: base!.revision } : submission });
+      const r = await api<PostDTO>(edit ? '/posts/' + id : '/posts', { method: edit ? 'PATCH' : 'POST', body: edit ? { title: values.title, body: values.body, imageIds, revision: base!.revision } : submission });
       await client.invalidateQueries({ queryKey: ['posts'] }); client.setQueryData(['post', r.data.id], r);
       navigate('/posts/' + r.data.id, { replace: true, state: { justPublished: !edit } });
     } catch (e) {
@@ -59,7 +61,7 @@ export function Publish({ edit = false }: { edit?: boolean }) {
     } finally { saving.current = false; setSubmitting(false); }
   }
   return <section className="form-page"><PageTitle title={edit ? '让想法更清楚一点。' : '你的想法，值得被看见。'} eyebrow={edit ? 'EDIT YOUR DISCUSSION.' : 'LET YOUR IDEA OUT.'} back={() => navigate(edit ? '/posts/' + id : '/discover')} />
-    {!edit && <div className="publish-modes"><span className="current"><Check size={16} />发布讨论</span><Link to="/recruitments/new">发起竞赛招募<ArrowUpRight size={14} /></Link></div>}
+    {!edit && <div className="publish-modes"><span className="current"><Check size={16} />发布讨论</span><Link to="/recruitments/new">发起招募<ArrowUpRight size={14} /></Link></div>}
     <form className="paper form-stack" onSubmit={pending ? event => { event.preventDefault(); void save(pending); } : handleSubmit(save)}>
       {edit && <section className="version-tools" aria-label="讨论版本核对"><p className="form-note">当前编辑基于版本 {base!.revision}。后台刷新不会覆盖输入；保存冲突时，请先核对已保存内容。</p>
         {post.data && post.data.data.revision !== base!.revision && <p role="status" className="form-note">已发现较新版本，你尚未保存的输入仍保留在下方。</p>}
@@ -84,7 +86,8 @@ export function Publish({ edit = false }: { edit?: boolean }) {
       {errors.topicId && <FormError>请选择可用的讨论主题。</FormError>}
       <div className="form-field"><label htmlFor="post-title">标题</label><input id="post-title" aria-describedby="post-title-note" {...register('title')} maxLength={60} placeholder="用一句话，让大家知道你想聊什么" /><span id="post-title-note" className="field-note">5—60 个字 · {title?.length || 0}/60</span></div>{errors.title && <FormError>标题需要 5—60 个字。</FormError>}
       <div className="form-field"><label htmlFor="post-body">正文</label><textarea id="post-body" aria-describedby="post-body-note" {...register('body')} rows={8} maxLength={5000} placeholder="分享具体的问题、经历或想法。清晰一点，更容易遇到同频的人。" /><span id="post-body-note" className="field-note">10—5000 个字 · {body?.length || 0}/5000</span></div>{errors.body && <FormError>正文需要 10—5000 个字。</FormError>}
-      <div className="publish-school">发布到：<strong>{edit ? post.data?.data.school.name : user.school.name}</strong><span>学校为本人自述。当前版本支持文字讨论，图片和互动后续补齐。</span></div>
+      <ImagePicker ids={imageIds} onChange={setImageIds} disabled={isSubmitting || !!pending} />
+      <div className="publish-school">发布到：<strong>{edit ? post.data?.data.school.name : user.school.name}</strong><span>学校为本人自述。支持最多六张图片、评论、点赞与收藏。</span></div>
       </fieldset>
       <FormError>{error}</FormError>{isDirtyAfterFailure && <p className="form-note">输入已保留在当前页面。{edit ? '若版本冲突，请核对已保存版本后决定如何继续。' : pending ? blocked ? '无法继续核对，请返回讨论板确认现状。' : '发布结果尚未确认，内容暂时锁定；点击“核对并完成发布”可安全重试同一次提交，成功后可编辑。' : '请修正提示的问题后再次发布。'}关闭或刷新页面前请自行保留内容。</p>}
       {pending && blocked && <Link className="button secondary" to="/discover">返回讨论板</Link>}

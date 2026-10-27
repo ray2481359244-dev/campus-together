@@ -1,4 +1,5 @@
 import express from 'express';
+import { communityRouter } from './community.js';
 import helmet from 'helmet';
 import { randomUUID } from 'node:crypto';
 import { db } from './db.js';
@@ -22,7 +23,7 @@ export const app = express();
 app.disable('x-powered-by');
 app.use(helmet());
 app.use((_req, res, next) => { res.locals.requestId = randomUUID(); res.setHeader('X-Request-Id', res.locals.requestId); next(); });
-app.use(express.json({ limit: '64kb' }));
+app.use((req, res, next) => req.path === '/api/v1/media' ? next() : express.json({ limit: '64kb' })(req, res, next));
 app.use(cookieParser());
 app.get('/api/v1/health', (_req, res) => res.json({ data: { status: 'ok', appMode: config.demo ? 'DEMO' : 'STANDARD', milestone: 'W1_COMMUNITY_FOUNDATION', ...(!config.production && process.env.CAMPUS_DEV_INSTANCE ? { devInstance: process.env.CAMPUS_DEV_INSTANCE } : {}) } }));
 app.get('/api/v1/ready', async (_req, res) => {
@@ -34,6 +35,7 @@ app.use('/api/v1', expiryFallback);
 app.get('/api/v1/schools', async (_req, res) => res.json({ data: await db.school.findMany({ where: { active: true }, select: { id: true, name: true, city: true, isDemo: true }, orderBy: { name: 'asc' } }) }));
 app.use('/api/v1/auth', authRouter);
 app.use('/api/v1', profileRouter);
+app.use('/api/v1', communityRouter);
 app.use('/api/v1', postsRouter);
 app.use('/api/v1', applicationsRouter);
 app.use('/api/v1', notificationsRouter);

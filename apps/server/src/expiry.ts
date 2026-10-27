@@ -1,3 +1,4 @@
+import { purgeOrphanImages } from './community.js';
 import type { RequestHandler } from 'express';
 import { db } from './db.js';
 import { IdSchema } from '@campus/contracts';
@@ -47,7 +48,7 @@ export const expiryFallback: RequestHandler = async (req, _res, next) => {
 };
 export function startExpiryWorker() {
   let running: Promise<unknown> | null = null;
-  const tick = () => { if (!running) running = expireDueTeams().then(() => purgeExpiredChats()).catch(() => console.error('Team maintenance scan failed; a later scan will retry.')).finally(() => { running = null; }); };
+  const tick = () => { if (!running) running = expireDueTeams().then(() => purgeExpiredChats()).then(() => purgeOrphanImages()).catch(() => console.error('Team maintenance scan failed; a later scan will retry.')).finally(() => { running = null; }); };
   tick();
   const timer = setInterval(tick, 60_000); timer.unref();
   return async () => { clearInterval(timer); await running; };

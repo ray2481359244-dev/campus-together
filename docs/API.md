@@ -149,3 +149,9 @@ GET /ai/status 返回配置模式与每日次数，不返回模型密钥。POST 
 RecruitmentDraft.category 支持四区；joinMode 为 APPROVAL / AUTO。game / study / outdoor 为可选场景对象，发布时检查当前区域必填项。非竞赛只有一个“成员”岗位。eligibility / applications 可带 answers（server / platform / studyMethod / experienceConfirmed / equipmentConfirmed）；审核复查原申请声明，硬条件缺失 UNKNOWN，不能入队。AUTO 的 POST /teams/:id/applications 在同事务直接入队，APPROVED 的 review 可空；原请求重试不恢复 LEFT / REMOVED。
 
 GET /recruitments 接受 category 和 includeCrossSchool=true（默认 false）。GET /post-recruitments/:id 返回可见原帖最近 30 条已发布关联招募；原帖隐藏 / 删除返回 404。读者可关联可见同区讨论。PATCH /recruitments/:id/text 使用 revision / title / description，仅作者可修改已发布标题说明，关键条件固定；冲突 409。所有变更仍校验会话、来源和 CSRF。
+
+## I-010 社区媒体与互动（2026-10-27）
+
+POST /media：requestKey / base64，登录、来源与 CSRF；仅该路径 JSON 上限 7MB，文件原始最多 5MB，同键不同内容 409。GET /media/:id 返回 image/webp，未绑定仅上传本人可读，已绑定只在原帖 PUBLISHED 时公开；no-store。PostContent / EditPost 增加可选 imageIds（最多 6、无重复、只绑定自己的未使用图片），旧省略字段的请求摘要保持不变。PostDTO 新增 images（id / width / height）与 counts（comments / likes）。
+
+GET /community/:postId?cursor：公开可见讨论的点赞数、当前账号 liked / saved、20 条评论及 nextCursor；评论引用不可见时不泄露正文。POST /community/:postId/comments：requestKey / body（1–1000）/ replyId 可空，同键重试不重复；删除或隐藏后 410。DELETE /comments/:id 仅作者软删。PUT /community/:postId/like：active 布尔；PUT /favorites：type POST / RECRUITMENT、id、active 布尔，幂等。GET /me/saved?cursor：本人 50 条收藏与下一页；不可用目标仅占位，可取消收藏。未增加私有附件、视频或外部图片抓取。
