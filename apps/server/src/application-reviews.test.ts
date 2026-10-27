@@ -72,7 +72,7 @@ describe('captain review, membership and private result notifications', () => {
     const saved = results[0].body.data;
     expect(saved).toMatchObject({ status: 'APPROVED', revision: 2, membership: { status: 'ACTIVE', slotName: '界面开发' }, review: { decision: 'APPROVE', reason: '欢迎一起完成作品。', eligibilitySnapshot: { status: 'PASS' } } });
     expect(await db.teamMember.count({ where: { teamId: r.team.id, status: 'ACTIVE' } })).toBe(2);
-    expect(await db.applicationReview.count()).toBe(1); expect(await db.notification.count()).toBe(1);
+    expect(await db.applicationReview.count()).toBe(1); expect(await db.notification.count({ where: { noticeId: null } })).toBe(1);
     expect(await db.domainEvent.count({ where: { kind: 'APPLICATION_APPROVED' } })).toBe(1);
     expect((await list(r.team.id)).body.data).toMatchObject({ items: [], pendingCount: 0 });
     expect((await list(r.team.id).query({ status: 'ALL' })).body.data.items[0].canReview).toBe(false);
@@ -112,7 +112,7 @@ describe('captain review, membership and private result notifications', () => {
     await b.patch('/api/v1/me/profile').set('Origin', config.origin).set('X-CSRF-Token', tokenB).send(profile).expect(200);
     const failed = await review(row.id).expect(422);
     expect(failed.body.error.fields.SKILLS).toBeDefined();
-    expect(await db.applicationReview.count()).toBe(0); expect(await db.notification.count()).toBe(0);
+    expect(await db.applicationReview.count()).toBe(0); expect(await db.notification.count({ where: { noticeId: null } })).toBe(0);
     expect((await db.application.findUniqueOrThrow({ where: { id: row.id } })).revision).toBe(1);
     await b.patch('/api/v1/me/profile').set('Origin', config.origin).set('X-CSRF-Token', tokenB).send({ ...profile, skills: ['Ｒｅａｃｔ'] }).expect(200);
     expect((await review(row.id).expect(200)).body.data.review.eligibilitySnapshot.status).toBe('PASS');
@@ -130,7 +130,7 @@ describe('captain review, membership and private result notifications', () => {
     await db.application.update({ where: { id: row.id }, data: { timeConfirmed: true } });
     await db.teamMember.create({ data: { teamId: r.team.id, slotId: row.slotId, userId: userB, role: 'MEMBER', status: 'REMOVED' } });
     expect((await review(row.id).expect(422)).body.error.fields.MEMBERSHIP).toBeDefined();
-    expect(await db.applicationReview.count()).toBe(0); expect(await db.notification.count()).toBe(0);
+    expect(await db.applicationReview.count()).toBe(0); expect(await db.notification.count({ where: { noticeId: null } })).toBe(0);
   });
   it('does not process effectively expired applications or non-recruiting teams', async () => {
     const r = await team(), row = (await submit(r).expect(201)).body.data;
@@ -150,7 +150,7 @@ describe('captain review, membership and private result notifications', () => {
     expect(responses.map(v => v.status).sort()).toEqual([200, 422]);
     expect(await db.teamMember.count({ where: { teamId: r.team.id, status: 'ACTIVE' } })).toBe(2);
     expect(await db.application.count({ where: { status: 'APPROVED' } })).toBe(1);
-    expect(await db.notification.count()).toBe(1);
+    expect(await db.notification.count({ where: { noticeId: null } })).toBe(1);
     expect((await db.team.findUniqueOrThrow({ where: { id: r.team.id } })).status).toBe('FULL');
   });
   it('serializes the last slot seat while keeping a different slot and the team open', async () => {
@@ -168,13 +168,13 @@ describe('captain review, membership and private result notifications', () => {
     expect(results.map(v => v.status).sort()).toEqual([200, 409]);
     const approved = (await db.application.findUniqueOrThrow({ where: { id: row.id } })).status === 'APPROVED';
     expect(await db.teamMember.count({ where: { teamId: r.team.id, status: 'ACTIVE' } })).toBe(approved ? 2 : 1);
-    expect(await db.applicationReview.count()).toBe(approved ? 1 : 0); expect(await db.notification.count()).toBe(approved ? 1 : 0);
+    expect(await db.applicationReview.count()).toBe(approved ? 1 : 0); expect(await db.notification.count({ where: { noticeId: null } })).toBe(approved ? 1 : 0);
   });
   it('resolves opposing decisions for the same revision and refuses changed retry content', async () => {
     const r = await team(), row = (await submit(r).expect(201)).body.data;
     const results = await Promise.all([review(row.id), review(row.id, 1, 'REJECT', '本轮不合适。')]);
     expect(results.map(v => v.status).sort()).toEqual([200, 409]);
-    expect(await db.applicationReview.count()).toBe(1); expect(await db.notification.count()).toBe(1);
+    expect(await db.applicationReview.count()).toBe(1); expect(await db.notification.count({ where: { noticeId: null } })).toBe(1);
     const saved = await db.applicationReview.findFirstOrThrow();
     await review(row.id, 1, saved.decision, saved.reason + '修改').expect(409);
     expect(await db.teamMember.count({ where: { teamId: r.team.id } })).toBe(saved.decision === 'APPROVE' ? 2 : 1);
@@ -189,7 +189,7 @@ describe('captain review, membership and private result notifications', () => {
         expect(await db.teamMember.count({ where: { teamId: r.team.id } })).toBe(1);
         expect((await db.team.findUniqueOrThrow({ where: { id: r.team.id } })).status).toBe('OPEN');
         expect((await db.application.findUniqueOrThrow({ where: { id: row.id } }))).toMatchObject({ status: 'PENDING', revision: 1, resolvedAt: null });
-        expect(await db.applicationReview.count()).toBe(0); expect(await db.notification.count()).toBe(0);
+        expect(await db.applicationReview.count()).toBe(0); expect(await db.notification.count({ where: { noticeId: null } })).toBe(0);
         expect(await db.domainEvent.count({ where: { kind: 'APPLICATION_APPROVED' } })).toBe(0);
       } finally {
         await db.$executeRawUnsafe(`DROP TRIGGER IF EXISTS review_result_test_failure ON "${table}"`);
@@ -227,7 +227,7 @@ describe('captain review, membership and private result notifications', () => {
     const result = await db.applicationReview.findFirstOrThrow();
     await db.notification.deleteMany();
     await expect(db.notification.create({ data: { recipientId: userC, reviewId: result.id } })).rejects.toMatchObject({ code: 'P2003' });
-    expect(await db.notification.count()).toBe(0);
+    expect(await db.notification.count({ where: { noticeId: null } })).toBe(0);
   });
   it('paginates captain-only applications without mixing another team or accepting foreign cursors', async () => {
     const r = await team(), other = await team(), now = new Date(), ids = Array.from({ length: 25 }, () => randomUUID());

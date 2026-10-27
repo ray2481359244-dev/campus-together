@@ -1,3 +1,4 @@
+import { moderationRouter } from './moderation.js';
 import express from 'express';
 import { communityRouter } from './community.js';
 import helmet from 'helmet';
@@ -35,6 +36,7 @@ app.use('/api/v1', expiryFallback);
 app.get('/api/v1/schools', async (_req, res) => res.json({ data: await db.school.findMany({ where: { active: true }, select: { id: true, name: true, city: true, isDemo: true }, orderBy: { name: 'asc' } }) }));
 app.use('/api/v1/auth', authRouter);
 app.use('/api/v1', profileRouter);
+app.use('/api/v1', moderationRouter);
 app.use('/api/v1', communityRouter);
 app.use('/api/v1', postsRouter);
 app.use('/api/v1', applicationsRouter);

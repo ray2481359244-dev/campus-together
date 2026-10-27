@@ -1,0 +1,2 @@
+ALTER TABLE "Notice" ADD CONSTRAINT "Notice_recruitmentId_fkey" FOREIGN KEY ("recruitmentId") REFERENCES "Recruitment"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+ALTER TABLE "Notice" ADD CONSTRAINT "Notice_teamId_fkey" FOREIGN KEY ("teamId") REFERENCES "Team"("id") ON DELETE CASCADE ON UPDATE CASCADE;

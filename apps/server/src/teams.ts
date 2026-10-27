@@ -77,7 +77,7 @@ export const teamsRouter = Router();
 function actionReceipt(row: Prisma.TeamActionGetPayload<object>): TeamActionDTO {
   return { id: row.id, teamId: row.teamId, kind: row.kind, revision: row.expectedRevision + 1, status: row.toStatus, captainUserId: row.captainUserId, expiredCount: row.expiredCount, reason: row.reason, changedAt: row.createdAt.toISOString() };
 }
-async function manageTeam(teamId: string, actorId: string, input: TeamActionInput): Promise<TeamActionDTO> {
+export async function manageTeam(teamId: string, actorId: string, input: TeamActionInput, administrator = false): Promise<TeamActionDTO> {
   return db.$transaction(async tx => {
     const targetIdentity = input.kind === 'TRANSFER' ? await tx.teamMember.findFirst({ where: { id: input.targetMemberId, teamId }, select: { userId: true } }) : null;
     const team = await lockedTeam(tx, teamId, [actorId, ...(targetIdentity ? [targetIdentity.userId] : [])]);
@@ -89,7 +89,7 @@ async function manageTeam(teamId: string, actorId: string, input: TeamActionInpu
         prior.targetMemberId !== (input.kind === 'TRANSFER' ? input.targetMemberId : null) || prior.targetRevision !== (input.kind === 'TRANSFER' ? input.targetRevision : null)) throw new ApiError(409, 'TEAM_CHANGED', '原版本已有其他操作或队伍再次变化，请刷新核对。');
       return actionReceipt(prior);
     }
-    captain(team, actorId);
+    if(administrator) { if(input.kind !== 'CANCEL' || !await tx.user.findFirst({where:{id:actorId,role:'ADMIN',status:'ACTIVE'}})) throw new ApiError(403,'ADMIN_REQUIRED','仅管理员可执行管理取消。'); } else captain(team, actorId);
     if (team.revision !== input.revision) throw new ApiError(409, 'TEAM_CHANGED', '队伍版本已有变化，请刷新核对。');
     if (!editable(team)) throw new ApiError(409, 'TEAM_NOT_EDITABLE', '队伍已结束、取消或截止，不能继续管理。');
     const active = team.members.filter(m => m.status === 'ACTIVE'), now = new Date();
@@ -124,6 +124,7 @@ async function manageTeam(teamId: string, actorId: string, input: TeamActionInpu
       await tx.notification.create({ data: { recipientId: recipient.recipientId, actionNoticeId: notice.id, createdAt: now } });
     }
     await tx.domainEvent.create({ data: { teamId, actorId, kind: 'TEAM_' + input.kind, payload: { actionId: action.id, fromStatus: team.status, toStatus: nextStatus, captainUserId, expiredCount: pending.length } } });
+    if(administrator) await tx.moderationAction.create({data:{adminId:actorId,requestKey:action.id,requestHash:action.id.replaceAll('-','').padEnd(64,'0'),action:'TEAM_CANCEL',targetType:'TEAM',targetId:teamId,reason:input.reason,result:{actionId:action.id}}});
     return actionReceipt(action);
   }, { maxWait: 5000, timeout: 10000 });
 }

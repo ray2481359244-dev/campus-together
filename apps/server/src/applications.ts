@@ -1,3 +1,5 @@
+import { activeUser } from './community.js';
+import { notify } from './notices.js';
 import { Router, type RequestHandler } from 'express';
 import { createHash } from 'node:crypto';
 import { CreateApplicationSchema, EligibilityInputSchema, IdSchema, MyApplicationsQuerySchema, WithdrawApplicationSchema, ReviewApplicationSchema, CaptainApplicationsQuerySchema, RecruitmentDraftSchema } from '@campus/contracts';
@@ -32,7 +34,7 @@ export async function eligibility(tx: Prisma.TransactionClient, team: Team, user
   const add = (code: string, label: string, status: 'PASS' | 'FAIL' | 'UNKNOWN', reason: string) => checks.push({ code, label, status, reason });
   add('ACCOUNT', '账号状态', user.status === 'ACTIVE' ? 'PASS' : 'FAIL', user.status === 'ACTIVE' ? '当前账号可提交申请。' : '当前账号不可申请。');
   const members = team.members.filter(m => m.status === 'ACTIVE');
-  const open = recruitingWindow(team.status, team.recruitment.joinDeadline, now, team.recruitmentClosedAt);
+  const open = !team.recruitment.hiddenAt && recruitingWindow(team.status, team.recruitment.joinDeadline, now, team.recruitmentClosedAt);
   add('RECRUITING', '招募时间与总名额', open && members.length < team.recruitment.capacity ? 'PASS' : 'FAIL', !open ? '招募已停止或截止，不能提交新申请。' : members.length >= team.recruitment.capacity ? '当前队伍已满，不接收新申请。' : '招募进行中，待审核申请不占名额。');
   const member = team.members.find(m => m.userId === userId);
   add('MEMBERSHIP', '成员身份', member ? 'FAIL' : 'PASS', member?.status === 'ACTIVE' ? '你已是队伍成员，无需申请。' : member?.status === 'REMOVED' ? '被移除后不能再次申请同一队伍。' : member?.status === 'LEFT' ? '本版本退出后不能再次加入同一队伍。' : '你目前不是该队有效成员。');
@@ -80,7 +82,7 @@ export const applicationsRouter = Router();
 applicationsRouter.post('/recruitments/:id/eligibility', privateRead, writeLimit, csrfGuard, async (req, res) => {
   const user = requireUser(res), id = parse(IdSchema, req.params.id), input = parse(EligibilityInputSchema, req.body);
   const result = await db.$transaction(async tx => {
-    const identity = await tx.team.findUnique({ where: { recruitmentId: id }, select: { id: true } });
+    const identity = await tx.team.findUnique({ where: { recruitmentId: id, recruitment: { hiddenAt: null } }, select: { id: true } });
     if (!identity) throw new ApiError(404, 'NOT_FOUND', '该招募不存在或尚未公开。');
     return eligibility(tx, await publishedTeam(tx, identity.id), user.id, input, new Date());
   });
@@ -148,6 +150,7 @@ applicationsRouter.post('/teams/:id/applications', privateRead, writeLimit, csrf
   const { requestKey, ...content } = input;
   const hash = createHash('sha256').update(JSON.stringify({ teamId, ...content })).digest('hex');
   const result = await db.$transaction(async tx => {
+    await activeUser(tx,user.id);
     // Applicant lock serializes their cross-team pending limit. NO KEY UPDATE permits FK checks.
     await tx.$queryRaw`SELECT "id" FROM "User" WHERE "id" = ${user.id}::uuid FOR NO KEY UPDATE`;
     const prior = await tx.applicationRequest.findUnique({ where: { applicantId_requestKey: { applicantId: user.id, requestKey } }, include: { application: { include: applicationInclude } } });
@@ -175,6 +178,7 @@ applicationsRouter.post('/teams/:id/applications', privateRead, writeLimit, csrf
         await tx.teamMember.create({ data: { teamId, userId: user.id, slotId: input.slotId, role: 'MEMBER', joinedAt: now } });
         await tx.team.update({ where: { id: teamId }, data: { status: team.members.filter(m => m.status === 'ACTIVE').length + 1 >= team.recruitment.capacity ? 'FULL' : 'OPEN' } });
       }
+      await notify(tx,{recipientId:team.captainUserId,sourceKey:'application:'+row.id+':'+row.submission,kind:direct?'MEMBER_JOINED':'APPLICATION_SUBMITTED',title:team.recruitment.title,reason:direct?'有成员已通过条件直接加入，请到队伍查看。':'收到一份新申请，请在招募详情核对并审核。',teamId,recruitmentId:team.recruitmentId});
       await tx.domainEvent.create({ data: { teamId, actorId: user.id, kind: direct ? 'MEMBER_JOINED' : 'APPLICATION_SUBMITTED', payload: { applicationId: row.id, submission: row.submission, slotId: row.slotId } } });
     }
     if (!row) throw new Error('Application was not created');

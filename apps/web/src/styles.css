@@ -307,3 +307,9 @@ svg{flex-shrink:0}
 .community-comment p { white-space:pre-wrap; }
 
 .post-detail:has(.post-images img) > .post-body { min-height: 0; }
+
+.report-control { margin:16px 0;color:var(--muted);font-size:14px; }
+.report-control > summary { cursor:pointer;text-decoration:underline; }
+.report-control form { margin-top:12px; }
+.admin-list { display:grid;gap:16px;margin:20px 0; }
+.admin-content { white-space:pre-wrap;overflow-wrap:anywhere;max-height:250px;overflow:auto; }

@@ -81,7 +81,7 @@ describe('private teams, membership changes and recruitment closure', () => {
     expect((await submit(r).expect(422)).body.error.fields.MEMBERSHIP).toBeDefined();
     const notes = (await b.get('/api/v1/me/notifications')).body.data.items;
     expect(notes.filter((n: { kind: string }) => n.kind === 'MEMBER_LEFT')).toHaveLength(1);
-    expect((await a.get('/api/v1/me/notifications')).body.data.items).toEqual([]);
+    expect((await a.get('/api/v1/me/notifications')).body.data.items.filter((n: {kind:string}) => n.kind === 'MEMBER_LEFT')).toEqual([]);
   });
   it('removes once with an immutable reason and prevents removed users from reading or applying again', async () => {
     const r = await team(), app = await join(r), member = (await getTeam(r.team.id, b)).body.data.myMembership;
@@ -177,7 +177,7 @@ describe('private teams, membership changes and recruitment closure', () => {
     const stored = await db.application.findUniqueOrThrow({ where: { id: row.id } }), approved = stored.status === 'APPROVED';
     expect(['APPROVED', 'EXPIRED']).toContain(stored.status);
     expect(await db.teamMember.count({ where: { teamId: r.team.id, status: 'ACTIVE' } })).toBe(approved ? 2 : 1);
-    expect(await db.notification.count()).toBe(1); expect(await db.recruitmentClosure.count()).toBe(1);
+    expect(await db.notification.count({ where: { noticeId: null } })).toBe(1); expect(await db.recruitmentClosure.count()).toBe(1);
     expect((await a.get('/api/v1/recruitments/' + r.id)).body.data.team.acceptingStatus).toBe('CLOSED');
   });
   it('resolves closure versus new submission without leaving any pending record behind', async () => {
@@ -185,14 +185,14 @@ describe('private teams, membership changes and recruitment closure', () => {
     expect(results[0].status).toBe(200); expect([201, 422]).toContain(results[1].status);
     expect(await db.application.count({ where: { teamId: r.team.id, status: 'PENDING' } })).toBe(0);
     const accepted = results[1].status === 201;
-    expect(await db.application.count()).toBe(accepted ? 1 : 0); expect(await db.notification.count()).toBe(accepted ? 1 : 0);
+    expect(await db.application.count()).toBe(accepted ? 1 : 0); expect(await db.notification.count({ where: { noticeId: null } })).toBe(accepted ? 1 : 0);
   });
   it('resolves closure versus withdrawal without changing an already withdrawn intention', async () => {
     const r = await team(), row = (await submit(r).expect(201)).body.data;
     const results = await Promise.all([close(r), write(b, tokenB, '/applications/' + row.id + '/withdraw', { revision: 1 })]);
     expect(results[0].status).toBe(200); expect([200, 409]).toContain(results[1].status);
     const status = (await db.application.findUniqueOrThrow({ where: { id: row.id } })).status;
-    expect(['WITHDRAWN', 'EXPIRED']).toContain(status); expect(await db.notification.count()).toBe(status === 'EXPIRED' ? 1 : 0);
+    expect(['WITHDRAWN', 'EXPIRED']).toContain(status); expect(await db.notification.count({ where: { noticeId: null } })).toBe(status === 'EXPIRED' ? 1 : 0);
   });
   for (const table of ['Notification', 'DomainEvent']) {
     it(`rolls back membership status and freed seats if ${table} fails`, async () => {
@@ -203,7 +203,7 @@ describe('private teams, membership changes and recruitment closure', () => {
         await remove(r.team.id, member.id).expect(503);
         expect((await db.teamMember.findUniqueOrThrow({ where: { id: member.id } }))).toMatchObject({ status: 'ACTIVE', revision: 1, leftAt: null });
         expect((await db.team.findUniqueOrThrow({ where: { id: r.team.id } })).status).toBe('FULL');
-        expect(await db.membershipChange.count()).toBe(0); expect(await db.notification.count()).toBe(1);
+        expect(await db.membershipChange.count()).toBe(0); expect(await db.notification.count({ where: { noticeId: null } })).toBe(1);
       } finally { await db.$executeRawUnsafe(`DROP TRIGGER IF EXISTS team_change_test_failure ON "${table}"`); await db.$executeRawUnsafe('DROP FUNCTION IF EXISTS team_change_test_failure()'); }
       await remove(r.team.id, member.id).expect(200);
     });
@@ -216,7 +216,7 @@ describe('private teams, membership changes and recruitment closure', () => {
         expect((await db.team.findUniqueOrThrow({ where: { id: r.team.id } })).recruitmentClosedAt).toBeNull();
         expect((await db.recruitment.findUniqueOrThrow({ where: { id: r.id } })).revision).toBe(r.revision);
         expect((await db.application.findUniqueOrThrow({ where: { id: row.id } }))).toMatchObject({ status: 'PENDING', revision: 1, resolvedAt: null });
-        expect(await db.recruitmentClosure.count()).toBe(0); expect(await db.notification.count()).toBe(0);
+        expect(await db.recruitmentClosure.count()).toBe(0); expect(await db.notification.count({ where: { noticeId: null } })).toBe(0);
       } finally { await db.$executeRawUnsafe(`DROP TRIGGER IF EXISTS team_close_test_failure ON "${table}"`); await db.$executeRawUnsafe('DROP FUNCTION IF EXISTS team_close_test_failure()'); }
       await close(r).expect(200);
     });
@@ -380,7 +380,7 @@ describe('captain transfer and activity lifecycle', () => {
         expect(await db.team.findUniqueOrThrow({ where: { id: r.team.id } })).toMatchObject({ captainUserId: userA, status: 'OPEN', revision: 1, startedAt: null });
         expect(await db.teamMember.findUniqueOrThrow({ where: { id: member.id } })).toMatchObject({ role: 'MEMBER', revision: 1 });
         expect(await db.application.findUniqueOrThrow({ where: { id: pending.id } })).toMatchObject({ status: 'PENDING', revision: 1 });
-        expect(await db.teamAction.count()).toBe(0); expect(await db.teamActionNotice.count()).toBe(0); expect(await db.notification.count()).toBe(1);
+        expect(await db.teamAction.count()).toBe(0); expect(await db.teamActionNotice.count()).toBe(0); expect(await db.notification.count({ where: { noticeId: null } })).toBe(1);
       } finally { await db.$executeRawUnsafe(`DROP TRIGGER IF EXISTS team_action_test_failure ON "${table}"`); await db.$executeRawUnsafe('DROP FUNCTION IF EXISTS team_action_test_failure()'); }
       await (kind === 'TRANSFER' ? transfer(r.team.id, member) : manage(r.team.id, 'START')).expect(200);
     });

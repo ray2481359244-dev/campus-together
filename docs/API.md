@@ -155,3 +155,11 @@ GET /recruitments 接受 category 和 includeCrossSchool=true（默认 false）�
 POST /media：requestKey / base64，登录、来源与 CSRF；仅该路径 JSON 上限 7MB，文件原始最多 5MB，同键不同内容 409。GET /media/:id 返回 image/webp，未绑定仅上传本人可读，已绑定只在原帖 PUBLISHED 时公开；no-store。PostContent / EditPost 增加可选 imageIds（最多 6、无重复、只绑定自己的未使用图片），旧省略字段的请求摘要保持不变。PostDTO 新增 images（id / width / height）与 counts（comments / likes）。
 
 GET /community/:postId?cursor：公开可见讨论的点赞数、当前账号 liked / saved、20 条评论及 nextCursor；评论引用不可见时不泄露正文。POST /community/:postId/comments：requestKey / body（1–1000）/ replyId 可空，同键重试不重复；删除或隐藏后 410。DELETE /comments/:id 仅作者软删。PUT /community/:postId/like：active 布尔；PUT /favorites：type POST / RECRUITMENT、id、active 布尔，幂等。GET /me/saved?cursor：本人 50 条收藏与下一页；不可用目标仅占位，可取消收藏。未增加私有附件、视频或外部图片抓取。
+
+## I-011 举报、主题与管理（2026-10-27）
+
+POST /reports：requestKey / targetType POST、COMMENT、RECRUITMENT、CHAT_MESSAGE、USER / targetId / reason（5–500）。目标必须当前可见，聊天仅有效成员提交单条证据；每天最多十条。GET /me/reports 仅本人最近 50 条处理状态。POST /topic-requests：requestKey / category / name / description；规范化、已有主题 / 别名提示和每人最多五个待审。GET /me/topic-requests 仅本人最近 50 条。
+
+管理员 GET /admin/{reports,topics,topic-settings,users,posts,comments,recruitments,audit}，每页 50，按 UUID 稳定顺序，支持 cursor，users 的 q 仅查昵称，不返回邮箱 / 凭据 / 会话；群聊证据读取留审计。POST /admin/content/:type/:id：requestKey / revision / hidden / reason。POST /admin/reports/:id/resolve：requestKey / revision / outcome HIDE、RESOLVED、DISMISSED / reason。POST /admin/topic-requests/:id/review：requestKey / revision / approved / reason。POST /admin/topics/:id/settings：requestKey / active 或 alias / reason。POST /admin/users/:id/status：requestKey / status ACTIVE 或 SUSPENDED / reason。POST /admin/teams/:id/cancel：revision / reason，复用队伍操作回执。所有变更要求当前 ADMIN、来源、CSRF、原请求校验和审计；审计失败整体回滚。
+
+NotificationDTO 增加 APPLICATION_SUBMITTED / MEMBER_JOINED / TOPIC_APPROVED / TOPIC_REJECTED / REPORT_RESOLVED；主题与举报的 teamId / recruitmentId 可空，页面改走本人申请与举报入口。Notice 与既有通知来源互斥、接收者复合外键校验；申请提醒同提交事务，每轮仅一次。

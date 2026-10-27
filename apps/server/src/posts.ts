@@ -1,4 +1,4 @@
-import { attachImages } from './community.js';
+import { activeUser, attachImages } from './community.js';
 import { Router } from 'express';
 import { createHash, randomUUID } from 'node:crypto';
 import { CategorySchema, CreatePostSchema, EditPostSchema, DeletePostSchema, IdSchema, PostsQuerySchema, PostCursorSchema } from '@campus/contracts';
@@ -85,6 +85,7 @@ postsRouter.patch('/posts/:id', async (req, res) => {
   if (!post) throw new ApiError(404, 'NOT_FOUND', '该讨论不存在或已经不可见。');
   if (post.authorId !== user.id) throw new ApiError(403, 'NOT_AUTHOR', '只有作者可以修改这条讨论。');
   const updated = await db.$transaction(async tx => {
+    await activeUser(tx,user.id);
     const result = await tx.post.updateMany({ where: { id, authorId: user.id, revision: input.revision, status: 'PUBLISHED' }, data: { title: input.title, body: input.body, revision: { increment: 1 } } });
     if (!result.count) throw new ApiError(409, 'REVISION_CONFLICT', '讨论已在其他页面更新，请核对已保存版本后编辑。');
     if (input.imageIds) await attachImages(tx, id, user.id, input.imageIds);
@@ -98,7 +99,7 @@ postsRouter.delete('/posts/:id', async (req, res) => {
   const post = await db.post.findFirst({ where: { id, status: 'PUBLISHED' } });
   if (!post) throw new ApiError(404, 'NOT_FOUND', '该讨论不存在或已经不可见。');
   if (post.authorId !== user.id) throw new ApiError(403, 'NOT_AUTHOR', '只有作者可以删除这条讨论。');
-  const result = await db.post.updateMany({ where: { id, authorId: user.id, revision: input.revision, status: 'PUBLISHED' }, data: { status: 'DELETED', deletedAt: new Date(), revision: { increment: 1 } } });
+  const result = await db.$transaction(async tx => { await activeUser(tx,user.id); return tx.post.updateMany({ where: { id, authorId: user.id, revision: input.revision, status: 'PUBLISHED' }, data: { status: 'DELETED', deletedAt: new Date(), revision: { increment: 1 } } }); });
   if (!result.count) throw new ApiError(409, 'REVISION_CONFLICT', '讨论已更新，请重新载入后操作。');
   res.json({ data: { deleted: true } });
 });

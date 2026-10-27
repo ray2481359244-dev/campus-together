@@ -77,7 +77,7 @@ communityRouter.post('/community/:id/comments',writeLimit,csrfGuard,async(req,re
 });
 communityRouter.delete('/comments/:id',writeLimit,csrfGuard,async(req,res)=>{
   const user=requireUser(res),id=parse(IdSchema,req.params.id);
-  await db.$transaction(async tx=>{await activeUser(tx,user.id); const row=await tx.comment.findFirst({where:{id,authorId:user.id}}); if(!row) throw new ApiError(404,'NOT_FOUND','评论不可操作。'); await tx.comment.updateMany({where:{id,authorId:user.id,status:'PUBLISHED'},data:{status:'DELETED',body:''}});}); res.json({data:{deleted:true}});
+  await db.$transaction(async tx=>{await activeUser(tx,user.id); const row=await tx.comment.findFirst({where:{id,authorId:user.id}}); if(!row) throw new ApiError(404,'NOT_FOUND','评论不可操作。'); await tx.comment.updateMany({where:{id,authorId:user.id,status:'PUBLISHED'},data:{status:'DELETED',body:'',revision:{increment:1}}});}); res.json({data:{deleted:true}});
 });
 communityRouter.put('/community/:id/like',writeLimit,csrfGuard,async(req,res)=>{
   const user=requireUser(res),postId=parse(IdSchema,req.params.id),input=parse(z.object({active:z.boolean()}).strict(),req.body);
@@ -85,13 +85,13 @@ communityRouter.put('/community/:id/like',writeLimit,csrfGuard,async(req,res)=>{
 });
 communityRouter.put('/favorites',writeLimit,csrfGuard,async(req,res)=>{
   const user=requireUser(res),input=parse(z.object({type:z.enum(['POST','RECRUITMENT']),id:z.uuid(),active:z.boolean()}).strict(),req.body), field=input.type==='POST'?'postId':'recruitmentId';
-  await db.$transaction(async tx=>{await activeUser(tx,user.id); if(input.active){if(input.type==='POST') await visiblePost(tx,input.id);else if(!await tx.recruitment.findFirst({where:{id:input.id,publicationStatus:'PUBLISHED'}})) throw new ApiError(404,'NOT_FOUND','招募不可见。');await tx.favorite.createMany({data:[{userId:user.id,[field]:input.id}],skipDuplicates:true});}else await tx.favorite.deleteMany({where:{userId:user.id,[field]:input.id}});});res.json({data:{active:input.active}});
+  await db.$transaction(async tx=>{await activeUser(tx,user.id); if(input.active){if(input.type==='POST') await visiblePost(tx,input.id);else if(!await tx.recruitment.findFirst({where:{id:input.id,publicationStatus:'PUBLISHED',hiddenAt:null}})) throw new ApiError(404,'NOT_FOUND','招募不可见。');await tx.favorite.createMany({data:[{userId:user.id,[field]:input.id}],skipDuplicates:true});}else await tx.favorite.deleteMany({where:{userId:user.id,[field]:input.id}});});res.json({data:{active:input.active}});
 });
 communityRouter.get('/me/saved',async(req,res)=>{
   const user=requireUser(res),query=parse(z.object({cursor:z.uuid().optional()}).strict(),req.query);
   if(query.cursor && !await db.favorite.findFirst({where:{id:query.cursor,userId:user.id}})) throw new ApiError(400,'INVALID_CURSOR','收藏位置失效，请重新加载。');
-  const rows=await db.favorite.findMany({where:{userId:user.id},include:{post:{select:{title:true,status:true}},recruitment:{select:{title:true,publicationStatus:true}}},orderBy:[{createdAt:'desc'},{id:'desc'}],take:51,...(query.cursor?{cursor:{id:query.cursor},skip:1}:{})});
-  const data=rows.slice(0,50).map(r=>{const available=r.post?.status==='PUBLISHED'||r.recruitment?.publicationStatus==='PUBLISHED';return {id:r.id,postId:r.postId,recruitmentId:r.recruitmentId,available,title:available?r.post?.title||r.recruitment?.title:'内容已不可用'};});res.json({data,meta:{nextCursor:rows.length>50?data.at(-1)!.id:null}});
+  const rows=await db.favorite.findMany({where:{userId:user.id},include:{post:{select:{title:true,status:true}},recruitment:{select:{title:true,publicationStatus:true,hiddenAt:true}}},orderBy:[{createdAt:'desc'},{id:'desc'}],take:51,...(query.cursor?{cursor:{id:query.cursor},skip:1}:{})});
+  const data=rows.slice(0,50).map(r=>{const available=r.post?.status==='PUBLISHED'||r.recruitment?.publicationStatus==='PUBLISHED'&&!r.recruitment.hiddenAt;return {id:r.id,postId:r.postId,recruitmentId:r.recruitmentId,available,title:available?r.post?.title||r.recruitment?.title:'内容已不可用'};});res.json({data,meta:{nextCursor:rows.length>50?data.at(-1)!.id:null}});
 });
 
 export async function purgeOrphanImages() {

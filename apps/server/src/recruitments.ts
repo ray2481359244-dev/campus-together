@@ -1,3 +1,4 @@
+import { activeUser } from './community.js';
 import { z } from 'zod';
 import { Router } from 'express';
 import { createHash, randomUUID } from 'node:crypto';
@@ -68,7 +69,7 @@ recruitmentsRouter.get('/recruitments', async (req, res) => {
     try { cursor = parse(RecruitmentCursorSchema, JSON.parse(Buffer.from(input.cursor, 'base64url').toString('utf8'))); }
     catch { throw new ApiError(400, 'INVALID_CURSOR', '分页位置无效，请重新加载。'); }
   }
-  const rows = await db.recruitment.findMany({ where: { ...(input.includeCrossSchool === 'true' ? { OR: [{ schoolId: input.schoolId }, { allowCrossSchool: true }] } : { schoolId: input.schoolId }), category: input.category, topicId: input.topicId, publicationStatus: 'PUBLISHED', AND: [
+  const rows = await db.recruitment.findMany({ where: { ...(input.includeCrossSchool === 'true' ? { OR: [{ schoolId: input.schoolId }, { allowCrossSchool: true }] } : { schoolId: input.schoolId }), category: input.category, topicId: input.topicId, publicationStatus: 'PUBLISHED', hiddenAt: null, AND: [
     ...(input.q ? [{ OR: [{ title: { contains: input.q, mode: 'insensitive' as const } }, { description: { contains: input.q, mode: 'insensitive' as const } }, { payload: { path: ['competitionName'], string_contains: input.q, mode: 'insensitive' as const } }, { payload: { path: ['direction'], string_contains: input.q, mode: 'insensitive' as const } }] }] : []),
     ...(cursor ? [{ OR: [{ publishedAt: { lt: new Date(cursor.publishedAt) } }, { publishedAt: new Date(cursor.publishedAt), id: { lt: cursor.id } }] }] : []),
   ] }, include, orderBy: [{ publishedAt: 'desc' }, { id: 'desc' }], take: input.limit + 1 });
@@ -79,13 +80,13 @@ recruitmentsRouter.get('/recruitments', async (req, res) => {
 recruitmentsRouter.get('/post-recruitments/:id', async (req, res) => {
   const id = parse(IdSchema, req.params.id);
   if (!await db.post.findFirst({ where: { id, status: 'PUBLISHED' } })) throw new ApiError(404, 'NOT_FOUND', '来源讨论不可用。');
-  const rows = await db.recruitment.findMany({ where: { sourcePostId: id, publicationStatus: 'PUBLISHED' }, include, orderBy: [{ publishedAt: 'desc' }, { id: 'desc' }], take: 30 });
+  const rows = await db.recruitment.findMany({ where: { sourcePostId: id, publicationStatus: 'PUBLISHED', hiddenAt: null }, include, orderBy: [{ publishedAt: 'desc' }, { id: 'desc' }], take: 30 });
   res.json({ data: rows.map(row => dto(row, res.locals.session?.userId ?? undefined)) });
 });
 recruitmentsRouter.get('/recruitments/:id', async (req, res) => {
   const id = parse(IdSchema, req.params.id), userId = res.locals.session?.userId;
   const row = await db.recruitment.findUnique({ where: { id }, include });
-  if (!row || (row.publicationStatus === 'DRAFT' && row.authorId !== userId)) throw new ApiError(404, 'NOT_FOUND', '该招募不存在或尚未公开。');
+  if (!row || row.hiddenAt || (row.publicationStatus === 'DRAFT' && row.authorId !== userId)) throw new ApiError(404, 'NOT_FOUND', '该招募不存在或尚未公开。');
   res.json({ data: dto(row, userId ?? undefined) });
 });
 recruitmentsRouter.use('/recruitments', (_req, res, next) => { requireUser(res); next(); }, writeLimit, csrfGuard);
@@ -93,6 +94,7 @@ recruitmentsRouter.post('/recruitments', async (req, res) => {
   const user = requireUser(res), input = parse(CreateRecruitmentSchema, req.body);
   const hash = createHash('sha256').update(JSON.stringify(input.draft)).digest('hex');
   const result = await db.$transaction(async tx => {
+    await activeUser(tx,user.id);
     const where = { authorId_requestKey: { authorId: user.id, requestKey: input.requestKey } };
     // The unique request claim is committed with creation; deleted drafts retain the claim.
     const claim = await tx.recruitmentCreateRequest.createMany({ data: [{ authorId: user.id, requestKey: input.requestKey, requestHash: hash }], skipDuplicates: true });
@@ -121,6 +123,7 @@ recruitmentsRouter.post('/recruitments', async (req, res) => {
 recruitmentsRouter.patch('/recruitments/:id', async (req, res) => {
   const user = requireUser(res), id = parse(IdSchema, req.params.id), input = parse(UpdateRecruitmentSchema, req.body);
   const row = await db.$transaction(async tx => {
+    await activeUser(tx,user.id);
     const current = await ownedLocked(tx, id, user.id); editable(current, input.revision);
     const schoolId = await references(tx, user.id, input.draft);
     return tx.recruitment.update({ where: { id }, data: { ...columns(input.draft), schoolId, revision: { increment: 1 } }, include });
@@ -129,12 +132,13 @@ recruitmentsRouter.patch('/recruitments/:id', async (req, res) => {
 });
 recruitmentsRouter.delete('/recruitments/:id', async (req, res) => {
   const user = requireUser(res), id = parse(IdSchema, req.params.id), input = parse(RecruitmentRevisionSchema, req.body);
-  await db.$transaction(async tx => { const current = await ownedLocked(tx, id, user.id); editable(current, input.revision); await tx.recruitment.delete({ where: { id } }); });
+  await db.$transaction(async tx => { await activeUser(tx,user.id); const current = await ownedLocked(tx, id, user.id); editable(current, input.revision); await tx.recruitment.delete({ where: { id } }); });
   res.json({ data: { deleted: true } });
 });
 recruitmentsRouter.post('/recruitments/:id/publish', async (req, res) => {
   const user = requireUser(res), id = parse(IdSchema, req.params.id), input = parse(RecruitmentRevisionSchema, req.body);
   const result = await db.$transaction(async tx => {
+    await activeUser(tx,user.id);
     const current = await ownedLocked(tx, id, user.id);
     if (current.publicationStatus === 'PUBLISHED') return { row: current, created: false };
     editable(current, input.revision);
@@ -162,6 +166,7 @@ recruitmentsRouter.patch('/recruitments/:id/text', async (req, res) => {
   const user = requireUser(res), id = parse(IdSchema, req.params.id);
   const input = parse(z.object({ revision: z.number().int().positive(), title: z.string().trim().min(5).max(60), description: z.string().trim().min(20).max(3000) }).strict(), req.body);
   const row = await db.$transaction(async tx => {
+    await activeUser(tx,user.id);
     const current = await ownedLocked(tx, id, user.id);
     if (current.publicationStatus !== 'PUBLISHED' || current.revision !== input.revision) throw new ApiError(409, 'REVISION_CONFLICT', '内容状态已有变化，请重新核对。');
     const payload = { ...RecruitmentDraftSchema.parse(current.payload), title: input.title, description: input.description };

@@ -67,7 +67,7 @@ function sendSession(res: Response, session: Awaited<ReturnType<typeof saveSessi
   return session.csrfToken;
 }
 async function newSession(res: Response, userId: string | null) {
-  const session = await db.$transaction(tx => saveSession(tx, res.locals.session?.id, userId));
+  const session = await db.$transaction(async tx => { if(userId) { await tx.$queryRaw`SELECT "id" FROM "User" WHERE "id"=${userId}::uuid FOR NO KEY UPDATE`; if(!await tx.user.findFirst({where:{id:userId,status:'ACTIVE'}}))throw new ApiError(401,'AUTH_REQUIRED','账号不可用。'); } return saveSession(tx, res.locals.session?.id, userId); });
   return sendSession(res, session);
 }
 export const authRouter = Router();

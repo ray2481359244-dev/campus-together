@@ -70,6 +70,10 @@ model User {
   comments Comment[]
   reactions PostReaction[]
   favorites Favorite[]
+  reports Report[]
+  moderationActions ModerationAction[]
+  topicRequests TopicRequest[]
+  notices Notice[]
   domainEvents DomainEvent[]
   createdAt    DateTime   @default(now()) @db.Timestamptz(3)
   updatedAt    DateTime   @updatedAt @db.Timestamptz(3)
@@ -126,6 +130,8 @@ model Topic {
   normalizedName String   @db.VarChar(80)
   description    String   @default("") @db.VarChar(300)
   active         Boolean  @default(true)
+  aliases TopicAlias[]
+  requests TopicRequest[]
   posts          Post[]
   recruitments Recruitment[]
   createdAt      DateTime @default(now()) @db.Timestamptz(3)
@@ -187,6 +193,8 @@ enum MemberStatus {
 }
 
 model Recruitment {
+  notices Notice[]
+  hiddenAt DateTime? @db.Timestamptz(3)
   favorites Favorite[]
   id String @id @default(uuid()) @db.Uuid
   authorId String @db.Uuid
@@ -234,6 +242,7 @@ model RecruitmentCreateRequest {
 }
 
 model Team {
+  notices Notice[]
   id String @id @default(uuid()) @db.Uuid
   recruitmentId String @unique @db.Uuid
   recruitment Recruitment @relation(fields: [recruitmentId], references: [id], onDelete: Cascade)
@@ -418,6 +427,9 @@ model ApplicationReview {
 }
 
 model Notification {
+  @@unique([noticeId, recipientId])
+  noticeId String? @unique @db.Uuid
+  notice Notice? @relation(fields: [noticeId, recipientId], references: [id, recipientId], onDelete: Cascade)
   id String @id @default(uuid()) @db.Uuid
   recipientId String @db.Uuid
   recipient User @relation(fields: [recipientId], references: [id], onDelete: Cascade)
@@ -545,6 +557,7 @@ model PostImage {
   @@index([authorId, createdAt])
 }
 model Comment {
+  revision Int @default(1)
   id String @id @default(uuid()) @db.Uuid
   postId String @db.Uuid
   post Post @relation(fields: [postId], references: [id], onDelete: Cascade)
@@ -579,4 +592,81 @@ model Favorite {
   @@unique([userId, postId])
   @@unique([userId, recruitmentId])
   @@index([userId, createdAt, id])
+}
+
+model Report {
+  id String @id @default(uuid()) @db.Uuid
+  reporterId String @db.Uuid
+  reporter User @relation(fields: [reporterId], references: [id], onDelete: Cascade)
+  requestKey String @db.Uuid
+  requestHash String @db.Char(64)
+  targetType String @db.VarChar(20)
+  targetId String @db.Uuid
+  reason String @db.VarChar(500)
+  evidence Json
+  status String @default("PENDING") @db.VarChar(20)
+  revision Int @default(1)
+  resolution String @default("") @db.VarChar(500)
+  handledAt DateTime? @db.Timestamptz(3)
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
+  @@unique([reporterId, requestKey])
+  @@index([status, createdAt, id])
+}
+model ModerationAction {
+  id String @id @default(uuid()) @db.Uuid
+  adminId String? @db.Uuid
+  admin User? @relation(fields: [adminId], references: [id], onDelete: SetNull)
+  requestKey String @db.Uuid
+  requestHash String @db.Char(64)
+  action String @db.VarChar(40)
+  targetType String @db.VarChar(20)
+  targetId String @db.Uuid
+  reason String @db.VarChar(500)
+  result Json
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
+  @@unique([adminId, requestKey])
+  @@index([createdAt, id])
+}
+model TopicRequest {
+  id String @id @default(uuid()) @db.Uuid
+  userId String @db.Uuid
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  requestKey String @db.Uuid
+  requestHash String @db.Char(64)
+  category Category
+  name String @db.VarChar(40)
+  normalizedName String @db.VarChar(80)
+  description String @db.VarChar(300)
+  status String @default("PENDING") @db.VarChar(20)
+  revision Int @default(1)
+  reason String @default("") @db.VarChar(500)
+  topicId String? @db.Uuid
+  topic Topic? @relation(fields: [topicId], references: [id], onDelete: SetNull)
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
+  @@unique([userId, requestKey])
+  @@index([status, createdAt, id])
+}
+model TopicAlias {
+  id String @id @default(uuid()) @db.Uuid
+  topicId String @db.Uuid
+  topic Topic @relation(fields: [topicId], references: [id], onDelete: Cascade)
+  category Category
+  normalizedName String @db.VarChar(80)
+  @@unique([category, normalizedName])
+}
+model Notice {
+  id String @id @default(uuid()) @db.Uuid
+  recipientId String @db.Uuid
+  recipient User @relation(fields: [recipientId], references: [id], onDelete: Cascade)
+  sourceKey String @db.VarChar(120)
+  kind String @db.VarChar(40)
+  title String @db.VarChar(100)
+  reason String @db.VarChar(500)
+  recruitmentId String? @db.Uuid
+  recruitment Recruitment? @relation(fields: [recruitmentId], references: [id], onDelete: Cascade)
+  teamId String? @db.Uuid
+  team Team? @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  notification Notification?
+  @@unique([recipientId, sourceKey])
+  @@unique([id, recipientId])
 }

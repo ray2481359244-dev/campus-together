@@ -7,9 +7,10 @@ import { requireUser, csrfGuard, writeLimit } from './auth.js';
 import { parse, ApiError } from './http.js';
 
 const teamLink = { select: { id: true, recruitmentId: true } } as const;
-const include = { actionNotice: { include: { action: { include: { team: teamLink } } } }, review: { include: { application: { select: { team: teamLink } } } }, memberChange: { include: { member: { select: { team: teamLink } } } }, closure: { include: { team: teamLink } }, closedApplication: { select: { slot: { select: { name: true } } } } } as const;
+const include = { notice: true, actionNotice: { include: { action: { include: { team: teamLink } } } }, review: { include: { application: { select: { team: teamLink } } } }, memberChange: { include: { member: { select: { team: teamLink } } } }, closure: { include: { team: teamLink } }, closedApplication: { select: { slot: { select: { name: true } } } } } as const;
 function dto(row: Prisma.NotificationGetPayload<{ include: typeof include }>): NotificationDTO {
   const base = { id: row.id, createdAt: row.createdAt.toISOString(), readAt: row.readAt?.toISOString() ?? null };
+  if (row.notice) return { ...base, applicationId:null, teamId:row.notice.teamId, recruitmentId:row.notice.recruitmentId, recruitmentTitle:row.notice.title, slotName:'', kind:row.notice.kind as NotificationDTO['kind'], reason:row.notice.reason };
   if (row.review) return { ...base, applicationId: row.review.applicationId, teamId: row.review.application.team.id, recruitmentId: row.review.application.team.recruitmentId,
     recruitmentTitle: row.review.recruitmentTitle, slotName: row.review.slotName, kind: row.review.decision === 'APPROVE' ? 'APPLICATION_APPROVED' : 'APPLICATION_REJECTED', reason: row.review.reason };
   if (row.memberChange) return { ...base, applicationId: null, teamId: row.memberChange.member.team.id, recruitmentId: row.memberChange.member.team.recruitmentId,
