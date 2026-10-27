@@ -1,7 +1,8 @@
 import { z } from 'zod';
 
-export const EligibilityInputSchema = z.object({ slotId: z.uuid().nullable().default(null), timeConfirmed: z.boolean().nullable().default(null) }).strict();
-export const CreateApplicationSchema = z.object({ requestKey: z.uuid(), slotId: z.uuid(), message: z.string().trim().max(1000), timeConfirmed: z.boolean() }).strict();
+export const SceneAnswersSchema = z.object({ server: z.string().trim().max(80).optional(), platform: z.enum(['PC','CONSOLE','MOBILE','ANY']).optional(), studyMethod: z.enum(['SELF','DISCUSS','TEACH']).optional(), experienceConfirmed: z.boolean().optional(), equipmentConfirmed: z.boolean().optional() }).strict();
+export const EligibilityInputSchema = z.object({ slotId: z.uuid().nullable().default(null), timeConfirmed: z.boolean().nullable().default(null), answers: SceneAnswersSchema.optional() }).strict();
+export const CreateApplicationSchema = z.object({ requestKey: z.uuid(), slotId: z.uuid(), message: z.string().trim().max(1000), timeConfirmed: z.boolean(), answers: SceneAnswersSchema.optional() }).strict();
 export const WithdrawApplicationSchema = z.object({ revision: z.number().int().positive() }).strict();
 export const MyApplicationsQuerySchema = z.object({ teamId: z.uuid().optional() }).strict();
 export const ReviewApplicationSchema = z.object({ revision: z.number().int().positive(), decision: z.enum(['APPROVE', 'REJECT']), reason: z.string().trim().max(500).default('') }).strict();
@@ -13,7 +14,7 @@ export type ApplicationInput = z.infer<typeof CreateApplicationSchema>;
 export type EligibilityInput = z.infer<typeof EligibilityInputSchema>;
 export type ConditionStatus = 'PASS' | 'FAIL' | 'UNKNOWN';
 export interface EligibilityDTO {
-  ruleVersion: 'competition-application-v1' | 'competition-application-v2'; assessedAt: string; status: ConditionStatus;
+  ruleVersion: 'competition-application-v1' | 'competition-application-v2' | 'scene-application-v1'; assessedAt: string; status: ConditionStatus;
   checks: { code: string; label: string; status: ConditionStatus; reason: string }[];
 }
 export interface ApplicationDTO {

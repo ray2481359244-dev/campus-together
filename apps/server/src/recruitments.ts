@@ -1,3 +1,4 @@
+import { z } from 'zod';
 import { Router } from 'express';
 import { createHash, randomUUID } from 'node:crypto';
 import { CreateRecruitmentSchema, UpdateRecruitmentSchema, RecruitmentRevisionSchema, RecruitmentDraftSchema, PublishableRecruitmentSchema, RecruitmentsQuerySchema, RecruitmentCursorSchema, IdSchema } from '@campus/contracts';
@@ -14,13 +15,13 @@ type Record = Prisma.RecruitmentGetPayload<{ include: typeof include }>;
 function dto(row: Record, userId?: string): RecruitmentDTO {
   const draft = RecruitmentDraftSchema.parse(row.payload);
   return { id: row.id, publicationStatus: row.publicationStatus, revision: row.revision, title: row.title, description: row.description,
-    category: 'COMPETITION', school: { id: row.school.id, name: row.school.name, isDemo: row.school.isDemo },
+    category: row.category, school: { id: row.school.id, name: row.school.name, isDemo: row.school.isDemo },
     topic: row.topic ? { id: row.topic.id, name: row.topic.name } : null,
     author: { id: row.authorId, nickname: row.author.profile?.nickname || '校园用户' },
     canEditDraft: row.publicationStatus === 'DRAFT' && row.authorId === userId, sourceAvailable: row.sourcePost?.status === 'PUBLISHED',
     createdAt: row.createdAt.toISOString(), updatedAt: row.updatedAt.toISOString(), publishedAt: row.publishedAt?.toISOString() ?? null,
     draft, team: row.team ? { id: row.team.id, status: row.team.status, closedAt: row.team.recruitmentClosedAt?.toISOString() ?? null, memberCount: row.team.members.length, capacity: row.capacity,
-      captainUserId: row.team.captainUserId, acceptingStatus: acceptingStatus(row.team.status, row.joinDeadline, row.team.members.length, row.capacity, row.team.recruitmentClosedAt), chatAvailable: false,
+      captainUserId: row.team.captainUserId, acceptingStatus: acceptingStatus(row.team.status, row.joinDeadline, row.team.members.length, row.capacity, row.team.recruitmentClosedAt), chatAvailable: true,
       slots: row.team.slots.map(s => ({ id: s.id, name: s.name, capacity: s.capacity, requiredSkills: s.requiredSkills, occupied: row.team!.members.filter(m => m.slotId === s.id).length })),
     } : null };
 }
@@ -30,16 +31,16 @@ async function references(tx: Prisma.TransactionClient, userId: string, draft: R
   if (!user.profile?.school.active) throw new ApiError(422, 'PROFILE_INCOMPLETE', '请先设置有效的学校资料。');
   if (draft.topicId) {
     const topic = await tx.topic.findUnique({ where: { id: draft.topicId } });
-    if (!topic || topic.category !== 'COMPETITION' || (publishing && !topic.active)) throw new ApiError(422, 'TOPIC_UNAVAILABLE', '请选择有效的竞赛主题。');
+    if (!topic || topic.category !== draft.category || (publishing && !topic.active)) throw new ApiError(422, 'TOPIC_UNAVAILABLE', '请选择当前区域的有效主题。');
   }
   if (draft.sourcePostId) {
-    const post = await tx.post.findFirst({ where: { id: draft.sourcePostId, authorId: userId, schoolId: user.profile.schoolId, status: 'PUBLISHED', topic: { category: 'COMPETITION' } } });
-    if (!post) throw new ApiError(422, 'INVALID_SOURCE_POST', '只能从自己当前学校的可见竞赛讨论发起招募。');
+    const post = await tx.post.findFirst({ where: { id: draft.sourcePostId, status: 'PUBLISHED', topic: { category: draft.category } } });
+    if (!post) throw new ApiError(422, 'INVALID_SOURCE_POST', '只能关联当前区域的可见讨论，关联不会继承原作者身份。');
   }
   return user.profile.schoolId;
 }
 function columns(draft: RecruitmentDraft) {
-  return { title: draft.title, description: draft.description, topicId: draft.topicId, sourcePostId: draft.sourcePostId,
+  return { category: draft.category, title: draft.title, description: draft.description, topicId: draft.topicId, sourcePostId: draft.sourcePostId,
     payload: draft as Prisma.InputJsonValue, capacity: draft.capacity, allowCrossSchool: draft.allowCrossSchool };
 }
 async function ownedLocked(tx: Prisma.TransactionClient, id: string, userId: string) {
@@ -67,13 +68,19 @@ recruitmentsRouter.get('/recruitments', async (req, res) => {
     try { cursor = parse(RecruitmentCursorSchema, JSON.parse(Buffer.from(input.cursor, 'base64url').toString('utf8'))); }
     catch { throw new ApiError(400, 'INVALID_CURSOR', '分页位置无效，请重新加载。'); }
   }
-  const rows = await db.recruitment.findMany({ where: { schoolId: input.schoolId, category: 'COMPETITION', topicId: input.topicId, publicationStatus: 'PUBLISHED', AND: [
+  const rows = await db.recruitment.findMany({ where: { ...(input.includeCrossSchool === 'true' ? { OR: [{ schoolId: input.schoolId }, { allowCrossSchool: true }] } : { schoolId: input.schoolId }), category: input.category, topicId: input.topicId, publicationStatus: 'PUBLISHED', AND: [
     ...(input.q ? [{ OR: [{ title: { contains: input.q, mode: 'insensitive' as const } }, { description: { contains: input.q, mode: 'insensitive' as const } }, { payload: { path: ['competitionName'], string_contains: input.q, mode: 'insensitive' as const } }, { payload: { path: ['direction'], string_contains: input.q, mode: 'insensitive' as const } }] }] : []),
     ...(cursor ? [{ OR: [{ publishedAt: { lt: new Date(cursor.publishedAt) } }, { publishedAt: new Date(cursor.publishedAt), id: { lt: cursor.id } }] }] : []),
   ] }, include, orderBy: [{ publishedAt: 'desc' }, { id: 'desc' }], take: input.limit + 1 });
   const items = rows.slice(0, input.limit), last = items.at(-1);
   const nextCursor = rows.length > input.limit && last?.publishedAt ? Buffer.from(JSON.stringify({ publishedAt: last.publishedAt.toISOString(), id: last.id })).toString('base64url') : null;
   res.json({ data: items.map(row => dto(row, res.locals.session?.userId ?? undefined)), meta: { nextCursor } });
+});
+recruitmentsRouter.get('/post-recruitments/:id', async (req, res) => {
+  const id = parse(IdSchema, req.params.id);
+  if (!await db.post.findFirst({ where: { id, status: 'PUBLISHED' } })) throw new ApiError(404, 'NOT_FOUND', '来源讨论不可用。');
+  const rows = await db.recruitment.findMany({ where: { sourcePostId: id, publicationStatus: 'PUBLISHED' }, include, orderBy: [{ publishedAt: 'desc' }, { id: 'desc' }], take: 30 });
+  res.json({ data: rows.map(row => dto(row, res.locals.session?.userId ?? undefined)) });
 });
 recruitmentsRouter.get('/recruitments/:id', async (req, res) => {
   const id = parse(IdSchema, req.params.id), userId = res.locals.session?.userId;
@@ -135,7 +142,7 @@ recruitmentsRouter.post('/recruitments/:id/publish', async (req, res) => {
     const schoolId = await references(tx, user.id, draft, true);
     if (schoolId !== current.schoolId) throw new ApiError(422, 'SCHOOL_CHANGED', '你的学校资料已有变化，请重新保存草稿再发布。');
     const deadline = new Date(draft.joinDeadline || draft.startAt!);
-    if (deadline <= new Date() || new Date(draft.competitionDeadline!) <= new Date()) throw new ApiError(422, 'INVALID_TIME', '招募截止与比赛截止须晚于现在，请修改后发布。');
+    if (deadline <= new Date() || (draft.category === 'COMPETITION' && new Date(draft.competitionDeadline!) <= new Date())) throw new ApiError(422, 'INVALID_TIME', '招募截止与比赛截止须晚于现在，请修改后发布。');
     const team = await tx.team.create({ data: { recruitmentId: id, captainUserId: user.id } });
     let captainSlotId = '';
     for (const [position, slot] of draft.slots.entries()) {
@@ -149,4 +156,16 @@ recruitmentsRouter.post('/recruitments/:id/publish', async (req, res) => {
     return { row, created: true };
   }, { maxWait: 5000, timeout: 10000 });
   res.status(result.created ? 201 : 200).json({ data: dto(result.row, user.id) });
+});
+
+recruitmentsRouter.patch('/recruitments/:id/text', async (req, res) => {
+  const user = requireUser(res), id = parse(IdSchema, req.params.id);
+  const input = parse(z.object({ revision: z.number().int().positive(), title: z.string().trim().min(5).max(60), description: z.string().trim().min(20).max(3000) }).strict(), req.body);
+  const row = await db.$transaction(async tx => {
+    const current = await ownedLocked(tx, id, user.id);
+    if (current.publicationStatus !== 'PUBLISHED' || current.revision !== input.revision) throw new ApiError(409, 'REVISION_CONFLICT', '内容状态已有变化，请重新核对。');
+    const payload = { ...RecruitmentDraftSchema.parse(current.payload), title: input.title, description: input.description };
+    return tx.recruitment.update({ where: { id }, data: { title: input.title, description: input.description, payload, revision: { increment: 1 } }, include });
+  });
+  res.json({ data: dto(row, user.id) });
 });

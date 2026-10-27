@@ -1,7 +1,7 @@
 import { useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import type { ApplicationDTO, ApplicationInput, EligibilityDTO, RecruitmentDTO } from '@campus/contracts';
+import type { ApplicationDTO, ApplicationInput, EligibilityDTO, EligibilityInput, RecruitmentDTO } from '@campus/contracts';
 import { api, ApiError, messageOf } from '../lib/api';
 import { useAuth } from '../lib/auth';
 import { beijingTime } from '../lib/recruitments';
@@ -25,6 +25,8 @@ export function ApplicationPanel({ recruitment: r }: { recruitment: RecruitmentD
   const [slotId, setSlotId] = useState(''), [time, setTime] = useState(''), [message, setMessage] = useState('');
   const [assessment, setAssessment] = useState<EligibilityDTO | null>(null), [busy, setBusy] = useState<'check' | 'submit' | 'withdraw' | null>(null);
   const [error, setError] = useState(''), [notice, setNotice] = useState<{ text: string; revision: number; status: ApplicationDTO['status'] } | null>(null), [uncertain, setUncertain] = useState(false), [blocked, setBlocked] = useState(false);
+  const [answers, setAnswers] = useState<NonNullable<EligibilityInput['answers']>>({});
+  const direct = r.draft.joinMode === 'AUTO';
   const pending = useRef<ApplicationInput | null>(null), withdrawal = useRef<{ id: string; revision: number } | null>(null);
   const ownKey = ['my-applications', user?.id, team.id];
   const own = useQuery({ queryKey: ownKey, queryFn: ({ signal }) => api<ApplicationDTO[]>('/me/applications?teamId=' + team.id, { signal }), enabled: !!user && user.id !== team.captainUserId, retry: false });
@@ -41,19 +43,19 @@ export function ApplicationPanel({ recruitment: r }: { recruitment: RecruitmentD
   async function assess() {
     if (busy || pending.current || withdrawal.current) return;
     setBusy('check'); setError(''); setNotice(null);
-    try { setAssessment((await api<EligibilityDTO>('/recruitments/' + r.id + '/eligibility', { method: 'POST', body: { slotId: slotId || null, timeConfirmed: time === '' ? null : time === 'yes' } })).data); }
+    try { setAssessment((await api<EligibilityDTO>('/recruitments/' + r.id + '/eligibility', { method: 'POST', body: { slotId: slotId || null, answers, timeConfirmed: time === '' ? null : time === 'yes' } })).data); }
     catch (e) { setError(messageOf(e)); setAssessment(null); }
     finally { setBusy(null); }
   }
   async function submit() {
     if (busy || blocked || (!pending.current && assessment?.status !== 'PASS')) return;
-    pending.current ??= { requestKey: crypto.randomUUID(), slotId, timeConfirmed: time === 'yes', message: message.trim() };
+    pending.current ??= { requestKey: crypto.randomUUID(), slotId, answers, timeConfirmed: time === 'yes', message: message.trim() };
     setBusy('submit'); setError(''); setNotice(null);
     try {
       const row = (await api<ApplicationDTO>('/teams/' + team.id + '/applications', { method: 'POST', body: pending.current })).data;
       pending.current = null; setUncertain(false); setAssessment(null);
       await remember(row);
-      setNotice({ revision: row.revision, status: row.status, text: row.status === 'PENDING' ? '申请已保存，等待队长审核，当前不占名额。' : '已核对原申请，当前状态为' + labels[row.status] + '，没有重新提交。' });
+      setNotice({ revision: row.revision, status: row.status, text: row.membership?.status === 'ACTIVE' ? '已正式入队，可以进入队伍聊天。' : row.status === 'PENDING' ? '申请已保存，等待队长审核，当前不占名额。' : '已核对原申请，当前状态为' + labels[row.status] + '，没有重新提交。' });
     } catch (e) {
       setError(messageOf(e));
       const definitive = e instanceof ApiError && ((e.status === 400 && e.code === 'INVALID_INPUT') || (e.status === 422 && e.code === 'ELIGIBILITY_NOT_PASSED') || (e.status === 404 && e.code === 'NOT_FOUND') || ['APPLICATION_COOLDOWN', 'APPLICATION_LIMIT', 'APPLICATION_EXISTS', 'REQUEST_KEY_CONFLICT', 'APPLICATION_SUPERSEDED', 'APPLICATION_NOT_OPEN'].includes(e.code));
@@ -85,8 +87,8 @@ export function ApplicationPanel({ recruitment: r }: { recruitment: RecruitmentD
   const cooldown = !!current?.reapplyAt && Date.parse(current.reapplyAt) > Date.now();
   const existing = !!current && ['PENDING', 'APPROVED'].includes(current.status);
   const locked = !!busy || !!pending.current || !!withdrawal.current || blocked || existing || cooldown || team.acceptingStatus !== 'OPEN' || own.isError;
-  return <section className="application-panel" aria-label="我的岗位申请"><h2>申请这个岗位。</h2>
-    <p className="form-note">申请和时间确认是本次意向，待审核不占名额。队长批准后正式入队，审核结果会保存在消息页。</p>
+  return <section className="application-panel" aria-label="我的岗位申请"><h2>{direct ? '确认条件并加入。' : '申请这个岗位。'}</h2>
+    <p className="form-note">{direct ? '这是直接加入的队伍。条件通过后提交即正式占位并获得群聊权限。' : '待审核不占名额。队长批准后正式入队，审核结果会保存在消息页。'}</p>
     {own.isError && <ErrorState message={messageOf(own.error)} retry={() => void own.refetch()} />}
     {current && <div className="application-current" aria-label="已保存申请"><strong>申请状态：{labels[current.status]}</strong><p>{current.slotName} · 提交于 {beijingTime(current.submittedAt)}（北京时间）</p><p className="post-body">{current.message || '未填写申请说明'}</p>
       {current.status === 'PENDING' && <p>等待队长审核，当前不占名额。</p>}
@@ -107,12 +109,15 @@ export function ApplicationPanel({ recruitment: r }: { recruitment: RecruitmentD
       <fieldset className="application-fields" disabled={locked}>
         <label>申请岗位<select aria-label="申请岗位" value={slotId} onChange={e => { setSlotId(e.target.value); setAssessment(null); }}><option value="">请选择岗位</option>{team.slots.map(s => <option value={s.id} key={s.id}>{s.name}（余 {Math.max(0, s.capacity - s.occupied)} 人）</option>)}</select></label>
         <label>本次时间确认<select aria-label="本次时间确认" value={time} onChange={e => { setTime(e.target.value); setAssessment(null); }}><option value="">阅读上方起止、每周投入和时段后选择</option><option value="yes">我本次可以安排所列时间与投入</option><option value="no">我本次无法安排所列时间</option></select></label>
+        {r.category === 'GAME' && <><label>我的游戏服务器<input aria-label="我的游戏服务器" value={answers.server || ''} maxLength={80} onChange={e => { setAnswers(a => ({ ...a, server: e.target.value })); setAssessment(null); }} /></label><label>我的游戏平台<select aria-label="我的游戏平台" value={answers.platform || ''} onChange={e => { setAnswers(a => ({ ...a, platform: (e.target.value || undefined) as typeof a.platform })); setAssessment(null); }}><option value="">请选择</option><option value="PC">PC</option><option value="CONSOLE">主机</option><option value="MOBILE">手机</option><option value="ANY">不限</option></select></label></>}
+        {r.category === 'STUDY' && r.draft.study?.methodRequired && <label>我的学习方式<select aria-label="我的学习方式" value={answers.studyMethod || ''} onChange={e => { setAnswers(a => ({ ...a, studyMethod: (e.target.value || undefined) as typeof a.studyMethod })); setAssessment(null); }}><option value="">请选择</option><option value="SELF">安静自习</option><option value="DISCUSS">讨论</option><option value="TEACH">互相讲题</option></select></label>}
+        {r.category === 'OUTDOOR' && (['experienceConfirmed','equipmentConfirmed'] as const).map((k, i) => <label className="checkbox-field" key={k}><input type="checkbox" checked={!!answers[k]} onChange={e => { setAnswers(a => ({ ...a, [k]: e.target.checked })); setAssessment(null); }} />我已核对并满足{ i ? '装备' : '经验'}要求：{i ? r.draft.outdoor?.equipment || '不限' : r.draft.outdoor?.experience || '不限'}</label>)}
         <label>申请说明<textarea aria-label="申请说明" value={message} maxLength={1000} rows={4} onChange={e => setMessage(e.target.value)} placeholder="说明你希望承担的工作，可选，最多 1000 字。" /></label>
         <button className="button secondary" type="button" onClick={() => void assess()}>核对申请条件</button>
       </fieldset>
       {assessment && <div className="condition-report" aria-label="申请条件对照"><h3>核对结果：{conditionLabels[assessment.status]}</h3><ul>{assessment.checks.map(c => <li key={c.code} data-status={c.status}><strong>{conditionLabels[c.status]} · {c.label}</strong><p>{c.reason}</p></li>)}</ul><p className="field-note">这是当前规则与自述资料的对照，提交时服务端会再次检查，不显示总匹配分数。</p><Link className="text-button" to="/me">补充我的真实资料 →</Link></div>}
       {team.acceptingStatus !== 'OPEN' && <p className="form-note">当前招募已满或已停止，不能提交新申请。</p>}
-      <button className="button" type="submit" disabled={!!busy || blocked || own.isError || (!uncertain && (locked || assessment?.status !== 'PASS'))}>{uncertain ? '核对并重试申请' : busy === 'submit' ? '正在提交……' : '提交岗位申请'}</button>
+      <button className="button" type="submit" disabled={!!busy || blocked || own.isError || (!uncertain && (locked || assessment?.status !== 'PASS'))}>{uncertain ? '核对并重试申请' : busy === 'submit' ? '正在提交……' : direct ? '确认直接加入' : '提交岗位申请'}</button>
     </form>}
   </section>;
 }

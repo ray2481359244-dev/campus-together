@@ -43,7 +43,7 @@ describe('real recruitment drafts and transactional publication', () => {
     await request(app).post('/api/v1/recruitments').set('Origin', config.origin).send({}).expect(401);
     await a.post('/api/v1/recruitments').set('Origin', config.origin).send({}).expect(403);
     await write(a, csrfA, 'post', '/api/v1/recruitments', { requestKey: randomUUID(), draft: valid(), authorId: userB }).expect(400);
-    await create({ ...valid(), category: 'GAME' as 'COMPETITION' }).expect(400);
+    await create({ ...valid(), category: 'GAME' as 'COMPETITION' }).expect(422);
     await create({ ...valid(), topicId: wrongTopic }).expect(422);
   });
   it('keeps incomplete drafts private, persists revisions and never creates a team', async () => {
@@ -81,7 +81,7 @@ describe('real recruitment drafts and transactional publication', () => {
   });
   it('validates source ownership and records an actual discussion link', async () => {
     const post = await write(a, csrfA, 'post', '/api/v1/posts', { requestKey: randomUUID(), topicId, title: '先讨论再正式发起招募的项目', body: '这是一条真实讨论，可以作为作者发布竞赛招募的来源。' }).expect(201);
-    await write(b, csrfB, 'post', '/api/v1/recruitments', { requestKey: randomUUID(), draft: { ...valid(), sourcePostId: post.body.data.id } }).expect(422);
+    await write(b, csrfB, 'post', '/api/v1/recruitments', { requestKey: randomUUID(), draft: { ...valid(), sourcePostId: post.body.data.id } }).expect(201);
     const saved = await create({ ...valid(), sourcePostId: post.body.data.id }).expect(201);
     expect((await db.recruitment.findUniqueOrThrow({ where: { id: saved.body.data.id } })).sourcePostId).toBe(post.body.data.id);
   });
@@ -101,7 +101,7 @@ describe('real recruitment drafts and transactional publication', () => {
     expect(await db.domainEvent.count({ where: { teamId: value.team.id, kind: 'TEAM_CREATED' } })).toBe(1);
     await expect(db.teamMember.create({ data: { teamId: value.team.id, userId: userB, slotId: value.team.slots[0].id, role: 'CAPTAIN' } })).rejects.toMatchObject({ code: 'P2002' });
     const publicRead = (await b.get('/api/v1/recruitments/' + draft.id).expect(200)).body.data;
-    expect(publicRead.canEditDraft).toBe(false); expect(publicRead.team.chatAvailable).toBe(false);
+    expect(publicRead.canEditDraft).toBe(false); expect(publicRead.team.chatAvailable).toBe(true);
     expect(JSON.stringify(publicRead)).not.toMatch(/passwordHash|csrfHash|tokenHash|createRequestHash|recruit-a@/);
   });
   it('filters published data and refuses unsupported published edits', async () => {

@@ -348,6 +348,7 @@ model Application {
   status ApplicationStatus @default(PENDING)
   message String @db.VarChar(1000)
   timeConfirmed Boolean
+  answers Json?
   eligibilitySnapshot Json
   submissionHash String @db.Char(64)
   submission Int @default(1)

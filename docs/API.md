@@ -143,3 +143,9 @@ GET /ai/status 返回配置模式与每日次数，不返回模型密钥。POST 
 原键同内容返回原 id / 时间 / 内容；不同内容 409 REQUEST_KEY_CONFLICT，仍处理 409 AI_IN_PROGRESS；中断超过 15 秒仅恢复持久化 fallback，不重新调用模型。每日草稿 10、说明 20 次，超限 429 AI_DAILY_LIMIT；原结果核对不再次占次数。全站 LIVE 默认 100 次 / 北京日，数据库预约协调，网络调用在事务外。默认 8 秒超时，不自动重试服务；来源 / schema / 大小错误安全降级。不提供自动发帖 / 批准 / URL 抓取或群聊读取能力。
 
 配置示例见 .env.example：AI_MODE=LIVE，AI_BASE_URL 填兼容服务的 /v1 基址，AI_MODEL 填自己的可用模型，AI_API_KEY 仅在本机服务端配置；支持 JSON Schema 的 Chat Completions 服务。当前没有实际模型配置或真实调用验收。接口参考 [OpenAI Docs](https://developers.openai.com/api/reference/resources/chat/subresources/completions/methods/create)及[结构化输出](https://developers.openai.com/api/docs/guides/structured-outputs?api-mode=chat)。
+
+## I-009 四区与直接加入（2026-10-27）
+
+RecruitmentDraft.category 支持四区；joinMode 为 APPROVAL / AUTO。game / study / outdoor 为可选场景对象，发布时检查当前区域必填项。非竞赛只有一个“成员”岗位。eligibility / applications 可带 answers（server / platform / studyMethod / experienceConfirmed / equipmentConfirmed）；审核复查原申请声明，硬条件缺失 UNKNOWN，不能入队。AUTO 的 POST /teams/:id/applications 在同事务直接入队，APPROVED 的 review 可空；原请求重试不恢复 LEFT / REMOVED。
+
+GET /recruitments 接受 category 和 includeCrossSchool=true（默认 false）。GET /post-recruitments/:id 返回可见原帖最近 30 条已发布关联招募；原帖隐藏 / 删除返回 404。读者可关联可见同区讨论。PATCH /recruitments/:id/text 使用 revision / title / description，仅作者可修改已发布标题说明，关键条件固定；冲突 409。所有变更仍校验会话、来源和 CSRF。

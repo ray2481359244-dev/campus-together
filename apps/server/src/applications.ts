@@ -1,6 +1,6 @@
 import { Router, type RequestHandler } from 'express';
 import { createHash } from 'node:crypto';
-import { CreateApplicationSchema, EligibilityInputSchema, IdSchema, MyApplicationsQuerySchema, WithdrawApplicationSchema, ReviewApplicationSchema, CaptainApplicationsQuerySchema } from '@campus/contracts';
+import { CreateApplicationSchema, EligibilityInputSchema, IdSchema, MyApplicationsQuerySchema, WithdrawApplicationSchema, ReviewApplicationSchema, CaptainApplicationsQuerySchema, RecruitmentDraftSchema } from '@campus/contracts';
 import type { ApplicationDTO, EligibilityDTO, EligibilityInput, CaptainApplicationDTO } from '@campus/contracts';
 import { db } from './db.js';
 import { requireUser, csrfGuard, writeLimit } from './auth.js';
@@ -45,7 +45,18 @@ export async function eligibility(tx: Prisma.TransactionClient, team: Team, user
   const missing = slot?.requiredSkills.filter(s => !normalized.has(s.normalize('NFKC').trim().toLowerCase())) || [];
   add('SKILLS', '岗位技能（自述）', !slot || missing.length ? 'UNKNOWN' : 'PASS', !slot ? '选定岗位后才能核对技能。' : missing.length ? `资料尚未声明：${missing.join('、')}。请补充真实技能后重查；缺失不代表你没有能力。` : slot.requiredSkills.length ? '资料中的自述技能覆盖该岗位标签，仅作信息对照，不代表能力认证。' : '该岗位没有额外技能标签要求。');
   add('TIME', '本次时间确认', input.timeConfirmed === null ? 'UNKNOWN' : input.timeConfirmed ? 'PASS' : 'FAIL', input.timeConfirmed === null ? '请阅读协作起止、每周投入与时段，确认本次能否安排。' : input.timeConfirmed ? '你已确认本次可以安排所列协作时间与投入；不从自由文本自动推断时间匹配。' : '你本次无法安排所列协作时间，请选择其他招募。');
-  return { ruleVersion: 'competition-application-v2', assessedAt: now.toISOString(), status: checks.some(c => c.status === 'FAIL') ? 'FAIL' : checks.some(c => c.status === 'UNKNOWN') ? 'UNKNOWN' : 'PASS', checks };
+  const draft = RecruitmentDraftSchema.parse(team.recruitment.payload), answers = input.answers;
+  const same = (a: string | undefined, b: string) => a?.normalize('NFKC').trim().toLowerCase() === b.normalize('NFKC').trim().toLowerCase();
+  if (draft.category === 'GAME' && draft.game) {
+    const g = draft.game;
+    add('SERVER', '游戏服务器（自述）', g.server === '不限' ? 'PASS' : !answers?.server ? 'UNKNOWN' : same(answers.server, g.server) ? 'PASS' : 'FAIL', `所需服务器：${g.server}；本次填写：${answers?.server || '未填写'}。`);
+    add('PLATFORM', '游戏平台（自述）', g.platform === 'ANY' ? 'PASS' : !answers?.platform ? 'UNKNOWN' : answers.platform === g.platform ? 'PASS' : 'FAIL', `所需平台：${g.platform}；本次填写：${answers?.platform || '未填写'}。`);
+  }
+  if (draft.category === 'STUDY' && draft.study?.methodRequired) add('STUDY_METHOD', '学习方式', !answers?.studyMethod ? 'UNKNOWN' : answers.studyMethod === draft.study.method ? 'PASS' : 'FAIL', `要求方式：${draft.study.method}；本次选择：${answers?.studyMethod || '未选择'}。`);
+  for (const [field, label, requirement] of [['experienceConfirmed','经验要求',draft.outdoor?.experience],['equipmentConfirmed','装备要求',draft.outdoor?.equipment]] as const) {
+    if (draft.category === 'OUTDOOR' && requirement) add(field, label, answers?.[field] === undefined ? 'UNKNOWN' : answers[field] ? 'PASS' : 'FAIL', `${requirement}；${answers?.[field] ? '本次已自行确认满足' : '需本人确认是否满足'}。`);
+  }
+  return { ruleVersion: draft.category === 'COMPETITION' ? 'competition-application-v2' : 'scene-application-v1', assessedAt: now.toISOString(), status: checks.some(c => c.status === 'FAIL') ? 'FAIL' : checks.some(c => c.status === 'UNKNOWN') ? 'UNKNOWN' : 'PASS', checks };
 }
 function dto(row: Application, now = new Date()): ApplicationDTO {
   const status = row.status === 'PENDING' && !recruitingWindow(row.team.status, row.team.recruitment.joinDeadline, now, row.team.recruitmentClosedAt) ? 'EXPIRED' : row.status;
@@ -115,7 +126,7 @@ applicationsRouter.post('/applications/:id/review', privateRead, writeLimit, csr
     const now = new Date();
     let assessment: EligibilityDTO | undefined;
     if (input.decision === 'APPROVE') {
-      assessment = await eligibility(tx, team, current.applicantId, { slotId: current.slotId, timeConfirmed: current.timeConfirmed }, now);
+      assessment = await eligibility(tx, team, current.applicantId, { slotId: current.slotId, timeConfirmed: current.timeConfirmed, ...(current.answers ? { answers: current.answers as EligibilityInput['answers'] } : {}) }, now);
       if (assessment.status !== 'PASS') throw new ApiError(422, 'ELIGIBILITY_NOT_PASSED', '当前条件或名额未通过，未批准也未占位。请核对下列依据。', Object.fromEntries(assessment.checks.filter(c => c.status !== 'PASS').map(c => [c.code, [c.reason]])));
       await tx.teamMember.upsert({ where: { teamId_userId: { teamId: current.teamId, userId: current.applicantId } },
         create: { teamId: current.teamId, userId: current.applicantId, slotId: current.slotId, role: 'MEMBER', joinedAt: now },
@@ -146,6 +157,7 @@ applicationsRouter.post('/teams/:id/applications', privateRead, writeLimit, csrf
       return { row: prior.application, created: false };
     }
     const team = await publishedTeam(tx, teamId, true), now = new Date();
+    const direct = RecruitmentDraftSchema.parse(team.recruitment.payload).joinMode === 'AUTO';
     let row = await tx.application.findUnique({ where: { teamId_applicantId: { teamId, applicantId: user.id } }, include: applicationInclude });
     const duplicate = row?.status === 'PENDING';
     if (duplicate && row!.submissionHash !== hash) throw new ApiError(409, 'APPLICATION_EXISTS', '你已有该队申请，请先核对或撤回，不能覆盖原申请。');
@@ -156,12 +168,17 @@ applicationsRouter.post('/teams/:id/applications', privateRead, writeLimit, csrf
       if (row?.resolvedAt && ['WITHDRAWN', 'REJECTED'].includes(row.status) && now.getTime() < row.resolvedAt.getTime() + cooldownMs) throw new ApiError(409, 'APPLICATION_COOLDOWN', '撤回或被拒绝后需等待 10 分钟才能再次申请。');
       const pending = { status: 'PENDING' as const, team: { status: { in: ['OPEN', 'FULL'] as ('OPEN' | 'FULL')[] }, recruitmentClosedAt: null, recruitment: { joinDeadline: { gt: now } } } };
       if (await tx.application.count({ where: { ...pending, applicantId: user.id } }) >= 10 || await tx.application.count({ where: { ...pending, teamId } }) >= 100) throw new ApiError(409, 'APPLICATION_LIMIT', '待审核申请已达上限（每人 10 条、每队 100 条）。');
-      const values = { slotId: input.slotId, message: input.message, timeConfirmed: input.timeConfirmed, eligibilitySnapshot: assessment as unknown as Prisma.InputJsonValue, submissionHash: hash, status: 'PENDING' as const, submittedAt: now, resolvedAt: null };
+      const values = { ...(input.answers ? { answers: input.answers as Prisma.InputJsonValue } : {}), slotId: input.slotId, message: input.message, timeConfirmed: input.timeConfirmed, eligibilitySnapshot: assessment as unknown as Prisma.InputJsonValue, submissionHash: hash, status: direct ? 'APPROVED' as const : 'PENDING' as const, submittedAt: now, resolvedAt: direct ? now : null };
       row = row ? await tx.application.update({ where: { id: row.id }, data: { ...values, revision: { increment: 1 }, submission: { increment: 1 } }, include: applicationInclude })
         : await tx.application.create({ data: { ...values, teamId, applicantId: user.id }, include: applicationInclude });
-      await tx.domainEvent.create({ data: { teamId, actorId: user.id, kind: 'APPLICATION_SUBMITTED', payload: { applicationId: row.id, submission: row.submission, slotId: row.slotId } } });
+      if (direct) {
+        await tx.teamMember.create({ data: { teamId, userId: user.id, slotId: input.slotId, role: 'MEMBER', joinedAt: now } });
+        await tx.team.update({ where: { id: teamId }, data: { status: team.members.filter(m => m.status === 'ACTIVE').length + 1 >= team.recruitment.capacity ? 'FULL' : 'OPEN' } });
+      }
+      await tx.domainEvent.create({ data: { teamId, actorId: user.id, kind: direct ? 'MEMBER_JOINED' : 'APPLICATION_SUBMITTED', payload: { applicationId: row.id, submission: row.submission, slotId: row.slotId } } });
     }
     if (!row) throw new Error('Application was not created');
+    if (direct) row = await tx.application.findUniqueOrThrow({ where: { id: row.id }, include: applicationInclude });
     await tx.applicationRequest.create({ data: { applicantId: user.id, requestKey, requestHash: hash, applicationId: row.id, submission: row.submission,
       snapshot: { slotId: row.slotId, message: row.message, timeConfirmed: row.timeConfirmed, eligibility: row.eligibilitySnapshot } } });
     return { row, created: !duplicate };
