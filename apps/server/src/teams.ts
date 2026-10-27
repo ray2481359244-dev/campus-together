@@ -6,6 +6,7 @@ import { db } from './db.js';
 import { csrfGuard, requireUser, writeLimit } from './auth.js';
 import { ApiError, parse } from './http.js';
 import { acceptingStatus } from './team-rules.js';
+import { archiveDeadline } from './archive.js';
 
 const include = { recruitment: true, slots: true, members: { include: { user: { select: { profile: { select: { nickname: true, skills: true, school: { select: { name: true } } } } } } } } } as const;
 type Team = Prisma.TeamGetPayload<{ include: typeof include }>;
@@ -19,7 +20,7 @@ function summary(team: Team, userId: string): TeamSummaryDTO {
   const mine = team.members.find(m => m.userId === userId && m.status === 'ACTIVE');
   if (!mine) throw new ApiError(404, 'NOT_FOUND', '这支队伍不存在或你当前不是有效成员。');
   return { id: team.id, recruitmentId: team.recruitmentId, title: team.recruitment.title, captainUserId: team.captainUserId, status: effectiveStatus(team),
-    revision: team.revision, startedAt: team.startedAt?.toISOString() ?? null, completedAt: team.completedAt?.toISOString() ?? null, cancelledAt: team.cancelledAt?.toISOString() ?? null,
+    revision: team.revision, startedAt: team.startedAt?.toISOString() ?? null, completedAt: team.completedAt?.toISOString() ?? null, cancelledAt: team.cancelledAt?.toISOString() ?? null, archiveUntil: team.archiveUntil?.toISOString() ?? null,
     closedAt: team.recruitmentClosedAt?.toISOString() ?? null, capacity: team.recruitment.capacity, memberCount: team.members.filter(m => m.status === 'ACTIVE').length,
     acceptingStatus: acceptingStatus(team.status, team.recruitment.joinDeadline, team.members.filter(m => m.status === 'ACTIVE').length, team.recruitment.capacity, team.recruitmentClosedAt),
     recruitmentRevision: team.recruitment.revision, myMembership: { id: mine.id, role: mine.role, revision: mine.revision, slotName: team.slots.find(s => s.id === mine.slotId)!.name, joinedAt: mine.joinedAt.toISOString() } };
@@ -111,7 +112,7 @@ async function manageTeam(teamId: string, actorId: string, input: TeamActionInpu
     } else nextStatus = 'CANCELLED';
     const pending = input.kind === 'TRANSFER' ? [] : await tx.application.findMany({ where: { teamId, status: 'PENDING' }, select: { id: true, applicantId: true, slot: { select: { name: true } } } });
     await tx.team.update({ where: { id: teamId }, data: { status: nextStatus, captainUserId, revision: { increment: 1 },
-      ...(input.kind === 'START' ? { startedAt: now } : input.kind === 'COMPLETE' ? { completedAt: now } : input.kind === 'CANCEL' ? { cancelledAt: now } : {}) } });
+      ...(input.kind === 'START' ? { startedAt: now } : input.kind === 'COMPLETE' ? { completedAt: now, archiveUntil: archiveDeadline(now) } : input.kind === 'CANCEL' ? { cancelledAt: now, archiveUntil: archiveDeadline(now) } : {}) } });
     if (pending.length) await tx.application.updateMany({ where: { teamId, status: 'PENDING' }, data: { status: 'EXPIRED', revision: { increment: 1 }, resolvedAt: now } });
     const action = await tx.teamAction.create({ data: { teamId, actorId, expectedRevision: input.revision, kind: input.kind, reason: input.reason,
       targetMemberId: input.kind === 'TRANSFER' ? input.targetMemberId : null, targetRevision: input.kind === 'TRANSFER' ? input.targetRevision : null,

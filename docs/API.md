@@ -129,3 +129,7 @@ START 仅未截止的 OPEN / FULL 且至少两名有效成员，允许未满员�
 GET /teams/:id/chat 接受 after（增量）或 before（更早），互斥，limit 默认 30 最大 50；默认最新页升序，返回 items / more / previousBefore / highWater、状态 / 写能力、公告版本、未读与已读序号。POST /teams/:id/chat/messages 使用 {clientMessageId:UUID,body:1—2000字}；原标识同内容回执幂等，不同内容 409。POST /chat/read 使用 {seq}，不能超过高水位，不能倒退。POST /chat/announcement 使用 {revision,body:0—2000字}，仅当前队长和可写阶段。POST /chat/messages/:messageId/delete 使用 {}，仅本人有效成员在可写阶段删除文字，保留序号并产生撤回提示。
 
 所有接口为私有 no-store、独立有效成员 / 账号检查，写操作同源 CSRF；终态新消息 409，仍有阅读权限时可找回原消息回执。每成员每队一分钟最多 20 条文字，另遵守原 IP 写限流。HTTP 两秒补取、重新可见和联网时同步；不提供 Socket 长连接。正文 / 公告没有公开接口；系统动态不包含私有审核或移除原因。
+
+## I-007 聊天归档（2026-10-27）
+
+终态 Team.archiveUntil 与聊天 DTO 的 archiveUntil 明确只读期限。到期后所有聊天接口返回 410 CHAT_ARCHIVE_EXPIRED，先隐藏正文和公告，不依赖清理执行。默认终态起 30 天，EXPIRED 从原截止起算。启动 / 每分钟清理到期正文、内容摘要和公告，保留必要序号占位；ChatSpace.purgedAt 防重复。清理事务失败整体回滚并后续重试。普通队伍详情仍保留必要成员关系和公开招募入口。

@@ -4,4 +4,4 @@ export const SendMessageSchema = z.object({ clientMessageId: z.uuid(), body: z.s
 export const ReadChatSchema = z.object({ seq: z.number().int().min(0) }).strict();
 export const AnnouncementSchema = z.object({ revision: z.number().int().positive(), body: z.string().trim().max(2000) }).strict();
 export interface ChatMessageDTO { id: string; seq: number; senderId: string | null; kind: string; nickname: string; body: string | null; createdAt: string; deleted: boolean; redactsMessageId: string | null }
-export interface ChatPageDTO { title: string; teamId: string; status: string; canWrite: boolean; canAnnounce: boolean; announcement: string; announcementRevision: number; highWater: number; unreadCount: number; lastReadSeq: number; items: ChatMessageDTO[]; more: boolean; previousBefore: number | null }
+export interface ChatPageDTO { archiveUntil: string | null; title: string; teamId: string; status: string; canWrite: boolean; canAnnounce: boolean; announcement: string; announcementRevision: number; highWater: number; unreadCount: number; lastReadSeq: number; items: ChatMessageDTO[]; more: boolean; previousBefore: number | null }

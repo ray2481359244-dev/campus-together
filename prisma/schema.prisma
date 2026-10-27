@@ -220,6 +220,7 @@ model Team {
   completedAt DateTime? @db.Timestamptz(3)
   cancelledAt DateTime? @db.Timestamptz(3)
   expiredAt DateTime? @db.Timestamptz(3)
+  archiveUntil DateTime? @db.Timestamptz(3)
   actions TeamAction[]
   createdAt DateTime @default(now()) @db.Timestamptz(3)
   slots TeamSlot[]
@@ -230,6 +231,7 @@ model Team {
   applications Application[]
   closure RecruitmentClosure?
   @@index([status, id])
+  @@index([archiveUntil, id])
 }
 
 model TeamSlot {
@@ -275,6 +277,7 @@ model ChatSpace {
   lastSeq Int @default(0)
   announcement String @default("") @db.VarChar(2000)
   announcementRevision Int @default(1)
+  purgedAt DateTime? @db.Timestamptz(3)
 }
 
 model ChatMessage {

@@ -2,6 +2,7 @@ import type { RequestHandler } from 'express';
 import { db } from './db.js';
 import { IdSchema } from '@campus/contracts';
 import { databaseNow } from './time.js';
+import { archiveDeadline, purgeExpiredChats } from './archive.js';
 
 // Both scheduled recovery and request fallback use the same locked transaction.
 export async function expireTeam(teamId: string) {
@@ -14,7 +15,7 @@ export async function expireTeam(teamId: string) {
     const now = await databaseNow(tx);
     if (!['OPEN', 'FULL'].includes(team.status) || !team.recruitment.joinDeadline || team.recruitment.joinDeadline > now || team.recruitment.publicationStatus !== 'PUBLISHED') return false;
     const pending = await tx.application.findMany({ where: { teamId, status: 'PENDING' }, include: { slot: true } });
-    await tx.team.update({ where: { id: teamId }, data: { status: 'EXPIRED', expiredAt: team.recruitment.joinDeadline, revision: { increment: 1 } } });
+    await tx.team.update({ where: { id: teamId }, data: { status: 'EXPIRED', expiredAt: team.recruitment.joinDeadline, archiveUntil: archiveDeadline(team.recruitment.joinDeadline), revision: { increment: 1 } } });
     await tx.application.updateMany({ where: { teamId, status: 'PENDING' }, data: { status: 'EXPIRED', revision: { increment: 1 }, resolvedAt: now } });
     const action = await tx.teamAction.create({ data: { teamId, actorId: null, expectedRevision: team.revision, kind: 'EXPIRE', captainUserId: team.captainUserId,
       fromStatus: team.status, toStatus: 'EXPIRED', reason: '招募截止已到，活动未开始，队伍已自动到期。', recruitmentTitle: team.recruitment.title, expiredCount: pending.length, createdAt: now } });
@@ -46,7 +47,7 @@ export const expiryFallback: RequestHandler = async (req, _res, next) => {
 };
 export function startExpiryWorker() {
   let running: Promise<unknown> | null = null;
-  const tick = () => { if (!running) running = expireDueTeams().catch(() => console.error('Team expiry scan failed; a later scan will retry.')).finally(() => { running = null; }); };
+  const tick = () => { if (!running) running = expireDueTeams().then(() => purgeExpiredChats()).catch(() => console.error('Team maintenance scan failed; a later scan will retry.')).finally(() => { running = null; }); };
   tick();
   const timer = setInterval(tick, 60_000); timer.unref();
   return async () => { clearInterval(timer); await running; };

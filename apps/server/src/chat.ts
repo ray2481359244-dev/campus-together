@@ -7,6 +7,7 @@ import { db } from './db.js';
 import { requireUser, csrfGuard, writeLimit } from './auth.js';
 import { ApiError, parse } from './http.js';
 import { databaseNow } from './time.js';
+import { terminal } from './archive.js';
 
 const systemText: Record<string,string> = { TEAM_CREATED: '队伍已创建。新成员可查看本队现有历史。', APPLICATION_APPROVED: '一位申请者已正式入队。', MEMBER_LEFT: '一位成员已退出队伍。', MEMBER_REMOVED: '一位成员已被移出队伍。', TEAM_TRANSFER: '队长身份已转交，双方岗位保持不变。', TEAM_START: '活动已开始，停止招人。', TEAM_COMPLETE: '活动已结束，群聊转为只读。', TEAM_CANCEL: '活动已取消，群聊转为只读。', TEAM_EXPIRED: '队伍已到期，群聊转为只读。', RECRUITMENT_CLOSED: '招募已关闭，现有成员继续协作。', TEAM_ANNOUNCEMENT_CHANGED: '队长更新了队伍公告。' };
 const messageDTO = (m: ChatMessage): ChatMessageDTO => ({ id: m.id, seq: m.seq, senderId: m.senderId, kind: m.kind, nickname: m.nickname, body: m.deletedAt ? null : m.body, createdAt: m.createdAt.toISOString(), deleted: !!m.deletedAt, redactsMessageId: m.redactsMessageId });
@@ -18,7 +19,9 @@ async function context(tx: Prisma.TransactionClient, teamId: string, userId: str
   const team = await tx.team.findUniqueOrThrow({ where: { id: teamId }, include: { recruitment: true, chatSpace: true } });
   const member = await tx.teamMember.findFirst({ where: { teamId, userId, status: 'ACTIVE', user: { status: 'ACTIVE' } }, include: { user: { select: { profile: { select: { nickname: true } } } } } });
   if (!member || team.recruitment.publicationStatus !== 'PUBLISHED' || !team.chatSpace) throw new ApiError(404, 'NOT_FOUND', '你当前不是有效成员，队内内容已收起。');
-  const now = await databaseNow(tx), canWrite = team.status === 'IN_PROGRESS' || ['OPEN','FULL'].includes(team.status) && !!team.recruitment.joinDeadline && team.recruitment.joinDeadline > now;
+  const now = await databaseNow(tx);
+  if(team.chatSpace.purgedAt || terminal(team.status) && team.archiveUntil && team.archiveUntil <= now) throw new ApiError(410,'CHAT_ARCHIVE_EXPIRED','归档期限已到，聊天正文和公告已隐藏。');
+  const canWrite = team.status === 'IN_PROGRESS' || ['OPEN','FULL'].includes(team.status) && !!team.recruitment.joinDeadline && team.recruitment.joinDeadline > now;
   return { team, member, now, canWrite, captain: team.captainUserId === userId && member.role === 'CAPTAIN' };
 }
 async function syncSystem(tx: Prisma.TransactionClient, teamId: string) {
@@ -36,7 +39,7 @@ chatRouter.get('/teams/:id/chat', async (req, res) => {
     const forward = input.after !== undefined;
     const rows = await tx.chatMessage.findMany({ where: { teamId, ...(forward ? { seq: { gt: input.after } } : input.before ? { seq: { lt: input.before } } : {}) }, orderBy: { seq: forward ? 'asc' : 'desc' }, take: input.limit + 1 });
     const selected = rows.slice(0,input.limit), items = (forward ? selected : selected.reverse()).map(messageDTO);
-    return { title: c.team.recruitment.title, teamId, status: c.team.status, canWrite: c.canWrite, canAnnounce: c.canWrite && c.captain,
+    return { title: c.team.recruitment.title, teamId, status: c.team.status, canWrite: c.canWrite, canAnnounce: c.canWrite && c.captain, archiveUntil: c.team.archiveUntil?.toISOString() ?? null,
       announcement: c.team.chatSpace!.announcement, announcementRevision: c.team.chatSpace!.announcementRevision, highWater, lastReadSeq: c.member.lastReadSeq,
       unreadCount: await tx.chatMessage.count({ where: { teamId, seq: { gt: c.member.lastReadSeq }, OR: [{ senderId: null },{ senderId: { not: user.id } }] } }),
       items, more: forward && rows.length > input.limit, previousBefore: !forward && rows.length > input.limit ? items[0].seq : null };

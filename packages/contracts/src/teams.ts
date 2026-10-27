@@ -14,6 +14,7 @@ export interface TeamSummaryDTO {
   id: string; recruitmentId: string; title: string; captainUserId: string; status: string; closedAt: string | null;
   acceptingStatus: 'OPEN' | 'FULL' | 'CLOSED'; capacity: number; memberCount: number; recruitmentRevision: number;
   revision: number; startedAt: string | null; completedAt: string | null; cancelledAt: string | null;
+  archiveUntil: string | null;
   myMembership: { id: string; role: 'CAPTAIN' | 'MEMBER'; revision: number; slotName: string; joinedAt: string };
 }
 export interface TeamDetailDTO extends TeamSummaryDTO {
