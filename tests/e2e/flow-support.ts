@@ -9,6 +9,7 @@ export async function flows(browser: Browser) {
     if (!(await (await page.request.get('/api/v1/auth/me')).json()).data.user) {
       await page.goto('/register'); await page.getByLabel('邮箱', { exact: true }).fill(`flow-${name}@campus.invalid`); await page.getByLabel('密码', { exact: true }).fill('StageFlow2026!'); await page.getByLabel('昵称', { exact: true }).fill('阶段体验' + name);
       await page.getByRole('combobox', { name: '学校（自述）', exact: true }).selectOption({ label: '星原大学（虚构演示）' }); await page.getByRole('button', { name: '创建账号，开始碰个头', exact: true }).click(); await expect(page).toHaveURL(/\/discover/);
+      await context.storageState({ path: `.local/e2e-application-${name}.json` });
     }
   }
   const sessions = await Promise.all(pages.map(async p => (await (await p.request.get('/api/v1/auth/me')).json()).data));

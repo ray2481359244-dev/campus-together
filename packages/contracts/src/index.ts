@@ -1,3 +1,4 @@
+export * from './chat.js';
 import { z } from 'zod';
 export * from './recruitments.js';
 export * from './applications.js';

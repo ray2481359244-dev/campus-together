@@ -290,3 +290,7 @@ svg{flex-shrink:0}
 .detail-top{flex-wrap:wrap}
 .swipe-hint{max-width:100%}
 @media(max-width:767px){.school-control select,.topic-picker select,.search-form input{font-size:16px}.mobile-nav{bottom:max(12px,env(safe-area-inset-bottom))}body{padding-bottom:calc(96px + env(safe-area-inset-bottom))}.form-stack input,.form-stack select,.form-stack textarea{scroll-margin-block:100px}}
+
+.chat-messages{display:grid;gap:14px;margin:20px 0}.chat-message{min-width:0}.chat-message .post-body{overflow-wrap:anywhere}.chat-system{background:var(--paper,#fffdf7);border-left:5px solid #bba5f2}.chat-message .review-card-heading{gap:12px}
+
+.team-chat .post-body{min-height:0;margin:12px 0}.team-chat .chat-message{padding:18px}.team-chat h3{margin-top:18px}.team-chat .form-stack{margin-top:16px}

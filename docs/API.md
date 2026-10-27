@@ -123,3 +123,9 @@ START 仅未截止的 OPEN / FULL 且至少两名有效成员，允许未满员�
 ## I-005 自动到期（2026-10-27）
 
 启动补偿和每分钟扫描每批至多 100 队，失败单队下次重试；目标队伍 / 申请 / 招募请求先执行同一到期事务。数据库 epoch 时间避免驱动时区歧义；Recruitment → Team 锁保证与手动活动 / 审核竞争一致。EXPIRE 只由系统产生，TeamAction.actorId 可空，用户 actions Schema 不接受该类型。到期成员通知 TEAM_EXPIRED，原待审申请者通知 APPLICATION_EXPIRED；不再允许截止后的显式关闭改写终态。仅保留原审核结果回执，不重复批准或恢复成员。
+
+## I-006 队伍群聊（2026-10-27）
+
+GET /teams/:id/chat 接受 after（增量）或 before（更早），互斥，limit 默认 30 最大 50；默认最新页升序，返回 items / more / previousBefore / highWater、状态 / 写能力、公告版本、未读与已读序号。POST /teams/:id/chat/messages 使用 {clientMessageId:UUID,body:1—2000字}；原标识同内容回执幂等，不同内容 409。POST /chat/read 使用 {seq}，不能超过高水位，不能倒退。POST /chat/announcement 使用 {revision,body:0—2000字}，仅当前队长和可写阶段。POST /chat/messages/:messageId/delete 使用 {}，仅本人有效成员在可写阶段删除文字，保留序号并产生撤回提示。
+
+所有接口为私有 no-store、独立有效成员 / 账号检查，写操作同源 CSRF；终态新消息 409，仍有阅读权限时可找回原消息回执。每成员每队一分钟最多 20 条文字，另遵守原 IP 写限流。HTTP 两秒补取、重新可见和联网时同步；不提供 Socket 长连接。正文 / 公告没有公开接口；系统动态不包含私有审核或移除原因。

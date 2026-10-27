@@ -64,6 +64,7 @@ model User {
   recruitmentClosures RecruitmentClosure[]
   teamActions TeamAction[]
   teamActionNotices TeamActionNotice[]
+  chatMessages ChatMessage[]
   domainEvents DomainEvent[]
   createdAt    DateTime   @default(now()) @db.Timestamptz(3)
   updatedAt    DateTime   @updatedAt @db.Timestamptz(3)
@@ -224,6 +225,7 @@ model Team {
   slots TeamSlot[]
   members TeamMember[]
   chatSpace ChatSpace?
+  chatMessages ChatMessage[]
   events DomainEvent[]
   applications Application[]
   closure RecruitmentClosure?
@@ -259,6 +261,7 @@ model TeamMember {
   leftAt DateTime? @db.Timestamptz(3)
   revision Int @default(1)
   changes MembershipChange[]
+  lastReadSeq Int @default(0)
 
   @@unique([teamId, userId])
   @@unique([id, userId])
@@ -269,6 +272,30 @@ model ChatSpace {
   teamId String @unique @db.Uuid
   team Team @relation(fields: [teamId], references: [id], onDelete: Cascade)
   createdAt DateTime @default(now()) @db.Timestamptz(3)
+  lastSeq Int @default(0)
+  announcement String @default("") @db.VarChar(2000)
+  announcementRevision Int @default(1)
+}
+
+model ChatMessage {
+  id String @id @default(uuid()) @db.Uuid
+  teamId String @db.Uuid
+  team Team @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  seq Int
+  senderId String? @db.Uuid
+  sender User? @relation(fields: [senderId], references: [id], onDelete: SetNull)
+  clientMessageId String? @db.Uuid
+  systemEventId String? @unique @db.Uuid
+  kind String @db.VarChar(10)
+  nickname String @db.VarChar(80)
+  body String? @db.VarChar(2000)
+  bodyHash String? @db.VarChar(64)
+  redactsMessageId String? @db.Uuid
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
+  deletedAt DateTime? @db.Timestamptz(3)
+  @@unique([teamId, seq])
+  @@unique([teamId, senderId, clientMessageId])
+  @@index([teamId, createdAt])
 }
 
 model DomainEvent {
