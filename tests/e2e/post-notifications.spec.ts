@@ -1,0 +1,71 @@
+import {test,expect} from '@playwright/test';
+import {flows} from './flow-support';
+
+test('未入队的评论与回复进入消息，点赞动态计数、红点弹窗和单帖免打扰贯通',async({browser})=>{
+  test.setTimeout(150000);
+  const f=await flows(browser);let failed=false;
+  try{
+    await f.create('帖子消息验收准备窗口');
+    const [owner,reader,observer]=f.pages;
+    const topic=(await (await owner.request.get('/api/v1/topics?category=OUTDOOR')).json()).data[0];
+    const title='周末一起去公园看秋天吧';
+    const created=await f.post(0,'/posts',{requestKey:crypto.randomUUID(),topicId:topic.id,title,body:'想找几个同学周末去附近公园走走，带上相机和零食，评论区一起商量时间吧。'});expect(created.status()).toBe(201);
+    const post=(await created.json()).data,path='/posts/'+post.id;
+    const baseline=(await (await owner.request.get('/api/v1/me/notifications/summary')).json()).data.unreadCount;
+    const ready=owner.waitForResponse(r=>r.url().endsWith('/me/notifications/summary')&&r.ok());
+    await owner.goto('/me');await ready;
+    await reader.goto(path);
+    await expect(reader.getByText('正在看帖',{exact:true})).toBeVisible();
+    await reader.getByRole('button',{name:'点赞 · 0',exact:true}).click();
+    await expect(reader.getByRole('button',{name:'取消点赞 · 1',exact:true})).toHaveClass(/is-liked/);
+    await expect(reader.locator('.like-burst')).toHaveCount(1);
+    await expect(owner.locator('.desktop-nav .unread-badge')).toHaveText(String(baseline+1),{timeout:10000});
+    await expect(owner.getByRole('status').filter({hasText:'帖子有了新互动'})).toBeVisible();
+    await reader.getByLabel('写一条评论',{exact:true}).fill('我也想参加，周六下午方便吗？');
+    await reader.getByRole('button',{name:'发布评论',exact:true}).click();
+    await expect(reader.locator('.community-comment').filter({hasText:'我也想参加，周六下午方便吗？'})).toBeVisible();
+    await expect(reader.getByRole('button',{name:'取消点赞 · 1',exact:true})).toBeEnabled();
+    await reader.evaluate(()=>{(document.activeElement as HTMLElement)?.blur();window.scrollTo({top:0,behavior:'instant'});});
+    await reader.screenshot({path:'.local/screenshots/post-interactions-390.png',fullPage:true});
+    await owner.getByRole('navigation',{name:'桌面主导航'}).getByRole('link',{name:/消息/}).click();
+    const likes=owner.locator('.notification-card').filter({hasText:title}).filter({hasText:'你的帖子收到了点赞。'});
+    await expect(likes).toContainText('当前共 1 个赞');
+    const notice=owner.locator('.notification-card').filter({hasText:title}).filter({hasText:'你的帖子有了新评论。'});
+    await expect(notice).toContainText('我也想参加，周六下午方便吗？');
+    await owner.screenshot({path:'.local/screenshots/post-messages-1440.png',fullPage:true});
+    await notice.getByRole('link',{name:'查看评论并回复 →',exact:true}).click();
+    await expect(owner).toHaveURL(/\?comment=/);
+    await expect(owner.locator('.targeted-comment')).toContainText('我也想参加，周六下午方便吗？');
+    await owner.getByRole('button',{name:'回复此评论',exact:true}).click();
+    await owner.getByLabel('写一条评论',{exact:true}).fill('可以，周六两点在校门口见！');
+    const readerReady=reader.waitForResponse(r=>r.url().endsWith('/me/notifications/summary')&&r.ok());
+    await reader.goto('/me');await readerReady;
+    await owner.getByRole('button',{name:'发布评论',exact:true}).click();
+    await expect(reader.locator('.mobile-nav .unread-badge')).toBeVisible({timeout:10000});
+    await reader.goto('/messages');
+    await expect(reader.locator('.notification-card').filter({hasText:title}).filter({hasText:'有人回复了你的评论。'})).toContainText('可以，周六两点在校门口见！');
+    await owner.getByRole('button',{name:'关闭本帖提醒',exact:true}).click();
+    await owner.reload();await expect(owner.getByRole('button',{name:'开启本帖提醒',exact:true})).toHaveAttribute('aria-pressed','true');
+    const before=(await (await owner.request.get('/api/v1/me/notifications')).json()).data.items.filter((n:{postId:string})=>n.postId===post.id).length;
+    await observer.goto(path);
+    await observer.getByLabel('写一条评论',{exact:true}).fill('这条消息在作者免打扰后不应新增提醒。');
+    await observer.getByRole('button',{name:'发布评论',exact:true}).click();await expect(observer.locator('.community-comment').filter({hasText:'这条消息在作者免打扰后不应新增提醒。'})).toBeVisible();
+    await observer.getByRole('button',{name:'点赞 · 1',exact:true}).click();await expect(observer.getByRole('button',{name:'取消点赞 · 2',exact:true})).toBeVisible();
+    await expect(owner.getByRole('button',{name:'点赞 · 2',exact:true})).toBeVisible({timeout:10000});
+    const after=(await (await owner.request.get('/api/v1/me/notifications')).json()).data.items.filter((n:{postId:string})=>n.postId===post.id);expect(after).toHaveLength(before);expect(after.find((n:{kind:string})=>n.kind==='POST_LIKED').likes).toBe(2);
+    await owner.getByRole('button',{name:'开启本帖提醒',exact:true}).click();await expect(owner.getByRole('button',{name:'关闭本帖提醒',exact:true})).toBeVisible();
+    for(const width of [1440,390,320]){
+      await owner.setViewportSize({width,height:1000});await owner.goto(path);await expect(owner.getByText('正在看帖',{exact:true})).toBeVisible();
+      await expect(owner.getByTestId('swipe-panel')).toHaveCSS('opacity','1');
+      await expect(owner.getByRole('button',{name:'关闭本帖提醒',exact:true})).toBeEnabled();
+      await owner.evaluate(()=>{(document.activeElement as HTMLElement)?.blur();window.scrollTo({top:0,behavior:'instant'});});
+      expect(await owner.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
+      await owner.screenshot({path:'.local/screenshots/post-reading-'+width+'.png',fullPage:true});
+      const reading=await owner.locator('#main-content').evaluate(n=>getComputedStyle(n).backgroundColor);
+      await owner.goto('/publish');await expect(owner.getByText('正在发帖',{exact:true})).toBeVisible();
+      expect(await owner.locator('#main-content').evaluate(n=>getComputedStyle(n).backgroundColor)).not.toBe(reading);
+      expect(await owner.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
+      await owner.screenshot({path:'.local/screenshots/post-compose-'+width+'.png',fullPage:true});
+    }
+  }catch(e){failed=true;throw e;}finally{try{await f.close();}catch(e){if(!failed)throw e;}}
+});

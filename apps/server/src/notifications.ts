@@ -7,9 +7,17 @@ import { requireUser, csrfGuard, writeLimit } from './auth.js';
 import { parse, ApiError } from './http.js';
 
 const teamLink = { select: { id: true, recruitmentId: true } } as const;
-const include = { notice: true, actionNotice: { include: { action: { include: { team: teamLink } } } }, review: { include: { application: { select: { team: teamLink } } } }, memberChange: { include: { member: { select: { team: teamLink } } } }, closure: { include: { team: teamLink } }, closedApplication: { select: { slot: { select: { name: true } } } } } as const;
+const include = { notice: { include: { post: { select: { title:true,status:true,_count:{select:{reactions:true}},mutes:{select:{userId:true}} } }, comment:{select:{body:true,status:true}} } }, actionNotice: { include: { action: { include: { team: teamLink } } } }, review: { include: { application: { select: { team: teamLink } } } }, memberChange: { include: { member: { select: { team: teamLink } } } }, closure: { include: { team: teamLink } }, closedApplication: { select: { slot: { select: { name: true } } } } } as const;
 function dto(row: Prisma.NotificationGetPayload<{ include: typeof include }>): NotificationDTO {
   const base = { id: row.id, createdAt: row.createdAt.toISOString(), readAt: row.readAt?.toISOString() ?? null };
+  if (row.notice?.postId) {
+    const notice = row.notice, available = notice.post?.status === 'PUBLISHED';
+    return { ...base, applicationId:null,teamId:null,recruitmentId:null,recruitmentTitle:'',slotName:'',
+      postId:notice.postId!,postTitle:available?notice.post!.title:'讨论已不可用',postAvailable:available,
+      commentId:available&&notice.comment?.status==='PUBLISHED'?notice.commentId:null,
+      likes:available?notice.post!._count.reactions:0,notificationsMuted:notice.post?.mutes.some(m=>m.userId===row.recipientId)??false,
+      kind:notice.kind as NotificationDTO['kind'],reason:!available?'这条讨论已删除或隐藏。':notice.commentId?(notice.comment?.status==='PUBLISHED'?notice.reason+'\n'+notice.comment.body:'原评论已删除或隐藏。'):notice.reason };
+  }
   if (row.notice) return { ...base, applicationId:null, teamId:row.notice.teamId, recruitmentId:row.notice.recruitmentId, recruitmentTitle:row.notice.title, slotName:'', kind:row.notice.kind as NotificationDTO['kind'], reason:row.notice.reason };
   if (row.review) return { ...base, applicationId: row.review.applicationId, teamId: row.review.application.team.id, recruitmentId: row.review.application.team.recruitmentId,
     recruitmentTitle: row.review.recruitmentTitle, slotName: row.review.slotName, kind: row.review.decision === 'APPROVE' ? 'APPLICATION_APPROVED' : 'APPLICATION_REJECTED', reason: row.review.reason };
@@ -27,6 +35,13 @@ function dto(row: Prisma.NotificationGetPayload<{ include: typeof include }>): N
 }
 export const notificationsRouter = Router();
 notificationsRouter.use('/me/notifications', (_req, res, next) => { requireUser(res); res.setHeader('Cache-Control', 'no-store'); next(); });
+notificationsRouter.get('/me/notifications/summary', async (_req,res) => {
+  const user=requireUser(res);
+  const result=await db.$transaction(async tx=>{
+    const latest=await tx.notification.findFirst({where:{recipientId:user.id},include,orderBy:[{createdAt:'desc'},{id:'desc'}]});
+    return {unreadCount:await tx.notification.count({where:{recipientId:user.id,readAt:null}}),latest:latest?dto(latest):null};
+  });res.json({data:result});
+});
 notificationsRouter.get('/me/notifications', async (req, res) => {
   const user = requireUser(res), input = parse(NotificationsQuerySchema, req.query);
   const result = await db.$transaction(async tx => {

@@ -1,5 +1,7 @@
 # 已实现 API
 
+2026-10-29 最新补充：帖子评论 / 回复 / 点赞提醒和单帖免打扰见文末 I-014；以下历史节点按当时范围保留。
+
 前缀 `/api/v1`。成功 `{data, meta?}`，失败 `{error:{code,message,fields?},requestId}`。更新至 2026-10-26 I-003 成员管理与关闭招募。未列出的队长转交、开始 / 结束 / 取消、聊天和 AI 业务仍未实现。
 
 | 方法与路径 | 当前行为 |
@@ -163,3 +165,13 @@ POST /reports：requestKey / targetType POST、COMMENT、RECRUITMENT、CHAT_MESS
 管理员 GET /admin/{reports,topics,topic-settings,users,posts,comments,recruitments,audit}，每页 50，按 UUID 稳定顺序，支持 cursor，users 的 q 仅查昵称，不返回邮箱 / 凭据 / 会话；群聊证据读取留审计。POST /admin/content/:type/:id：requestKey / revision / hidden / reason。POST /admin/reports/:id/resolve：requestKey / revision / outcome HIDE、RESOLVED、DISMISSED / reason。POST /admin/topic-requests/:id/review：requestKey / revision / approved / reason。POST /admin/topics/:id/settings：requestKey / active 或 alias / reason。POST /admin/users/:id/status：requestKey / status ACTIVE 或 SUSPENDED / reason。POST /admin/teams/:id/cancel：revision / reason，复用队伍操作回执。所有变更要求当前 ADMIN、来源、CSRF、原请求校验和审计；审计失败整体回滚。
 
 NotificationDTO 增加 APPLICATION_SUBMITTED / MEMBER_JOINED / TOPIC_APPROVED / TOPIC_REJECTED / REPORT_RESOLVED；主题与举报的 teamId / recruitmentId 可空，页面改走本人申请与举报入口。Notice 与既有通知来源互斥、接收者复合外键校验；申请提醒同提交事务，每轮仅一次。
+
+## I-014 帖子提醒与免打扰（2026-10-29）
+
+GET /community/:postId 增加当前账号 notificationsMuted；可选 commentId 定位指定可见评论，第一页从该评论起返回，后续使用原 cursor。不存在、跨帖或不可见定位目标不会泄露内容，回到普通评论页。前端 /posts/:id?comment=UUID 用于从消息定位评论，可切回全部评论。
+
+POST /community/:postId/comments 与作者 / 被回复人通知同事务，每条评论对每个接收者至多一条；不向操作者本人投递，不依赖队伍成员关系。原 requestKey 重试不新增通知。PUT /community/:postId/like 继续接受 active，响应增加当前 likes；仅新建点赞恢复作者该帖合并通知的未读，重复 active=true 不恢复已读。取消时更新当前总数，最后一个赞取消后删除该合并提醒。
+
+PUT /community/:postId/notifications 接受严格 {muted:boolean}；登录、同源 / CSRF、有效账号与可见帖子校验。按 userId / postId 保存 PostMute；关闭时将该账号本帖旧通知标为已读，之后不新增本帖互动提醒，不影响其他账号 / 帖子，恢复不追溯补发。消息列表和帖子详情均提供关闭 / 恢复按钮。
+
+GET /me/notifications/summary 返回 {unreadCount,latest:NotificationDTO|null}，仅本人 no-store。既有列表 / 已读接口保持；新增 POST_COMMENT / POST_REPLY / POST_LIKED 及可选 postId / postTitle / postAvailable / commentId / likes / notificationsMuted。标题、评论预览和点赞数按目标当前状态读取，不通过旧摘要泄露隐藏内容。普通通知字段和队伍入口保留。导航摘要、消息列表和已打开帖子的互动数以 HTTP 每 5 秒补取；新通知在页面内提示，未新增系统推送或 Socket。

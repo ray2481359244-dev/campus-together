@@ -6,7 +6,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useNavigate, useSearchParams, useParams, Link } from 'react-router-dom';
 import { PostContentSchema, categoryInfo } from '@campus/contracts';
 import type { Category, TopicDTO, PostDTO, CreatePost, PostContent } from '@campus/contracts';
-import { ArrowUpRight, Check } from 'lucide-react';
+import { ArrowUpRight, Check, Pencil } from 'lucide-react';
 import { useAuth } from '../lib/auth';
 import { api, ApiError, messageOf } from '../lib/api';
 import { PageTitle, Loading, ErrorState, FormError, LoginGate } from '../components/UI';
@@ -60,7 +60,7 @@ export function Publish({ edit = false }: { edit?: boolean }) {
       }
     } finally { saving.current = false; setSubmitting(false); }
   }
-  return <section className="form-page"><PageTitle title={edit ? '让想法更清楚一点。' : '你的想法，值得被看见。'} eyebrow={edit ? 'EDIT YOUR DISCUSSION.' : 'LET YOUR IDEA OUT.'} back={() => navigate(edit ? '/posts/' + id : '/discover')} />
+  return <section className="form-page discussion-publish"><div className="compose-location"><p className="page-location">发布 / <strong>{edit?'编辑帖子':'写新帖子'}</strong></p><span className="page-mode-label"><Pencil size={16} aria-hidden="true" />{edit?'正在编辑':'正在发帖'}</span></div><PageTitle title={edit ? '让想法更清楚一点。' : '你的想法，值得被看见。'} eyebrow={edit ? 'EDIT YOUR DISCUSSION.' : 'LET YOUR IDEA OUT.'} back={() => navigate(edit ? '/posts/' + id : '/discover')} />
     {!edit && <div className="publish-modes"><span className="current"><Check size={16} />发布讨论</span><Link to="/recruitments/new">发起招募<ArrowUpRight size={14} /></Link></div>}
     <form className="paper form-stack" onSubmit={pending ? event => { event.preventDefault(); void save(pending); } : handleSubmit(save)}>
       {edit && <section className="version-tools" aria-label="讨论版本核对"><p className="form-note">当前编辑基于版本 {base!.revision}。后台刷新不会覆盖输入；保存冲突时，请先核对已保存内容。</p>
