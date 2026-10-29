@@ -10,6 +10,11 @@
   "scripts": {
     "setup": "node scripts/setup.mjs",
     "local": "node scripts/local.mjs",
+    "demo": "node scripts/demo.mjs",
+    "demo:status": "node scripts/demo.mjs --status",
+    "demo:scene": "node scripts/demo.mjs --new-scene",
+    "test:demo": "node --test tests/demo.test.mjs",
+    "test:demo-flow": "node scripts/check-demo.mjs",
     "doctor": "node scripts/doctor.mjs",
     "test:startup": "node --test tests/startup.test.mjs",
     "test:serve": "node --test tests/serve.test.mjs",

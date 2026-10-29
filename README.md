@@ -1,10 +1,10 @@
 # 碰个头 / CampusTogether
 
-校园兴趣社区与可解释组队平台。已接通账号、四区讨论与图片 / 评论 / 点赞 / 收藏、四区招募 / 申请审核 / 直接入队、队伍管理、自动到期、文字群聊与 30 天归档、竞赛条件排序，以及举报、主题审核和管理员封禁。部署入口、发布包、加密备份与隔离恢复已准备，正式部署留到下一阶段。AI 按负责人要求暂缓配置，保持规则模式；不是当前前置条件。见[部署交接](docs/DEPLOYMENT.md)、[动态计划](docs/ITERATION_PLAN.md)和[最新日志](docs/development/2026-10-27.md)。
+校园兴趣社区与可解释组队平台。已接通账号、四区讨论与图片 / 评论 / 点赞 / 收藏、四区招募 / 申请审核 / 直接入队、队伍管理、自动到期、文字群聊与 30 天归档、竞赛条件排序，以及举报、主题审核和管理员封禁。当前优先准备本地参赛演示，提供独立演示库和四角色启动入口；公网部署尚未执行。AI 按负责人要求暂缓配置，保持规则模式。见[本地演示](docs/competition/LOCAL_DEMO.md)、[部署交接](docs/DEPLOYMENT.md)、[动态计划](docs/ITERATION_PLAN.md)和[最新日志](docs/development/2026-10-29.md)。
 
 核心视觉暂定 **新粗野主义**：奶油白、黑边框、硬阴影、明亮分区色。设计原型见 design/campus-brutal-concept.html；原型内数据不计为应用功能。
 
-记录入口：[动态迭代计划](docs/ITERATION_PLAN.md) · [持续开发日志](DEVELOPMENT_LOG.md) · [最新详细记录](docs/development/2026-10-27.md) · [首周总结](docs/weekly/WEEK_01_REVIEW.md) · [参赛材料核对表](docs/competition/SUBMISSION_CHECKLIST.md) · [AI 证据索引](docs/ai/README.md)。
+记录入口：[动态迭代计划](docs/ITERATION_PLAN.md) · [持续开发日志](DEVELOPMENT_LOG.md) · [最新详细记录](docs/development/2026-10-29.md) · [首周总结](docs/weekly/WEEK_01_REVIEW.md) · [参赛材料核对表](docs/competition/SUBMISSION_CHECKLIST.md) · [AI 证据索引](docs/ai/README.md)。
 
 源码已上传到[公开 GitHub 仓库](https://github.com/ray2481359244-dev/campus-together)，默认分支为 `master`，保留从文档基线开始的完整提交历史。
 
@@ -17,7 +17,15 @@ Set-Location campus-together
 
 下文 `E:\比赛项目` 是当前开发电脑的位置；克隆后在你自己的仓库根目录执行相同命令即可。
 
-## 环境与启动（Windows PowerShell）
+## 本地参赛演示（Windows PowerShell）
+
+安装 Node.js 24 与 pnpm 11.5.1 后，先执行 `pnpm.cmd install --frozen-lockfile`，再执行 `pnpm.cmd demo`；依赖已安装也可双击 **启动参赛演示.cmd**。启动就绪后打开 http://127.0.0.1:3180/discover 。这是构建版单端口网页 / API，使用单独的 `campus_demo`，不会清空原 `campus` / `campus_test`。
+
+四个虚构账号（river / lin / mei / admin）和完整申请 → 审核 → 群聊 → 结束流程见 [本地演示操作说明](docs/competition/LOCAL_DEMO.md)。用独立浏览器会话扮演不同角色。`pnpm demo:status` 只读查看状态，`pnpm demo:scene` 新增四区场景，旧记录保留；Ctrl+C 停止演示网页，数据库保留。此入口仅绑定本机，不等于手机局域网或公网已可访问。
+
+下一步的 [异机复现与真实试用记录](docs/competition/REHEARSAL_AND_TRIAL.md) 仍待实际填写，不把同机缓存安装当作干净新机器通过。
+
+## 开发环境与启动（Windows PowerShell）
 
 Windows 已安装依赖时，可以直接双击根目录的 **启动平台.cmd**。保留该窗口运行，再访问 http://127.0.0.1:5173/ 。已运行时会给出地址，不再启动重复服务。
 
