@@ -1,4 +1,5 @@
 /* Shared language: a story sheet, a response window and an action ticket. */
+@media(max-width:850px){.post-workbench .wb-nav{position:sticky;top:8px;z-index:4;box-shadow:0 4px 15px #9872b125}.post-workbench :is(#post-content,.wb-talk,.wb-act,#write-comment){scroll-margin-top:86px}}
 .cloud-platform .condition-report li[data-status=UNKNOWN]{background:#faf0cb}
 .cloud-platform .page-title .content-title{font-family:var(--campus-font);font-weight:750}
 .cloud-platform .my-drafts{--fold-surface:#eee4f8;--fold-line:#b9a1ca;background:var(--fold-surface);border:1px solid var(--fold-line);border-radius:21px;margin:19px 0;padding:16px 21px;box-shadow:3px 4px 0 #a58bb51a}

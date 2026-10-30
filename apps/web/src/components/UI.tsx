@@ -2,7 +2,7 @@ import type { ReactNode } from 'react';
 import { ArrowLeft, ArrowUpRight, RefreshCw, AlertTriangle, LockKeyhole } from 'lucide-react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { motion, useMotionValue, animate } from 'motion/react';
-import { useRef, useEffect, useContext } from 'react';
+import { useRef, useEffect, useLayoutEffect, useContext } from 'react';
 import {useVisualPreferences} from '../lib/visual-preferences';
 import {WorkbenchMotionContext} from '../lib/workbench-motion';
 import type { PointerEvent } from 'react';
@@ -20,13 +20,22 @@ export function PageTitle({ title, eyebrow, back, contentTitle }: { title: strin
 export function FormError({ children }: { children?: ReactNode }) { return children ? <p className="form-error" role="alert">{children}</p> : null; }
 export function SectionLink({target,children,className,active}:{target:string;children:ReactNode;className?:string;active?:boolean}) {
   const location=useLocation(),navigate=useNavigate(),{motionEnabled}=useVisualPreferences(),reduce=!motionEnabled,capture=useContext(WorkbenchMotionContext);
+  const pendingScroll=useRef(false);
+  useLayoutEffect(()=>{
+    if(!pendingScroll.current)return;
+    pendingScroll.current=false;
+    // The target may have been hidden before this navigation committed.
+    const anchor=document.getElementById(target);
+    const surface=target==='conversation'?anchor?.closest('.wb-talk'):target==='linked-recruitments'?anchor?.closest('.wb-act'):null;
+    (surface||anchor)?.scrollIntoView({block:'start',behavior:reduce?'instant':'smooth'});
+  },[location.key,target,reduce]);
   return <a className={className} aria-current={active?'location':undefined} href={'#'+target} onClick={event=>{
     if(event.button!==0||event.metaKey||event.ctrlKey||event.shiftKey||event.altKey)return;
     event.preventDefault();
     capture?.();
+    pendingScroll.current=true;
     // Replace only the fragment so Back still returns to the original discussion card.
     navigate({pathname:location.pathname,search:location.search,hash:'#'+target},{replace:true,state:location.state});
-    requestAnimationFrame(()=>document.getElementById(target)?.scrollIntoView({block:'start',behavior:reduce?'instant':'smooth'}));
   }}>{children}</a>;
 }
 export function SwipePanel({ children, onBack }: { children: ReactNode; onBack: () => void }) {
