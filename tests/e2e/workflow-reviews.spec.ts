@@ -109,11 +109,11 @@ test('three accounts review, recover an uncertain approval, join once and read p
     await panel.getByRole('button', { name: '全部申请', exact: true }).click();
     await expect(bCard).toContainText('已批准'); await expect(cCard).toContainText('已拒绝');
     await b.getByRole('button', { name: '刷新并核对申请', exact: true }).click();
-    await expect(b.getByRole('status')).toContainText('已入队 · 当前有效成员');
+    await expect(b.getByRole('status').filter({hasText:'已入队 · 当前有效成员'})).toContainText('已入队 · 当前有效成员');
     await expect(b.getByLabel('已保存申请', { exact: true })).toContainText('欢迎加入，请一起承担界面开发。');
     await expect(b.getByRole('button', { name: '撤回申请', exact: true })).toHaveCount(0);
     await expect(b.getByText('当前 2 / 2 人，总人数包含队长。每位成员只占一个岗位。', { exact: true })).toBeVisible();
-    await b.reload(); await expect(b.getByRole('status')).toContainText('已入队 · 当前有效成员');
+    await b.reload(); await expect(b.getByRole('status').filter({hasText:'已入队 · 当前有效成员'})).toContainText('已入队 · 当前有效成员');
     await c.reload(); await expect(c.getByLabel('已保存申请', { exact: true })).toContainText('申请状态：已拒绝');
     await expect(c.getByLabel('已保存申请', { exact: true })).toContainText('本轮名额已满');
     await expect(c.getByRole('button', { name: '提交岗位申请', exact: true })).toBeDisabled();
@@ -135,7 +135,7 @@ test('three accounts review, recover an uncertain approval, join once and read p
     await expect(inbox).toContainText('未读 0');
     await b.reload(); await expect(inbox).toContainText('未读 0');
     await inbox.getByRole('link', { name: '查看招募与申请 →', exact: true }).click();
-    await expect(b.getByRole('status')).toContainText('已入队 · 当前有效成员');
+    await expect(b.getByRole('status').filter({hasText:'已入队 · 当前有效成员'})).toContainText('已入队 · 当前有效成员');
     await c.goto('/messages'); await expect(c.getByRole('region', { name: '站内通知', exact: true })).toContainText('本次岗位申请未通过。');
     await expect(c.getByRole('region', { name: '站内通知', exact: true })).not.toContainText('欢迎加入，请一起承担界面开发。');
     expect(errors).toEqual([]);

@@ -1,7 +1,8 @@
+import {signInReader} from './ui-support';
 import { test, expect } from '@playwright/test';
 
 test('keyboard users can skip navigation, switch zones and return to the original discussion card', async ({ page }) => {
-  await page.goto('/discover');
+  await signInReader(page); await page.goto('/discover?panel=discussion');
   await expect(page.locator('.post-card')).not.toHaveCount(0);
   await page.keyboard.press('Tab');
   await expect(page.getByRole('link', { name: '跳到主要内容', exact: true })).toBeFocused();
@@ -24,7 +25,7 @@ test('keyboard users can skip navigation, switch zones and return to the origina
 });
 
 test('submitted searches stay consistent through back and forward navigation', async ({ page }) => {
-  await page.goto('/discover');
+  await signInReader(page); await page.goto('/discover?panel=discussion');
   await expect(page.locator('.post-card')).not.toHaveCount(0);
   const search = page.getByRole('textbox', { name: '搜索讨论', exact: true });
   await search.fill('第一次'); await search.press('Enter');
@@ -41,11 +42,11 @@ test('submitted searches stay consistent through back and forward navigation', a
 
 test('current mobile text and key controls meet the accepted readable baseline', async ({ page }) => {
   await page.setViewportSize({ width: 320, height: 900 });
-  await page.goto('/discover'); await expect(page.locator('.post-card')).not.toHaveCount(0);
-  for (const selector of ['.metadata', '.post-excerpt', '.demo-banner', '.category-card>p', '.mobile-nav-item', '.interest-chip']) {
+  await signInReader(page); await page.goto('/discover?panel=discussion'); await expect(page.locator('.post-card')).not.toHaveCount(0);
+  for (const selector of ['.metadata', '.post-excerpt', '.demo-banner', '.mobile-nav-item']) {
     for (const size of await page.locator(selector).evaluateAll(nodes => nodes.map(n => parseFloat(getComputedStyle(n).fontSize)))) expect(size).toBeGreaterThanOrEqual(12);
   }
-  for (const locator of [page.getByRole('combobox', { name: '浏览学校', exact: true }), page.getByRole('textbox', { name: '搜索讨论', exact: true }), page.locator('.search-form button'), page.getByRole('link', { name: '登录 / 注册', exact: true })]) {
+  for (const locator of [page.getByRole('combobox', { name: '浏览学校', exact: true }), page.getByRole('textbox', { name: '搜索讨论', exact: true }), page.locator('.search-form button'), page.getByRole('button', { name: '动效开启', exact: true })]) {
     const box = (await locator.boundingBox())!; expect(box.height).toBeGreaterThanOrEqual(44);
   }
   expect(await page.getByRole('textbox', { name: '搜索讨论', exact: true }).evaluate(n => parseFloat(getComputedStyle(n).fontSize))).toBeGreaterThanOrEqual(16);
@@ -69,11 +70,11 @@ test('long persisted content reflows across mobile tablet and desktop and Escape
   });
   for (const width of [320, 390, 768, 1440]) {
     await page.setViewportSize({ width, height: 1000 });
-    for (const route of ['/discover', '/recruitments', '/publish', '/me', '/recruitments/new', '/posts/' + id]) {
+    for (const route of ['/discover?panel=discussion', '/recruitments', '/publish', '/me', '/recruitments/new', '/posts/' + id]) {
       await page.goto(route);
       await expect(page.locator('#main-content h1').first()).toBeVisible();
       expect(await page.evaluate(() => document.documentElement.scrollWidth), `${width}px ${route}`).toBeLessThanOrEqual(width + 1);
-      if (route === '/discover') {
+      if (route.startsWith('/discover')) {
         await expect(page.locator('.post-list')).toContainText('W'.repeat(60));
         await page.screenshot({ path: `.local/screenshots/w104-home-${width}.png`, fullPage: true });
       }

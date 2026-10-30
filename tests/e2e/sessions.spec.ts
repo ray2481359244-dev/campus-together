@@ -20,7 +20,7 @@ test('a stale tab cannot submit an old form as the account signed in from anothe
   await register(other, 'session-second');
   await expect(page.getByRole('heading', { name: '登录状态已变化' })).toBeVisible();
   await expect(page.getByRole('button', { name: '发布讨论', exact: true })).toHaveCount(0);
-  await other.goto('/discover');
+  await other.goto('/discover?panel=discussion');
   await expect(other.locator('.post-list')).not.toContainText('原账号的未提交讨论不能写到新账号');
   await page.getByRole('button', { name: '重新加载并确认账号', exact: true }).click();
   await expect(page.locator('.account-link')).toContainText('session-second');
@@ -39,7 +39,7 @@ test('without cross-tab notifications a stale write is still stopped by server i
   await page.getByRole('button', { name: '发布讨论', exact: true }).click();
   expect((await rejected).status()).toBe(409);
   await expect(page.getByRole('heading', { name: '登录状态已变化' })).toBeVisible();
-  await other.goto('/discover');
+  await other.goto('/discover?panel=discussion');
   await expect(other.locator('.post-list')).not.toContainText('旧标签页的内容不能由另一个账号发布');
 });
 
@@ -84,10 +84,10 @@ test('an unavailable login-state request is recoverable and is not presented as 
   await page.route('**/api/v1/auth/me', route => route.fulfill({ status: 503, contentType: 'application/json', body: JSON.stringify({ error: { code: 'TEST_AUTH_FAILURE', message: '暂时无法确认登录状态。' } }) }));
   await page.goto('/publish');
   await expect(page.getByRole('alert')).toContainText('暂时无法确认登录状态');
-  await expect(page.getByRole('heading', { name: '先碰个头，再开始' })).toHaveCount(0);
+  await expect(page.getByRole('heading', { name: '欢迎回来，继续一起做。' })).toHaveCount(0);
   await page.unrouteAll({ behavior: 'wait' });
   await page.getByRole('button', { name: '重新加载', exact: true }).click();
-  await expect(page.getByRole('heading', { name: '先碰个头，再开始' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: '欢迎回来，继续一起做。' })).toBeVisible();
 });
 
 test('a lost session stops a pending profile write and keeps saved server data separate', async ({ page, context }) => {
@@ -113,10 +113,9 @@ test('an earlier failed request cannot overwrite the state after a deliberate lo
   try {
     await page.getByRole('button', { name: '保存资料', exact: true }).click(); await started;
     await page.getByRole('button', { name: '退出登录', exact: true }).click();
-    await expect(page.getByRole('heading', { name: '先碰个头，再开始' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: '欢迎回来，继续一起做。' })).toBeVisible();
     const finished = page.waitForResponse(r => r.url().endsWith('/api/v1/me/profile') && r.status() === 401);
     release(); await (await finished).finished();
-    await page.getByRole('link', { name: '去登录', exact: true }).click();
     await expect(page.getByRole('heading', { name: '欢迎回来，继续一起做。' })).toBeVisible();
     await expect(page.getByRole('heading', { name: '登录已过期' })).toHaveCount(0);
   } finally { release(); await page.unrouteAll({ behavior: 'wait' }); }
@@ -136,12 +135,12 @@ test('a successful earlier profile response cannot restore the user after logout
   try {
     await page.getByRole('button', { name: '保存资料', exact: true }).click(); await committed;
     await page.getByRole('button', { name: '退出登录', exact: true }).click();
-    await expect(page.getByRole('heading', { name: '先碰个头，再开始' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: '欢迎回来，继续一起做。' })).toBeVisible();
     const delivered = page.waitForResponse(r => r.url().endsWith('/api/v1/me/profile') && r.status() === 200);
     release(); await (await delivered).finished();
     await page.evaluate(() => new Promise<void>(resolve => requestAnimationFrame(() => requestAnimationFrame(() => resolve()))));
     await expect(page.locator('.account-link')).toHaveCount(0);
-    await expect(page.getByRole('heading', { name: '先碰个头，再开始' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: '欢迎回来，继续一起做。' })).toBeVisible();
     const me = await page.request.get('/api/v1/auth/me'); expect((await me.json()).data.user).toBeNull();
   } finally { release(); await page.unrouteAll({ behavior: 'wait' }); }
 });

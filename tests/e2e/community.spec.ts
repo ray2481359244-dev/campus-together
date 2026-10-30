@@ -1,3 +1,4 @@
+import {signInReader} from './ui-support';
 import { test, expect } from '@playwright/test';
 import type { Page } from '@playwright/test';
 
@@ -63,7 +64,7 @@ test('two independent accounts publish, read, edit, save profiles and revoke ses
     await expect(a.getByLabel('自述技能')).toHaveValue('前端开发，photo');
     await noOverflow(a); await a.screenshot({ path: '.local/screenshots/e2e-profile-390.png', fullPage: true });
     await a.getByRole('button', { name: '退出登录', exact: true }).click();
-    await expect(a.getByRole('heading', { name: '先碰个头，再开始' })).toBeVisible();
+    await expect(a.getByRole('heading', { name: '欢迎回来，继续一起做。' })).toBeVisible();
     await b.reload(); await expect(b.locator('.account-link')).toContainText('浏览器乙');
     await a.goto('/login');
     await a.getByLabel('邮箱', { exact: true }).fill('e2e-a@campus.invalid');
@@ -79,16 +80,16 @@ test('two independent accounts publish, read, edit, save profiles and revoke ses
 });
 
 test('four zones, real empty/error/loading states and responsive layouts', async ({ page }) => {
-  await page.goto('/discover');
+  await signInReader(page); await page.goto('/discover?panel=discussion');
   await expect(page.locator('.post-card')).not.toHaveCount(0);
   for (const [category, title] of [['GAME', '新手第一次参加桌游'], ['STUDY', '复习高数时'], ['COMPETITION', '第一次做校园项目'], ['OUTDOOR', '校园里的光影']] as const) {
-    await page.getByRole('button', { name: '进入' + ({ GAME: '游戏开黑', STUDY: '学习搭子', COMPETITION: '竞赛组队', OUTDOOR: '周末户外' }[category]) }).click();
+    await page.locator('.category-tabs button').nth(['COMPETITION','STUDY','GAME','OUTDOOR'].indexOf(category)).click();
     await expect(page.locator('.post-list')).toContainText(title);
   }
   await page.getByRole('textbox', { name: '搜索讨论', exact: true }).fill('不存在的讨论关键词E2E');
   await page.getByRole('button', { name: '搜索讨论', exact: true }).click();
   await expect(page.getByRole('heading', { name: '没有找到相关讨论' })).toBeVisible();
-  await page.goto('/discover');
+  await signInReader(page); await page.goto('/discover?panel=discussion');
   await page.route('**/api/v1/posts?*', route => route.fulfill({ status: 503, contentType: 'application/json', body: JSON.stringify({ error: { code: 'TEST_UNAVAILABLE', message: '测试服务中断' } }) }));
   await page.reload(); await expect(page.getByRole('alert')).toContainText('测试服务中断');
   await page.unroute('**/api/v1/posts?*'); await page.getByRole('button', { name: '重新加载' }).click();
@@ -106,23 +107,15 @@ test('four zones, real empty/error/loading states and responsive layouts', async
   await expect(page.getByRole('heading', { name: '这里的第一条讨论，等你来写' })).toBeVisible();
 });
 
-test('real touch drags, cancellation, swipe-back and reduced-motion remain usable', async ({ browser }) => {
+test('real touch swipe cancellation, swipe-back and reduced-motion remain usable', async ({ browser }) => {
   const context = await browser.newContext({ baseURL, viewport: { width: 390, height: 844 }, hasTouch: true });
   const page = await context.newPage();
   try {
-    await page.goto('/discover');
+    await signInReader(page); await page.goto('/discover?panel=discussion');
     await expect(page.locator('.post-card')).not.toHaveCount(0);
     const cdp = await context.newCDPSession(page);
     const touch = (type: string, x?: number, y?: number) => cdp.send('Input.dispatchTouchEvent', { type: type as 'touchStart', touchPoints: type === 'touchEnd' || type === 'touchCancel' ? [] : [{ x: x!, y: y!, id: 1 }] });
-    let box = (await page.getByTestId('interest-COMPETITION').boundingBox())!;
-    let x = box.x + box.width / 2, y = box.y + box.height / 2;
-    await touch('touchStart', x, y); await touch('touchMove', x + 20, y); await touch('touchMove', x + 45, y + 8);
-    await page.waitForFunction(() => Math.abs(new DOMMatrixReadOnly(getComputedStyle(document.querySelector('[data-testid="interest-COMPETITION"]')!).transform).m41) > 15);
-    await touch('touchEnd');
-    await page.waitForFunction(() => Math.abs(new DOMMatrixReadOnly(getComputedStyle(document.querySelector('[data-testid="interest-COMPETITION"]')!).transform).m41) < .5);
-    expect(new URL(page.url()).search).toBe('');
-    await touch('touchStart', x, y); await touch('touchMove', x + 28, y); await touch('touchCancel');
-    await page.waitForFunction(() => Math.abs(new DOMMatrixReadOnly(getComputedStyle(document.querySelector('[data-testid="interest-COMPETITION"]')!).transform).m41) < .5);
+    let box, x = 0, y = 0;
     await page.locator('.post-card').first().click();
     await expect(page.getByTestId('swipe-panel')).toBeVisible();
     await expect.poll(() => page.evaluate(() => window.scrollY)).toBe(0);
@@ -134,7 +127,7 @@ test('real touch drags, cancellation, swipe-back and reduced-motion remain usabl
     await page.waitForFunction(() => new DOMMatrixReadOnly(getComputedStyle(document.querySelector('[data-testid="swipe-panel"]')!).transform).m41 > 100);
     await page.screenshot({ path: '.local/screenshots/e2e-back-gesture.png' });
     await touch('touchEnd'); await expect(page).toHaveURL(/\/discover/);
-    await expect.poll(() => page.evaluate(() => window.scrollY)).toBeGreaterThan(400);
+    await expect(page.locator('.post-card').first()).toBeFocused();
     await page.emulateMedia({ reducedMotion: 'reduce' });
     await page.locator('.post-card').first().click(); await expect(page.getByTestId('swipe-panel')).toBeVisible();
     await page.getByRole('button', { name: '返回讨论板' }).click(); await expect(page).toHaveURL(/\/discover/);
@@ -148,9 +141,8 @@ for (const width of [390, 1440]) {
     const page = await context.newPage();
     let release: (() => void) | undefined;
     try {
-      await page.goto('/discover');
+      await signInReader(page); await page.goto('/discover?panel=discussion');
       await expect(page.locator('.post-card')).not.toHaveCount(0);
-      const previousTitle = await page.locator('.post-card h3').first().textContent();
       await page.evaluate(() => {
         (window as unknown as Record<string, unknown>).switchIndicator = document.querySelector('.tab-indicator');
         window.scrollTo({ top: document.querySelector('#discussion-board')!.getBoundingClientRect().top + scrollY - 20, behavior: 'instant' });
@@ -162,10 +154,8 @@ for (const width of [390, 1440]) {
         await route.continue().catch(() => { /* A rapid subsequent selection can abort this request. */ });
       });
       await page.locator('.category-tabs button').nth(1).click();
-      await expect(page.locator('.post-results')).toHaveAttribute('data-updating', 'true');
-      await expect(page.locator('.post-list')).toContainText(previousTitle!);
-      await expect(page.locator('.loading-mark')).toHaveCount(0);
-      await expect(page.locator('.post-results')).toHaveAttribute('inert', '');
+      await expect(page.getByText('正在读取校园讨论……',{exact:true})).toBeVisible();
+      await expect(page.locator('.post-card')).toHaveCount(0);
       await expect.poll(() => page.evaluate(() => {
         const bar = document.querySelector('.tab-indicator')!.getBoundingClientRect();
         const button = document.querySelectorAll('.category-tabs button')[1].getBoundingClientRect();

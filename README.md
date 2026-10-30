@@ -1,14 +1,14 @@
 # 碰个头 / CampusTogether
 
-校园兴趣社区与可解释组队平台。已接通账号、四区讨论与图片 / 评论 / 点赞 / 收藏、四区招募 / 申请审核 / 直接入队、队伍管理、自动到期、文字群聊与 30 天归档、竞赛条件排序，以及举报、主题审核和管理员封禁。当前优先准备本地参赛演示，提供独立演示库和四角色启动入口；公网部署尚未执行。AI 按负责人要求暂缓配置，保持规则模式。见[本地演示](docs/competition/LOCAL_DEMO.md)、[部署交接](docs/DEPLOYMENT.md)、[动态计划](docs/ITERATION_PLAN.md)和[最新日志](docs/development/2026-10-29.md)。
+校园兴趣社区与可解释组队平台。已接通账号、四区讨论与图片 / 评论 / 点赞 / 收藏、四区招募 / 申请审核 / 直接入队、队伍管理、自动到期、文字群聊与 30 天归档、竞赛条件排序，以及举报、主题审核和管理员封禁。当前优先准备本地参赛演示，提供独立演示库和四角色启动入口；公网部署尚未执行。AI 按负责人要求暂缓配置，保持规则模式。见[本地演示](docs/competition/LOCAL_DEMO.md)、[部署交接](docs/DEPLOYMENT.md)、[动态计划](docs/ITERATION_PLAN.md)和[最新日志](docs/development/2026-10-30.md)。
 
-核心视觉暂定 **新粗野主义**：奶油白、黑边框、硬阴影、明亮分区色。设计原型见 design/campus-brutal-concept.html；原型内数据不计为应用功能。
+2026-10-30 已将确认的 **想法云 UI** 实装到正式项目：保留奶油纸色与黑黄品牌，加入原创 Q 版同学、四人圆桌、四种想法云、互动背景和云展开转场。发现页为欢迎 / 想法圆桌 / 兴趣讨论三个独立板块，全站统一卡片、表单、导航和交互反馈。打开开发入口后，从正式封面登录进入；旧 category/topic/q 讨论地址仍可使用。独立概念稿不代替正式功能。详见[接入与验收记录](docs/development/2026-10-30.md)。
 
 2026-10-29 试用反馈更新：点赞按钮变红并弹出拇指动画，作者可看到自动同步的点赞总数；评论、回复与点赞进入消息中心，桌面 / 手机导航显示未读角标，页面内弹出新消息提示。单篇帖子可关闭 / 恢复提醒，偏好按账号保存。看帖采用浅绿底，发帖 / 编辑采用浅紫底，补充位置标识与正文 / 评论 / 招募导航。当前以 HTTP 每 5 秒同步，详见[当日日志](docs/development/2026-10-29.md#i-014-帖子互动提醒与页面辨识)。
 
 同日继续修正：收藏成功后显示主色黄底 / 实心书签，并弹出黄色书签与星光动画；取消恢复原态，刷新保留收藏。修复从讨论板首次打开帖子时主页透出，以及正文 / 评论 / 招募导航丢失路由状态的问题，页内跳转保留未提交评论，返回仍回原卡片。详见 [I-015 日志](docs/development/2026-10-29.md#i-015-收藏反馈与帖子背景修复)。
 
-记录入口：[动态迭代计划](docs/ITERATION_PLAN.md) · [持续开发日志](DEVELOPMENT_LOG.md) · [最新详细记录](docs/development/2026-10-29.md) · [首周总结](docs/weekly/WEEK_01_REVIEW.md) · [参赛材料核对表](docs/competition/SUBMISSION_CHECKLIST.md) · [AI 证据索引](docs/ai/README.md)。
+记录入口：[动态迭代计划](docs/ITERATION_PLAN.md) · [持续开发日志](DEVELOPMENT_LOG.md) · [最新详细记录](docs/development/2026-10-30.md) · [首周总结](docs/weekly/WEEK_01_REVIEW.md) · [参赛材料核对表](docs/competition/SUBMISSION_CHECKLIST.md) · [AI 证据索引](docs/ai/README.md)。
 
 源码已上传到[公开 GitHub 仓库](https://github.com/ray2481359244-dev/campus-together)，默认分支为 `master`，保留从文档基线开始的完整提交历史。
 
@@ -82,6 +82,8 @@ pnpm.cmd dev
 两所学校均标记“虚构演示”；学校、技能为自述，邮箱未核验。标准模式 seed 不创建演示账号与讨论，但参考学校仍需在真实试用前由负责人补齐。
 
 ## 验证
+
+`pnpm test:e2e` 分社区与界面、账号恢复、队伍流程三组依次运行全部浏览器测试，每组启动独立测试服务并重建隔离测试库，避免集中注册触发真实账号限流；产品限流配置不变。追踪保存系统临时目录，避免 Windows 项目盘文件锁。仅诊断单个流程时可用 `pnpm exec playwright test tests/e2e/cloud-ui.spec.ts --output <临时目录>`。
 
 ```powershell
 pnpm.cmd db:check
