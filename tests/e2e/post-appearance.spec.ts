@@ -49,12 +49,12 @@ test('收藏成功才显示黄色和动画，刷新保留，取消与减少动�
     const saved=reader.getByRole('button',{name:'取消收藏',exact:true});await expect(saved).toHaveAttribute('aria-pressed','true');await expect(saved).toHaveClass(/is-saved/);
     await expect(saved).toHaveCSS('background-color','rgb(245, 255, 98)');await expect(reader.locator('.save-burst')).toHaveCSS('animation-name','save-pop');
     await expect(saved).toBeEnabled();
-    await reader.getByLabel('写一条评论',{exact:true}).fill('这段未提交评论在页内跳转后仍要保留。');
+    await reader.getByRole('navigation',{name:'帖子内容导航'}).getByRole('link',{name:'02 评论互动',exact:true}).click();await reader.getByLabel('写一条评论',{exact:true}).fill('这段未提交评论在页内跳转后仍要保留。');
     for(const label of ['01 帖子正文','02 评论互动','03 相关招募']){
       await reader.getByRole('navigation',{name:'帖子内容导航'}).getByRole('link',{name:label,exact:true}).click();
       await expect(reader.locator('.route-overlay')).toBeVisible();await expect(reader.getByLabel('写一条评论',{exact:true})).toHaveValue('这段未提交评论在页内跳转后仍要保留。');
     }
-    await reader.getByRole('link',{name:'写评论 ↓',exact:true}).click();await expect(reader.locator('.route-overlay')).toBeVisible();
+    await reader.getByRole('navigation',{name:'帖子内容导航'}).getByRole('link',{name:'02 评论互动',exact:true}).click();await reader.getByRole('link',{name:'写评论 ↓',exact:true}).click();await expect(reader.locator('.route-overlay')).toBeVisible();
     await expect(reader.getByLabel('写一条评论',{exact:true})).toHaveValue('这段未提交评论在页内跳转后仍要保留。');
     await reader.evaluate(()=>{(document.activeElement as HTMLElement)?.blur();window.scrollTo({top:0,behavior:'instant'});});
     await reader.screenshot({path:'.local/screenshots/post-saved-yellow-390.png',fullPage:true});

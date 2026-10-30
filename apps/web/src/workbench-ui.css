@@ -1,4 +1,5 @@
 /* Shared language: a story sheet, a response window and an action ticket. */
+.cloud-platform .route-overlay{overflow:clip}
 @media(max-width:850px){.post-workbench .wb-nav{position:sticky;top:8px;z-index:4;box-shadow:0 4px 15px #9872b125}.post-workbench :is(#post-content,.wb-talk,.wb-act,#write-comment){scroll-margin-top:86px}}
 .cloud-platform .condition-report li[data-status=UNKNOWN]{background:#faf0cb}
 .cloud-platform .page-title .content-title{font-family:var(--campus-font);font-weight:750}

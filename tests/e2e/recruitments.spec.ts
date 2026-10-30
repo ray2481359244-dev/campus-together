@@ -30,6 +30,7 @@ test('an author converts a discussion, resumes a draft and safely retries a comm
     await a.getByRole('button', { name: '发布讨论', exact: true }).click();
     await expect(a.getByRole('heading', { name: title, exact: true })).toBeVisible();
     const sourceUrl = a.url();
+    await a.getByRole('link',{name:'03 相关招募',exact:true}).click();
     await a.getByRole('link', { name: '从讨论发起招募', exact: true }).click();
     await expect(a.getByLabel('招募标题', { exact: true })).toHaveValue(title);
     let releaseSource!: () => void;

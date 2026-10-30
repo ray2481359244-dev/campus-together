@@ -21,7 +21,7 @@ test('未入队的评论与回复进入消息，点赞动态计数、红点弹�
     await expect(reader.locator('.like-burst')).toHaveCount(1);
     await expect(owner.locator('.desktop-nav .unread-badge')).toHaveText(String(baseline+1),{timeout:10000});
     await expect(owner.getByRole('status').filter({hasText:'帖子有了新互动'})).toBeVisible();
-    await reader.getByLabel('写一条评论',{exact:true}).fill('我也想参加，周六下午方便吗？');
+    await reader.getByRole('navigation',{name:'帖子内容导航'}).getByRole('link',{name:'02 评论互动',exact:true}).click();await reader.getByLabel('写一条评论',{exact:true}).fill('我也想参加，周六下午方便吗？');
     await reader.getByRole('button',{name:'发布评论',exact:true}).click();
     await expect(reader.locator('.community-comment').filter({hasText:'我也想参加，周六下午方便吗？'})).toBeVisible();
     await expect(reader.getByRole('button',{name:'取消点赞 · 1',exact:true})).toBeEnabled();
@@ -37,7 +37,7 @@ test('未入队的评论与回复进入消息，点赞动态计数、红点弹�
     await expect(owner).toHaveURL(/\?comment=/);
     await expect(owner.locator('.targeted-comment')).toContainText('我也想参加，周六下午方便吗？');
     await owner.getByRole('button',{name:'回复此评论',exact:true}).click();
-    await owner.getByLabel('写一条评论',{exact:true}).fill('可以，周六两点在校门口见！');
+    await owner.getByRole('navigation',{name:'帖子内容导航'}).getByRole('link',{name:'02 评论互动',exact:true}).click();await owner.getByLabel('写一条评论',{exact:true}).fill('可以，周六两点在校门口见！');
     const readerReady=reader.waitForResponse(r=>r.url().endsWith('/me/notifications/summary')&&r.ok());
     await reader.goto('/me');await readerReady;
     await owner.getByRole('button',{name:'发布评论',exact:true}).click();
@@ -48,7 +48,7 @@ test('未入队的评论与回复进入消息，点赞动态计数、红点弹�
     await owner.reload();await expect(owner.getByRole('button',{name:'开启本帖提醒',exact:true})).toHaveAttribute('aria-pressed','true');
     const before=(await (await owner.request.get('/api/v1/me/notifications')).json()).data.items.filter((n:{postId:string})=>n.postId===post.id).length;
     await observer.goto(path);
-    await observer.getByLabel('写一条评论',{exact:true}).fill('这条消息在作者免打扰后不应新增提醒。');
+    await observer.getByRole('navigation',{name:'帖子内容导航'}).getByRole('link',{name:'02 评论互动',exact:true}).click();await observer.getByLabel('写一条评论',{exact:true}).fill('这条消息在作者免打扰后不应新增提醒。');
     await observer.getByRole('button',{name:'发布评论',exact:true}).click();await expect(observer.locator('.community-comment').filter({hasText:'这条消息在作者免打扰后不应新增提醒。'})).toBeVisible();
     await observer.getByRole('button',{name:'点赞 · 1',exact:true}).click();await expect(observer.getByRole('button',{name:'取消点赞 · 2',exact:true})).toBeVisible();
     await expect(owner.getByRole('button',{name:'点赞 · 2',exact:true})).toBeVisible({timeout:10000});
