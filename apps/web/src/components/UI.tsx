@@ -1,8 +1,10 @@
 import type { ReactNode } from 'react';
 import { ArrowLeft, ArrowUpRight, RefreshCw, AlertTriangle, LockKeyhole } from 'lucide-react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { motion, useMotionValue, useReducedMotion, animate } from 'motion/react';
-import { useRef } from 'react';
+import { motion, useMotionValue, animate } from 'motion/react';
+import { useRef, useEffect, useContext } from 'react';
+import {useVisualPreferences} from '../lib/visual-preferences';
+import {WorkbenchMotionContext} from '../lib/workbench-motion';
 import type { PointerEvent } from 'react';
 import {StudentArtwork} from './visual/StudentArtwork';
 
@@ -10,25 +12,27 @@ export function Loading({ label = '正在加载……' }: { label?: string }) { 
 export function ErrorState({ message, retry }: { message: string; retry?: () => void }) { return <div className="state state-error" role="alert"><AlertTriangle size={28} aria-hidden="true" /><h2>这次没能加载成功</h2><p>{message}</p>{retry && <button className="button secondary" onClick={retry}><RefreshCw size={17} />重新加载</button>}</div>; }
 export function EmptyState({ title, children }: { title: string; children?: ReactNode }) { return <div className="state"><StudentArtwork className="empty-student" kind="blue" pose="think"/><h2>{title}</h2>{children}</div>; }
 export function LoginGate({ next = '/publish' }: { next?: string }) { return <div className="state"><LockKeyhole size={30} /><h2>先碰个头，再开始</h2><p>登录后可以发布讨论、完善资料。</p><Link className="button" to={'/login?next=' + encodeURIComponent(next)}>去登录<ArrowUpRight size={18} /></Link></div>; }
-export function PageTitle({ title, eyebrow, back }: { title: string; eyebrow?: string; back?: () => void }) {
+export function PageTitle({ title, eyebrow, back, contentTitle }: { title: string; eyebrow?: string; back?: () => void; contentTitle?:boolean }) {
   const {pathname}=useLocation();
-  const companion=pathname.startsWith('/recruitments')?'green':pathname==='/publish'?'violet':pathname==='/messages'?'blue':pathname==='/me'?'pink':null;
-  return <div className="page-title">{back && <button className="icon-button" onClick={back} aria-label="返回上一页"><ArrowLeft aria-hidden="true" /></button>}<div>{eyebrow && <span className="eyebrow">{eyebrow}</span>}<h1>{title}</h1></div>{companion&&<StudentArtwork className="page-companion" kind={companion} pose={companion==='violet'?'think':'wave'}/>}</div>;
+  const companion=pathname.startsWith('/recruitments')?'green':pathname==='/publish'?'violet':pathname==='/messages'?'blue':pathname==='/me'?'pink':pathname.startsWith('/teams')?'green':pathname==='/matching'||pathname==='/topic-requests'?'blue':pathname==='/saved'||pathname==='/admin'?'violet':null;
+  return <div className="page-title">{back && <button className="icon-button" onClick={back} aria-label="返回上一页"><ArrowLeft aria-hidden="true" /></button>}<div>{eyebrow && <span className="eyebrow">{eyebrow}</span>}<h1 className={contentTitle?'content-title':undefined}>{title}</h1></div>{companion&&<StudentArtwork className="page-companion" kind={companion} pose={companion==='violet'?'think':'wave'}/>}</div>;
 }
 export function FormError({ children }: { children?: ReactNode }) { return children ? <p className="form-error" role="alert">{children}</p> : null; }
-export function SectionLink({target,children,className}:{target:string;children:ReactNode;className?:string}) {
-  const location=useLocation(),navigate=useNavigate(),reduce=useReducedMotion();
-  return <a className={className} href={'#'+target} onClick={event=>{
+export function SectionLink({target,children,className,active}:{target:string;children:ReactNode;className?:string;active?:boolean}) {
+  const location=useLocation(),navigate=useNavigate(),{motionEnabled}=useVisualPreferences(),reduce=!motionEnabled,capture=useContext(WorkbenchMotionContext);
+  return <a className={className} aria-current={active?'location':undefined} href={'#'+target} onClick={event=>{
     if(event.button!==0||event.metaKey||event.ctrlKey||event.shiftKey||event.altKey)return;
     event.preventDefault();
+    capture?.();
     // Replace only the fragment so Back still returns to the original discussion card.
     navigate({pathname:location.pathname,search:location.search,hash:'#'+target},{replace:true,state:location.state});
-    document.getElementById(target)?.scrollIntoView({block:'start',behavior:reduce?'instant':'smooth'});
+    requestAnimationFrame(()=>document.getElementById(target)?.scrollIntoView({block:'start',behavior:reduce?'instant':'smooth'}));
   }}>{children}</a>;
 }
 export function SwipePanel({ children, onBack }: { children: ReactNode; onBack: () => void }) {
-  const x = useMotionValue(0), reduce = useReducedMotion();
+  const x = useMotionValue(0), {motionEnabled}=useVisualPreferences(), reduce = !motionEnabled;
   const ref = useRef<HTMLDivElement>(null), gesture = useRef<{ id: number; startX: number; startY: number; active: boolean } | null>(null), animation = useRef<ReturnType<typeof animate> | null>(null);
+  useEffect(()=>()=>animation.current?.stop(),[]);
   function start(e: PointerEvent<HTMLDivElement>) {
     if (e.button !== 0 || e.clientX - e.currentTarget.getBoundingClientRect().left > 25 || (e.target as HTMLElement).closest('button,a,input,textarea,select')) return;
     animation.current?.stop(); gesture.current = { id: e.pointerId, startX: e.clientX, startY: e.clientY, active: false };

@@ -29,14 +29,14 @@ export const CloudTransition=forwardRef<CloudTransitionHandle,{motionEnabled?:bo
     const dx=bounds.width/2-(from.left-bounds.left+from.width/2),dy=bounds.height/2-(from.top-bounds.top+from.height/2);
     const scale=Math.max(bounds.width/(from.width*.58),bounds.height/(from.height*.42))*1.25;
     try{
-      const expansion=node.animate([{transform:'translate(0,0) scale(1)'},{transform:'translate('+dx*.045+'px,'+dy*.045+'px) scale(.94,1.04)',offset:.12},{transform:'translate('+dx+'px,'+dy+'px) scale('+scale+')'}],{duration:670,easing:'cubic-bezier(.64,0,.18,1)',fill:'forwards'});
+      const expansion=node.animate([{transform:'translate(0,0) scale(1)'},{transform:'translate('+dx*.045+'px,'+dy*.045+'px) scale(.94,1.04)',offset:.12},{transform:'translate('+dx+'px,'+dy+'px) scale('+scale+')'}],{duration:420,easing:'cubic-bezier(.64,0,.18,1)',fill:'forwards'});
       animations.current.push(expansion);await expansion.finished.catch(()=>{});
       if(version!==generation.current)return;
       await commit();
       if(version!==generation.current)return;
       await new Promise<void>(resolve=>requestAnimationFrame(()=>resolve()));
       if(version!==generation.current)return;
-      if(enabled.current){const fade=node.animate([{opacity:1},{opacity:0}],{duration:200,fill:'forwards'});animations.current.push(fade);await fade.finished.catch(()=>{});}
+      if(enabled.current){const fade=node.animate([{opacity:1},{opacity:0}],{duration:140,fill:'forwards'});animations.current.push(fade);await fade.finished.catch(()=>{});}
     }finally{if(version===generation.current)cancel();}
   }}),[]);
   return <div className="ct-cloud-transition" ref={layer} aria-hidden="true"/>;

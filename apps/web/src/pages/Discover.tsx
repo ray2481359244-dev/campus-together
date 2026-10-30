@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect, useLayoutEffect } from 'react';
 import type { CSSProperties } from 'react';
 import { Link, useLocation, useSearchParams } from 'react-router-dom';
-import { useInfiniteQuery, useQuery } from '@tanstack/react-query';
+import { useInfiniteQuery, useQuery, useQueryClient } from '@tanstack/react-query';
 import type { InfiniteData } from '@tanstack/react-query';
 import { motion } from 'motion/react';
 import { ArrowUpRight, ArrowRight, ArrowLeft, Search, Plus, ArrowDown, X, Sparkles } from 'lucide-react';
@@ -35,6 +35,7 @@ export function Discover() {
   const [params, setParams] = useSearchParams(), location = useLocation();
   const [search, setSearch] = useState(params.get('q') || ''), [transitionError, setTransitionError] = useState(''), [bump, setBump] = useState(0);
   const { schoolId } = useSchool(), { motionEnabled } = useVisualPreferences();
+  const client=useQueryClient();
   const transition = useRef<CloudTransitionHandle>(null), heading = useRef<HTMLHeadingElement>(null), previousPanel = useRef<Panel | null>(null);
   const returnCloud = useRef<Category | null>(null), navigation = useRef(location.key), cloudNavigation = useRef(false);
   const category = categoryFrom(params.get('category')), topicId = params.get('topic') || '', q = params.get('q') || '';
@@ -64,6 +65,10 @@ export function Discover() {
   function choose(c: Category) { setSearch(''); setParams({ panel: 'discussion', category: c }); }
   async function unfold(c: Category, source: HTMLAnchorElement) {
     returnCloud.current = c; setTransitionError('');
+    if(schoolId){
+      void client.prefetchInfiniteQuery({queryKey:['posts',schoolId,c,'',''],initialPageParam:'',queryFn:({pageParam,signal})=>api<PostDTO[]>('/posts?'+new URLSearchParams({schoolId,category:c,...(pageParam?{cursor:pageParam}:{})}),{signal}),getNextPageParam:(last:ApiResponse<PostDTO[]>)=>last.meta?.nextCursor||undefined});
+      void client.prefetchQuery({queryKey:['topics',c],queryFn:({signal})=>api<TopicDTO[]>('/topics?category='+c,{signal})});
+    }
     try { await transition.current?.reveal(c, source, () => { cloudNavigation.current = true; choose(c); }); }
     catch (error) { setTransitionError(messageOf(error)); }
   }
