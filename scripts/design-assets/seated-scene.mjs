@@ -14,6 +14,7 @@ function person(kind, layer = 'all') {
 export function meetingScene() {
   return `<svg class="meeting-illustration" viewBox="0 0 1100 650" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><g stroke-linecap="round" stroke-linejoin="round">
     <ellipse cx="550" cy="603" rx="373" ry="28" fill="#a18da9" opacity=".09"/>
+    <g class="conversation-marks" stroke="#aa8fbb" stroke-width="2.5"><path d="m330 340-12-6m19-3-3-12m306 22 10-8m-12-1 1-12m-350 112-12-6m535 3 12-8"/></g>
     ${person('violet','base')}${person('blue','base')}
     <g class="meeting-table" transform="translate(0 30)" stroke="#68515b" stroke-width="3.2">
       <path d="m335 444-19 124q10 14 24 0l34-108m352-14 32 121q11 10 22-3l-18-121" fill="#bfac9d"/>
@@ -26,7 +27,6 @@ export function meetingScene() {
     ${person('violet','arms')}${person('blue','arms')}
     ${person('pink')}${person('green')}
     <g fill="#fffcf2" stroke="#9b87ac" stroke-width="2"><path d="m515 292 5 12 12 4-12 5-5 12-4-12-13-5 13-4Z"/><path d="m561 319 3 6 6 2-6 3-3 6-2-6-6-3 6-2Z"/></g>
-    <g class="conversation-marks" stroke="#aa8fbb" stroke-width="2.5"><path d="m330 340-12-6m19-3-3-12m306 22 10-8m-12-1 1-12m-350 112-12-6m535 3 12-8"/></g>
     <path d="M440 570q125 31 225-2" stroke="#c5aaba" stroke-width="1.5" stroke-dasharray="3 8"/>
   </g></svg>`;
 }

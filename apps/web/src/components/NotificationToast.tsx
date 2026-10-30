@@ -1,3 +1,4 @@
+import {useCloudArrival} from '../lib/cloud-arrival';
 import { useEffect, useRef, useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { Bell, X } from 'lucide-react';
@@ -15,6 +16,8 @@ export function NotificationToast({summary,userId}:{summary?:NotificationSummary
     seen.current=version;
   },[summary,location.pathname]);
   useEffect(()=>{if(!notice)return;const timer=window.setTimeout(()=>setNotice(null),8000);return()=>window.clearTimeout(timer);},[notice]);
+  const version=notice?notice.id+':'+notice.createdAt:'';
+  const arrivals=useCloudArrival<HTMLElement>('toast:'+userId,notice?[{id:version,createdAt:notice.createdAt}]:[],true);
   if(!userId||!notice)return null;
-  return <aside className="notification-toast" role="status" aria-live="polite"><Bell size={21} aria-hidden="true" /><div><strong>{notice.postId?'帖子有了新互动':'你有一条新消息'}</strong><p>{notice.postTitle||notice.recruitmentTitle}</p><Link to="/messages" onClick={()=>setNotice(null)}>查看消息 →</Link></div><button className="toast-close" aria-label="关闭消息提示" onClick={()=>setNotice(null)}><X size={18} /></button></aside>;
+  return <aside ref={arrivals} data-cloud-id={version} className="notification-toast" role="status" aria-live="polite"><Bell size={21} aria-hidden="true" /><div><strong>{notice.postId?'帖子有了新互动':'你有一条新消息'}</strong><p>{notice.postTitle||notice.recruitmentTitle}</p><Link to="/messages" onClick={()=>setNotice(null)}>查看消息 →</Link></div><button className="toast-close" aria-label="关闭消息提示" onClick={()=>setNotice(null)}><X size={18} /></button></aside>;
 }

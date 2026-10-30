@@ -20,11 +20,14 @@ export function InteractionLayer(){
     const control=(target:EventTarget|null)=>target instanceof Element?target.closest<HTMLElement>('button,a[href],summary,[role="button"],input[type="checkbox"],input[type="radio"]'):null;
     const allowed=(node:HTMLElement|null)=>node&&!node.matches(':disabled,[aria-disabled="true"]')&&!node.closest('[inert],[data-motion-own]');
     function spring(node:HTMLElement,down=false){
-      if(!allowed(node))return;
+      if(!allowed(node)){animations.get(node)?.cancel();animations.delete(node);return;}
+      const scale=getComputedStyle(node).scale,from=scale==='none'?'1':scale;
       animations.get(node)?.cancel();
-      const animation=node.animate(down?[{scale:'1'},{scale:'.955'}]:[{scale:'.955'},{scale:'1.045',offset:.43},{scale:'.991',offset:.73},{scale:'1'}],{duration:down?80:360,easing:down?'ease-out':'cubic-bezier(.2,.8,.2,1)',fill:down?'forwards':'none'});
+      const animation=node.animate(down?[{scale:from},{scale:'.975'}]:[{scale:from},{scale:'1.025',offset:.43},{scale:'.996',offset:.73},{scale:'1'}],{duration:down?80:380,easing:down?'ease-out':'cubic-bezier(.2,.8,.2,1)',fill:down?'forwards':'none'});
       animations.set(node,animation);
-      animation.finished.catch(()=>{}).finally(()=>{if(animations.get(node)===animation)animations.delete(node);});
+      // A held press uses forwards fill: retain it until release so it can be
+      // cancelled. Dropping this reference left a permanent .955 scale below rebound.
+      animation.finished.catch(()=>{}).finally(()=>{if(!down&&animations.get(node)===animation)animations.delete(node);});
     }
     function tick(now:number){
       frame=0;if(document.hidden||!visible||!fine.matches)return;

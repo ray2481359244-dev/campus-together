@@ -1,3 +1,4 @@
+import {SoftDisclosure} from './SoftDisclosure';
 import { useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
@@ -14,10 +15,10 @@ export function MyApplications() {
   const { user } = useAuth();
   const result = useQuery({ queryKey: ['my-applications', user?.id], queryFn: ({ signal }) => api<ApplicationDTO[]>('/me/applications', { signal }), enabled: !!user, retry: false });
   if (!user) return null;
-  return <section className="my-drafts" aria-label="我的岗位申请列表"><details><summary>我的岗位申请{result.data?.data.length ? ` (${result.data.data.length})` : ''}</summary>
+  return <section className="my-drafts" aria-label="我的岗位申请列表"><SoftDisclosure title={<>我的岗位申请{result.data?.data.length ? ` (${result.data.data.length})` : ''}</>}>
     {result.isPending ? <Loading label="正在读取我的申请……" /> : result.isError ? <ErrorState message={messageOf(result.error)} retry={() => void result.refetch()} /> : !result.data.data.length ? <p className="form-note">还没有岗位申请。打开招募详情，先核对条件再申请。</p> : <div className="draft-list">{result.data.data.map(row => <Link className="draft-row" key={row.id} to={'/recruitments/' + row.recruitmentId}><span><strong>{row.recruitmentTitle}</strong><span>{row.slotName} · {labels[row.status]}</span></span><span>查看申请 →</span></Link>)}</div>}
     <p className="field-note">显示最近 50 份本人申请。待审核不占名额；队长批准后正式入队，结果也会保存在消息页。</p>
-  </details></section>;
+  </SoftDisclosure></section>;
 }
 export function ApplicationPanel({ recruitment: r }: { recruitment: RecruitmentDTO }) {
   const { user, loading } = useAuth(), client = useQueryClient();

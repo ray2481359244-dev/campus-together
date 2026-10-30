@@ -1,0 +1,26 @@
+/* The illustration and interface share soft cloud edges; text settles at 1:1. */
+.bell-feedback{position:relative;display:inline-flex;flex:0 0 auto;vertical-align:middle;color:inherit}
+.bell-body{display:block;transform-origin:50% 20%}
+.bell-feedback.is-muted .bell-body{opacity:.65}
+.bell-slash{position:absolute;inset:0;width:100%;height:100%;overflow:visible;pointer-events:none;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round}
+.bell-slash path{stroke-dasharray:25;stroke-dashoffset:25;opacity:0}
+.bell-feedback.is-muted .bell-slash path{stroke-dashoffset:0;opacity:1}
+.bell-puff{position:absolute;inset:-7px;border:1px solid #af8fc4;border-radius:44% 56% 51% 49%;background:#d9c7ed33;opacity:0;pointer-events:none}
+.cloud-platform .my-drafts .soft-disclosure[open]>summary{margin-bottom:0}
+.soft-disclosure-content{padding-top:16px;display:flow-root}
+.cloud-platform .my-drafts .soft-disclosure[open]>.soft-disclosure-content{animation:none}
+[data-cloud-id]{transform-origin:50% 100%}
+.chat-own[data-cloud-id]{transform-origin:85% 100%}
+.chat-peer[data-cloud-id],.community-comment[data-cloud-id]{transform-origin:15% 100%}
+.cloud-platform .wb-talk .community-comment>p{position:relative;border-radius:23px 27px 25px 11px;box-shadow:1px 3px 0 #b59dc414}
+.cloud-platform .wb-talk .community-comment>p::after{content:'';position:absolute;left:13px;bottom:-5px;width:11px;height:8px;border:1px solid #c2acd1;border-top:0;border-radius:0 0 9px 6px;background:#fffdf8;pointer-events:none}
+.cloud-platform .chat-message:not(.chat-system){border-radius:24px 28px 26px 8px;box-shadow:2px 4px 0 #aa8fb81c}
+.cloud-platform .chat-message.chat-own{border-radius:28px 24px 8px 26px}
+.cloud-platform .comment-empty{border:1px dashed #bfa6cd;border-radius:18px;background:#f6eff9;padding:18px 20px}
+.cloud-platform .notification-card{border-radius:25px 28px 25px 9px}
+.notification-toast{animation:none;border:1px solid #b69ac8;border-radius:25px 27px 10px 25px;background:#f1e7fa;box-shadow:4px 6px 0 #b69ac82b}
+.notification-toast>svg{background:#dfcdee;box-sizing:content-box;padding:8px;border-radius:13px;color:#80618f}
+.notification-toast .toast-close{border-radius:50%}
+[data-cloud-arriving=true]{will-change:transform,opacity}
+@media(prefers-reduced-motion:reduce){.bell-puff{display:none}}
+.motion-off .bell-puff{display:none}
