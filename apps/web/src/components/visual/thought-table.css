@@ -1,0 +1,19 @@
+@font-face{font-family:'CT Cloud Doodle';src:url('./assets/cloud-doodle.woff2') format('woff2');font-weight:400;font-display:swap}
+.ct-thought-table-shell{container-type:inline-size;width:100%;min-width:0}
+.ct-thought-table{width:100%;max-width:1120px;aspect-ratio:1100/650;margin-inline:auto;position:relative;isolation:isolate;color:#343039}
+.ct-scene{position:absolute;inset:0;pointer-events:none}.ct-meeting-illustration{display:block;width:100%;height:100%;overflow:visible}
+.ct-meeting-person .ct-person-bob{transform-box:view-box;transform-origin:100px 170px}
+.ct-cloud{position:absolute;z-index:2;width:24%;aspect-ratio:260/170;color:#343039;text-decoration:none;outline-offset:5px;border-radius:40%;touch-action:manipulation;-webkit-tap-highlight-color:transparent}
+.ct-cloud-shape{display:block;width:100%;height:100%;fill:var(--ct-cloud);stroke:#796586;stroke-width:1.9;overflow:visible;filter:drop-shadow(2px 5px 0 #77608222);transition:transform .5s cubic-bezier(.2,1.25,.3,1)}
+.ct-cloud-copy{position:absolute;inset:22% 5% 14%;display:flex;align-items:center;justify-content:center;flex-direction:column;font-family:'CT Cloud Doodle','YouYuan',sans-serif;text-align:center}
+.ct-cloud-copy small{font-size:clamp(11px,1.3cqw,15px);line-height:1.6;color:#66536f}.ct-cloud-copy strong{font-size:clamp(22px,2.9cqw,34px);line-height:1.5;font-weight:400}
+.ct-cloud-arrow{position:absolute;right:13%;top:25%;width:17px;height:17px;stroke:currentColor;stroke-width:1.8}
+.ct-cloud-competition{left:16%;top:0;rotate:-7deg}.ct-cloud-study{right:14%;top:3%;rotate:6deg}.ct-cloud-game{left:2.5%;top:20%;rotate:-9deg}.ct-cloud-outdoor{right:2.5%;top:22%;rotate:8deg}
+.ct-cloud:hover .ct-cloud-shape,.ct-cloud:focus-visible .ct-cloud-shape{transform:translateY(-6px) scale(1.05)}.ct-cloud:active .ct-cloud-shape{transform:scale(.96)}
+.ct-cloud:focus-visible{outline:3px solid #7450a0}
+.ct-thought-dots{position:absolute;left:48%;top:90%;width:35px;height:35px}.ct-thought-dots i{position:absolute;left:0;top:0;width:10px;height:8px;border:1.5px solid #796586;border-radius:50%;background:var(--ct-cloud)}.ct-thought-dots i:nth-child(2){top:14px;left:10px;width:6px;height:5px}.ct-thought-dots i:nth-child(3){top:25px;left:20px;width:3px;height:3px}
+.ct-table-note{position:absolute;left:38%;bottom:0;font:19px/1.5 'CT Cloud Doodle','YouYuan',sans-serif;color:#72567e;margin:0;rotate:-4deg}
+.ct-cloud-transition{position:absolute;inset:0;overflow:hidden;pointer-events:none;z-index:50;isolation:isolate}.ct-expanding-cloud{position:absolute;display:block;transform-origin:center;will-change:transform;pointer-events:none}.ct-expanding-cloud svg{width:100%;height:100%;display:block;overflow:visible;stroke:none}
+@container(max-width:640px){.ct-thought-table{aspect-ratio:390/510}.ct-scene{inset:6% -16% 20%;}.ct-cloud{width:45%}.ct-cloud-competition{left:3%;top:0}.ct-cloud-study{right:3%;top:8%}.ct-cloud-game{left:3%;top:auto;bottom:15%}.ct-cloud-outdoor{right:3%;top:auto;bottom:7%}.ct-cloud-copy strong{font-size:clamp(21px,6cqw,30px)}.ct-cloud-copy small{font-size:clamp(10px,2.8cqw,13px)}.ct-cloud-arrow{width:14px;height:14px}.ct-table-note{font-size:17px;left:33%}.ct-cloud-game .ct-thought-dots,.ct-cloud-outdoor .ct-thought-dots{top:-17px;rotate:180deg}}
+@media(prefers-reduced-motion:reduce){.ct-cloud-shape{transition:none!important;transform:none!important}}
+.ct-thought-table-shell[data-motion="off"] .ct-cloud-shape{transition:none!important;transform:none!important}
