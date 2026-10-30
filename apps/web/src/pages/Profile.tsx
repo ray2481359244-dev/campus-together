@@ -9,6 +9,7 @@ import { useSchool } from '../components/Layout';
 import { api, messageOf } from '../lib/api';
 import { PageTitle, FormError, Loading, LoginGate, ErrorState } from '../components/UI';
 import { Link } from 'react-router-dom';
+import {StudentAvatar} from '../components/visual/StudentArtwork';
 
 export function Profile() {
   const auth = useAuth(), { schools } = useSchool(), [error, setError] = useState(''), [saved, setSaved] = useState(false), [loggingOut, setLoggingOut] = useState(false), [skillsText, setSkillsText] = useState('');
@@ -20,7 +21,7 @@ export function Profile() {
   if (!auth.user) return <LoginGate next="/me" />;
   return <section className="form-page"><PageTitle title="你好，同频的你。" eyebrow="THIS IS YOUR CORNER." />
     <Link className="button secondary my-teams-link" to="/topic-requests">我的申请与举报 →</Link>{auth.user?.role === 'ADMIN' && <Link className="button secondary my-teams-link" to="/admin">社区管理 →</Link>}<Link className="button secondary my-teams-link" to="/saved">我的收藏 →</Link><Link className="button secondary my-teams-link" to="/teams">我的队伍 →</Link>
-    <div className="profile-summary"><span className="avatar jumbo">{auth.user.nickname.slice(0, 1)}</span><div><h2>{auth.user.nickname}</h2><p>{auth.user.email}</p><span>邮箱未验证 · 学校与技能均为自述</span></div></div>
+    <div className="profile-summary"><StudentAvatar seed={auth.user.id}/><div><h2>{auth.user.nickname}</h2><p>{auth.user.email}</p><span>邮箱未验证 · 学校与技能均为自述</span></div></div>
     <form className="paper form-stack" onChange={() => setSaved(false)} onSubmit={handleSubmit(async values => { setError(''); setSaved(false); try { const r = await api<MeDTO>('/me/profile', { method: 'PATCH', body: values }); auth.accept(r.data); setSaved(true); } catch (e) { setError(messageOf(e)); } })}>
       <div className="form-row"><label>昵称<input {...register('nickname')} maxLength={20} /></label><label>学校（自述）<select {...register('schoolId')}>{schools.map(s => <option value={s.id} key={s.id}>{s.name}</option>)}</select></label></div>{(errors.nickname || errors.schoolId) && <FormError>昵称需要 2—20 个字，并选择有效学校。</FormError>}
       <label>年级（可选）<input {...register('grade')} maxLength={20} placeholder="例如：大二" /></label>

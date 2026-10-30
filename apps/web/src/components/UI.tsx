@@ -4,12 +4,17 @@ import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { motion, useMotionValue, useReducedMotion, animate } from 'motion/react';
 import { useRef } from 'react';
 import type { PointerEvent } from 'react';
+import {StudentArtwork} from './visual/StudentArtwork';
 
 export function Loading({ label = '正在加载……' }: { label?: string }) { return <div className="state" role="status"><span className="loading-mark" aria-hidden="true" /><p>{label}</p></div>; }
 export function ErrorState({ message, retry }: { message: string; retry?: () => void }) { return <div className="state state-error" role="alert"><AlertTriangle size={28} aria-hidden="true" /><h2>这次没能加载成功</h2><p>{message}</p>{retry && <button className="button secondary" onClick={retry}><RefreshCw size={17} />重新加载</button>}</div>; }
-export function EmptyState({ title, children }: { title: string; children?: ReactNode }) { return <div className="state"><span className="empty-mark" aria-hidden="true">＋</span><h2>{title}</h2>{children}</div>; }
+export function EmptyState({ title, children }: { title: string; children?: ReactNode }) { return <div className="state"><StudentArtwork className="empty-student" kind="blue" pose="think"/><h2>{title}</h2>{children}</div>; }
 export function LoginGate({ next = '/publish' }: { next?: string }) { return <div className="state"><LockKeyhole size={30} /><h2>先碰个头，再开始</h2><p>登录后可以发布讨论、完善资料。</p><Link className="button" to={'/login?next=' + encodeURIComponent(next)}>去登录<ArrowUpRight size={18} /></Link></div>; }
-export function PageTitle({ title, eyebrow, back }: { title: string; eyebrow?: string; back?: () => void }) { return <div className="page-title">{back && <button className="icon-button" onClick={back} aria-label="返回上一页"><ArrowLeft /></button>}<div>{eyebrow && <span className="eyebrow">{eyebrow}</span>}<h1>{title}</h1></div></div>; }
+export function PageTitle({ title, eyebrow, back }: { title: string; eyebrow?: string; back?: () => void }) {
+  const {pathname}=useLocation();
+  const companion=pathname.startsWith('/recruitments')?'green':pathname==='/publish'?'violet':pathname==='/messages'?'blue':pathname==='/me'?'pink':null;
+  return <div className="page-title">{back && <button className="icon-button" onClick={back} aria-label="返回上一页"><ArrowLeft aria-hidden="true" /></button>}<div>{eyebrow && <span className="eyebrow">{eyebrow}</span>}<h1>{title}</h1></div>{companion&&<StudentArtwork className="page-companion" kind={companion} pose={companion==='violet'?'think':'wave'}/>}</div>;
+}
 export function FormError({ children }: { children?: ReactNode }) { return children ? <p className="form-error" role="alert">{children}</p> : null; }
 export function SectionLink({target,children,className}:{target:string;children:ReactNode;className?:string}) {
   const location=useLocation(),navigate=useNavigate(),reduce=useReducedMotion();

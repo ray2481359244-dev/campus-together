@@ -1,0 +1,131 @@
+/* The accepted thought-cloud design, shared by every real platform route. */
+body{padding-bottom:0}
+.cloud-platform{--campus-reading-bg:#f5eff9;height:100dvh;min-height:0;max-width:1800px;overflow:hidden;grid-template-columns:208px minmax(0,1fr)}
+.cloud-platform .sidebar{min-height:0;height:100%;position:relative;padding:27px 20px;background:#fffdf45c;border-right:1px solid #ae96bb50;overflow:auto}
+.cloud-platform .sidebar-line{height:1px;background:#ad93bc55;margin-block:24px}
+.cloud-platform .sidebar-note{font:25px/1.6 var(--campus-hand);letter-spacing:0;color:#695173}
+.cloud-platform .brand small{font-family:inherit;font-weight:500;letter-spacing:.5px;font-size:9px}
+.cloud-platform .desktop-nav{gap:10px}
+.cloud-platform .nav-item{border-radius:16px;font-weight:650;border-width:1.5px;transition:background .2s,transform .3s var(--campus-ease),box-shadow .2s}
+.cloud-platform .nav-item:hover{background:#e9ddfa80;transform:translateX(3px)}
+.cloud-platform .nav-item.selected{background:#e2d4f2;border-color:#9c7eae;box-shadow:3px 4px 0 #9b7bab30}
+.cloud-platform .nav-arrow{width:13px;color:#7b608a}
+.cloud-platform .sidebar-bottom{padding-top:24px}
+.cloud-platform .sidebar-cloud{width:135px;margin:0 0 15px;padding:24px 12px;border-radius:47% 55% 43% 50%;background:#e9ddfa88;color:#71567d;text-align:center;font:22px/1.5 var(--campus-hand);rotate:-7deg}
+.cloud-platform .sidebar-bottom>.text-button{font-size:12px;color:#6d557a}
+.cloud-platform .sidebar-bottom>p:last-child{font-size:12px}
+.cloud-platform .workspace{height:100%;display:flex;flex-direction:column;min-height:0;overflow:hidden}
+.cloud-platform .topbar{flex-shrink:0;min-height:78px;padding:15px 30px;border-bottom:1px solid #ad93bc40;gap:16px;background:#fffdf83b}
+.cloud-platform .topbar-account{display:flex;align-items:center;gap:20px}
+.cloud-platform .school-control select{background:#fffdf8a8;border:1px solid #a18ab3;border-radius:12px;min-height:44px;font-size:13px;font-weight:500}
+.cloud-platform .school-control label{font-size:12px;color:#6a5575}
+.cloud-platform .account-link{font-weight:500}
+.cloud-platform .account-link>span:last-child{max-width:150px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.cloud-platform .main-content{flex:1;min-height:0;overflow:auto;overscroll-behavior:contain;scrollbar-gutter:stable;width:100%;padding:24px 30px 32px;max-width:none;margin:0;scroll-padding:24px}
+.cloud-platform .main-content:has(.discover-page){padding:0;overflow:hidden;scrollbar-gutter:auto}
+.cloud-platform .route-stage{height:100%;min-height:0}
+.cloud-platform .route-base{min-height:100%;height:100%}
+.cloud-platform .route-base>section,.cloud-platform .route-base>.form-page{height:auto;min-height:100%}
+.cloud-platform .route-stage.with-overlay .route-base{visibility:hidden;overflow:hidden}
+.cloud-platform .route-overlay{min-height:100%;background:#f5eff9;border-radius:24px;padding:12px}
+.cloud-platform .main-content:has(.with-overlay){overflow:auto}
+.cloud-platform .demo-banner{background:#f4efcfb8;border:0;padding:5px 30px;font-size:12px;flex-shrink:0}
+.cloud-platform .demo-banner>span{border-radius:5px;background:#71577d}
+.cloud-platform .page-footer{display:none}
+.cloud-platform .page-title h1{font-family:var(--campus-hand);font-weight:400;letter-spacing:0;font-size:32px;text-wrap:balance}
+.cloud-platform .page-title>div{min-width:0}.cloud-platform .page-companion{width:85px;height:102px;margin-left:auto;flex-shrink:0;rotate:5deg}.cloud-platform .empty-student{width:95px;height:114px}.cloud-platform .profile-summary>.student-avatar{width:76px;height:82px;border-radius:25px;rotate:-5deg;box-shadow:4px 5px 0 #9b7bab2b}.cloud-platform .profile-summary>.student-avatar>.student-artwork{width:91px;height:110px;left:-9px;top:-4px}
+.cloud-platform .notification-card{border-radius:24px;background:#fffdf8d9;transition:background .3s,border-color .3s}.cloud-platform .notification-card.unread{background:#e9ddfa80;border-color:#a88ac0}.cloud-platform .notification-card .post-body{min-height:0}.cloud-platform .notification-toast{border-color:#a88ac0;border-radius:23px;background:#f9f1ff;box-shadow:4px 5px 0 #9b7bab33}.cloud-platform .notification-empty{border-radius:30px;background:#e9ddfa55}
+.cloud-platform .publish-school{border-color:#a38ab7;background:#e9ddfa80;border-radius:0 16px 16px 0}.cloud-platform .recruitment-intro{padding:20px 23px;border:1px solid #b2c59b;border-radius:23px;background:#e6efd780}.cloud-platform .recruitment-card{background:#fffdf8e8}.cloud-platform .profile-bottom{display:flex;flex-wrap:wrap;align-items:center;gap:12px;justify-content:space-between}.cloud-platform .profile-bottom button{margin:0}
+.cloud-platform :is(.paper,.post-card,.empty-state,.state,.my-drafts,.confirm-box){border-color:#ac93bb99;box-shadow:4px 5px 0 #8e739821}
+.cloud-platform .post-card{border-radius:21px;background:#fffdf9ed}
+.cloud-platform .post-card:hover{border-color:#9272a5;box-shadow:4px 7px 0 #8e73982b}
+.cloud-platform .post-card h3{font-size:20px;line-height:1.65}
+.cloud-platform :is(.metadata,.post-excerpt,.post-card-footer){font-size:13px}
+.cloud-platform .topic-badge{border-color:#9b80ac99;border-radius:9px}
+.cloud-platform .category-tabs{border:1px solid #a38ab7;background:#fffaf4;border-radius:17px;padding:4px;gap:4px}
+.cloud-platform .category-tabs button{min-height:44px;font-weight:650;border-radius:12px;font-size:14px}
+.cloud-platform .category-tabs button.active{background:#e2d4f2;color:var(--campus-text)}
+.cloud-platform .tab-indicator{border-radius:12px;border:1px solid #9c80af;background:var(--board-color,#e2d4f2)}
+.cloud-platform :is(.topic-picker select,.search-form){border:1px solid #a38ab7;border-radius:13px;background:#fffdf9}
+.cloud-platform .topic-picker select{min-height:46px;font-size:14px}
+.cloud-platform .search-form{overflow:hidden}
+.cloud-platform .search-form input{font-size:16px;min-height:44px}
+.cloud-platform .search-form button{border:0;border-left:1px solid #a38ab780;min-height:44px;min-width:44px;background:#e5d8f5}
+.cloud-platform .search-form:focus-within{outline:2px solid #7450a0;outline-offset:3px}
+.cloud-platform .board-tabs{border-color:#aa91b95c}
+.cloud-platform .board-tabs>span{border-color:#8a699d}
+.cloud-platform :is(input:not([type=checkbox]):not([type=radio]),select,textarea){border-color:#a38ab7;background-color:#fffdf9;color:var(--campus-text)}
+.cloud-platform :is(.form-stack input,.form-stack select,.form-stack textarea){border-radius:12px;border-width:1px}
+.cloud-platform :is(h1,h2,h3){overflow-wrap:anywhere}
+.cloud-platform :is(button,a,input,select,textarea):focus-visible{outline:3px solid #7450a0;outline-offset:4px}
+.discover-panel-stage{position:relative;isolation:isolate;height:100%;min-height:0;display:flex;flex-direction:column}
+.discovery-nav{display:flex;align-items:center;justify-content:center;gap:8px;padding:12px 20px;flex-shrink:0;border-bottom:1px solid #ae96bb25}
+.discovery-nav>a{padding:8px 18px;min-height:44px;display:grid;place-items:center;border-radius:14px;font-size:14px;color:#6b5476;border:1px solid transparent;transition:background .2s,color .2s}
+.discovery-nav>a:hover{background:#e9ddfa77}
+.discovery-nav>a[aria-current=page]{background:#e6daf2a8;border-color:#ae92be77;color:#493254}
+.discover-panel{min-height:0;flex:1;overflow:auto;overscroll-behavior:contain;scrollbar-gutter:stable;padding:22px 32px 30px;animation:panel-arrive .4s cubic-bezier(.2,.8,.3,1) both}
+@keyframes panel-arrive{from{opacity:0;transform:translateY(9px)}to{opacity:1;transform:translateY(0)}}
+.discover-panel h1{font-family:var(--campus-hand);font-weight:400;letter-spacing:0;text-wrap:balance;outline-offset:6px}
+.welcome-layout{display:grid;grid-template-columns:1fr 1fr;gap:22px;max-width:1120px;min-height:100%;margin:auto;align-items:center}
+.welcome-copy{padding:16px 0 30px;position:relative;z-index:1}
+.welcome-note{display:flex;align-items:center;gap:9px;font-size:14px;color:#73557f}
+.welcome-copy h1{font:clamp(50px,5.5vw,83px)/1.35 var(--campus-hand);margin:22px 0}
+.welcome-copy h1>span{display:inline-block;background:#e3d1f6;padding:0 17px 7px;border:1.5px solid #9674a9;box-shadow:5px 6px 0 #b29ac542;border-radius:17px;rotate:-3deg}
+.welcome-description{font-size:16px;line-height:1.9;max-width:420px}
+.welcome-description>span{display:block;font-size:13px;color:#796784;margin-top:8px}
+.welcome-actions{display:flex;align-items:center;gap:23px;margin-top:29px;flex-wrap:wrap}
+.welcome-actions>.button{background:#dfcef5;border-color:#9071a2;box-shadow:3px 4px 0 #886a9b50;min-height:50px}
+.welcome-actions>.text-button{font-size:13px;color:#6c537a}
+.welcome-stickers{display:flex;gap:12px;margin-top:32px;flex-wrap:wrap;padding-left:4px}
+.welcome-sticker{display:inline-grid;place-items:center;min-height:44px;padding:7px 13px;border:1px solid #a18ab3;border-radius:11px;rotate:-6deg;font:16px/1.5 var(--campus-hand);box-shadow:2px 3px 0 #ac95b82b;transition:transform .3s var(--campus-ease)}
+.welcome-sticker:nth-child(2){rotate:5deg}.welcome-sticker:nth-child(3){rotate:-3deg}.welcome-sticker:hover{transform:translateY(-5px) rotate(4deg)}
+.welcome-art{position:relative;min-height:400px;width:100%;height:min(520px,65dvh);max-height:580px;border:0;background:none;isolation:isolate;outline-offset:0;border-radius:40%}
+.welcome-student{position:absolute;width:53%;height:63%;bottom:9%;pointer-events:none}
+.welcome-left{left:-2%}.welcome-right{right:-1%}
+.welcome-thought{position:absolute;left:12%;right:12%;top:3%;min-height:148px;border:1.5px solid #9b7aaf88;border-radius:45% 53% 40% 57%;display:flex;align-items:center;justify-content:center;flex-direction:column;font:24px/1.6 var(--campus-hand);background:#e4d8f4a8;color:#6b507e;rotate:-3deg;padding:24px 12px;z-index:1}
+.welcome-thought strong{font-weight:400}.welcome-thought svg{position:absolute;right:-7px;bottom:2px;color:#9674b3}
+.welcome-orbit{position:absolute;inset:14% 0 15%;border:1px dashed #bda2cf77;border-radius:50%;rotate:-20deg;pointer-events:none}
+.welcome-art-note{position:absolute;bottom:2%;left:10%;right:10%;font:16px/1.8 var(--campus-hand);color:#7c618a;rotate:-4deg}
+.interests-panel{max-width:1120px;margin:auto;min-height:100%;display:flex;flex-direction:column;justify-content:center}
+.roundtable-heading,.discussion-heading{display:flex;align-items:center;justify-content:space-between;gap:16px;flex-shrink:0}
+.roundtable-heading h1,.discussion-heading h1{font-size:33px;line-height:1.6}
+.roundtable-heading p,.discussion-heading p{font-size:14px;color:#776480;margin-top:5px}
+.roundtable-heading>.text-button,.discussion-heading>.text-button{font-size:13px;color:#725580;white-space:nowrap}
+.interests-panel .ct-thought-table-shell{max-width:min(100%,calc((100dvh - 380px)*1.69));margin:22px auto 0}
+.roundtable-hint{text-align:center;font-size:13px;color:#7b6387;margin-top:13px}
+.discussion-panel{background:color-mix(in srgb,var(--board-color) 32%,#fff9ef)}
+.discussion-panel .community-layout{margin-top:22px;grid-template-columns:minmax(0,1fr) 220px;gap:32px}
+.discussion-panel .aside-note{border:1px solid #a991b977;background:#fffdf87a;border-radius:30px;padding:16px 22px 28px;rotate:2deg;text-align:center;box-shadow:4px 5px 0 #8e73981a}
+.discussion-panel .aside-note>.student-artwork{width:128px;height:154px;margin:-6px auto 4px}
+.discussion-panel .aside-note h2{font:23px/1.6 var(--campus-hand);margin-bottom:12px}
+.discussion-panel .aside-note p{font-size:13px;color:#715d7c;line-height:1.9}
+.discussion-panel .aside-note .button{margin-top:20px;min-height:44px}
+.cloud-platform .community-aside{position:static}
+.cloud-platform .like-button.is-liked{background:#ffdce5;border-color:#c4587b;color:#9d2a52;box-shadow:3px 4px 0 #b6627a33}
+.cloud-platform .save-button.is-saved{background:#f5ff62;border-color:#968845;box-shadow:3px 4px 0 #a89b5933}
+.cloud-platform .like-burst::before,.cloud-platform .like-burst::after,.cloud-platform .save-burst::before,.cloud-platform .save-burst::after{content:'✦';position:absolute;font-size:18px;color:currentColor;top:0;left:-12px}
+.cloud-platform .like-burst::after,.cloud-platform .save-burst::after{left:auto;right:-12px;top:20px;font-size:12px}
+.cloud-platform .interaction-status{color:#735080}
+@media(max-width:1100px){.cloud-platform{grid-template-columns:176px minmax(0,1fr)}.cloud-platform .sidebar{padding-inline:16px}.cloud-platform .brand{font-size:22px}.cloud-platform .main-content{padding-inline:23px}.welcome-copy h1{font-size:62px}.welcome-description{font-size:14px}.welcome-actions{gap:12px}.welcome-art{min-height:350px}.welcome-thought{font-size:21px;left:6%;right:6%}.discussion-panel .community-layout{grid-template-columns:minmax(0,1fr)}.discussion-panel .community-aside{display:none}}
+@media(max-width:767px){
+ .cloud-platform{display:block;padding-bottom:calc(78px + env(safe-area-inset-bottom));height:100dvh}.cloud-platform .sidebar{display:none}
+ .cloud-platform .topbar{padding:12px 18px 10px;gap:10px;min-height:0;flex-wrap:wrap}
+ .cloud-platform .mobile-brand{display:flex;font-size:20px;gap:8px}.cloud-platform .mobile-brand .brand-mark{width:31px;height:34px;font-size:25px}
+ .cloud-platform .topbar-account{gap:10px;margin-left:auto}.cloud-platform .account-link{gap:5px}.cloud-platform .account-link>span:last-child{max-width:80px;font-size:12px}.cloud-platform .student-avatar{width:31px;height:33px}
+ .cloud-platform .motion-toggle{font-size:12px;padding:6px 8px;min-height:44px}.cloud-platform .school-control{order:3;flex-basis:100%;gap:12px}.cloud-platform .school-control select{font-size:14px;min-height:44px;max-width:none;flex:1}.cloud-platform .school-control label{font-size:12px}
+ .cloud-platform .demo-banner{padding:5px 18px;font-size:12px}.cloud-platform .main-content{padding:19px 18px 24px}
+ .cloud-platform .mobile-nav{bottom:calc(10px + env(safe-area-inset-bottom));left:max(12px,env(safe-area-inset-left));right:max(12px,env(safe-area-inset-right));border:1px solid #a38ab7;border-radius:21px;box-shadow:3px 4px 0 #9b7bab33;background:#fffdf8f5;backdrop-filter:blur(12px);padding:5px;gap:4px}
+ .cloud-platform .mobile-nav-item{font-size:12px;min-height:53px}.cloud-platform .mobile-nav-indicator{border:1px solid #9c7eae;border-radius:15px;background:#e2d4f2}
+ .cloud-platform .page-title h1{font-size:27px}.cloud-platform .route-overlay{padding:0}.cloud-platform .post-card{padding:17px}.cloud-platform .post-card h3{font-size:18px}
+ .cloud-platform .page-companion{width:58px;height:70px}.cloud-platform .page-title{gap:9px}.cloud-platform .recruitment-intro{padding:18px}.cloud-platform .notification-toast{bottom:calc(90px + env(safe-area-inset-bottom))}
+ .discovery-nav{padding:8px 12px;gap:4px}.discovery-nav>a{padding:7px 12px;font-size:13px;flex:1;max-width:135px;white-space:nowrap}
+ .discover-panel{padding:17px 18px 25px}.welcome-layout{grid-template-columns:1fr;gap:0;align-content:center;max-width:500px}.welcome-copy{padding:5px 4px 0}.welcome-note{font-size:13px}.welcome-copy h1{font-size:53px;margin:15px 0}.welcome-description{font-size:14px}.welcome-description>span{font-size:12px;margin-top:4px}.welcome-actions{margin-top:21px;gap:19px}.welcome-stickers{margin-top:23px;gap:12px}.welcome-sticker{font-size:15px;padding:6px 11px}.welcome-art{height:280px;min-height:280px;max-width:360px;margin:20px auto 0}.welcome-thought{top:0;min-height:105px;font-size:21px;left:13%;right:13%;padding:14px 8px}.welcome-student{width:44%;height:65%;bottom:7%}.welcome-left{left:2%}.welcome-right{right:2%}.welcome-art-note{font-size:14px;bottom:0}.welcome-orbit{inset:14% 6% 10%}
+ .roundtable-heading,.discussion-heading{align-items:flex-start;flex-wrap:wrap;gap:6px}.roundtable-heading h1,.discussion-heading h1{font-size:27px}.roundtable-heading p,.discussion-heading p{font-size:13px}.roundtable-heading>.text-button,.discussion-heading>.text-button{font-size:12px;min-height:38px}.interests-panel{justify-content:flex-start}.interests-panel .ct-thought-table-shell{max-width:390px;margin-top:15px}.roundtable-hint{font-size:12px;margin-top:12px}.discussion-panel .community-layout{margin-top:15px;gap:0}.cloud-platform .filter-row{flex-wrap:wrap}.cloud-platform .topic-picker{min-width:0}.cloud-platform .category-tabs button{font-size:13px}
+}
+@media(max-width:370px){.cloud-platform .topbar{padding-inline:14px}.cloud-platform .mobile-brand{font-size:18px}.cloud-platform .account-link>span:last-child{max-width:55px}.cloud-platform .topbar-account{gap:7px}.cloud-platform .motion-toggle{padding-inline:6px}.discover-panel{padding-inline:14px}.welcome-copy h1{font-size:45px}.welcome-actions{gap:12px}.welcome-actions>.button{padding-inline:12px;font-size:13px}.welcome-actions>.text-button{font-size:12px}.welcome-stickers{gap:9px}.welcome-sticker{font-size:14px;padding-inline:9px}.roundtable-heading h1,.discussion-heading h1{font-size:25px}}
+@media(max-width:767px) and (min-height:740px){
+ .welcome-layout{align-content:center}.welcome-copy h1{font-size:clamp(29px,9.2vw,36px);line-height:1.5;margin:15px 0;white-space:nowrap}.welcome-copy h1 br{display:none}.welcome-copy h1>span{padding:0 8px 4px;margin-left:5px;border-radius:12px}.welcome-description>span{display:none}.welcome-actions{margin-top:16px}.welcome-stickers{margin-top:14px}.welcome-art{height:210px;min-height:210px;max-width:290px;margin-top:13px}.welcome-thought{min-height:83px;font-size:18px;padding:10px 5px}.welcome-art-note{font-size:13px}
+ .interests-panel .ct-thought-table-shell{max-width:min(390px,calc((100dvh - 460px)*.765))}.roundtable-hint{margin-top:8px}
+}
+@media(min-width:768px) and (max-height:720px){.welcome-copy h1{font-size:54px;margin:16px 0}.welcome-art{min-height:300px;height:350px}.welcome-thought{font-size:21px;min-height:120px}.welcome-stickers{margin-top:23px}.cloud-platform .sidebar-cloud{display:none}}
+@media(prefers-reduced-motion:reduce){.discover-panel{animation:none}.welcome-sticker{transition:none}.cloud-platform .nav-item:hover{transform:none}}
