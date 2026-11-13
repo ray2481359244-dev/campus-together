@@ -11,13 +11,14 @@ import type { CommunityDTO } from '@campus/contracts';
 import { useAuth } from '../lib/auth';
 import { api, ApiError, messageOf } from '../lib/api';
 import { Loading, ErrorState, FormError, SectionLink } from './UI';
+import { ContactAction } from './ContactAction';
 export function SaveRecruitment({id}:{id:string}) {
   const {user}=useAuth();const [notice,setNotice]=useState(''),[busy,setBusy]=useState(false);
   if(!user)return null;
   return <div><button className="button secondary" disabled={busy} onClick={async()=>{setBusy(true);try{await api('/favorites',{method:'PUT',body:{type:'RECRUITMENT',id,active:true}});setNotice('已收藏，可在我的收藏中取消。');}catch(e){setNotice(messageOf(e));}finally{setBusy(false);}}}>收藏招募</button>{notice && <p role="status">{notice}</p>}</div>;
 }
 export type CommunityParts={feedback:ReactNode;discussion:ReactNode;commentCount:number};
-export function Community({postId,render}:{postId:string;render?:(parts:CommunityParts)=>ReactNode}) {
+export function Community({postId,render,group}:{postId:string;render?:(parts:CommunityParts)=>ReactNode;group?: ReactNode}) {
   const {user}=useAuth(),client=useQueryClient(),[params,setParams]=useSearchParams(),target=params.get('comment');
   const [body,setBody]=useState(''),[replyId,setReplyId]=useState<string|null>(null),[busy,setBusy]=useState(false),[error,setError]=useState(''),[status,setStatus]=useState(''),[burst,setBurst]=useState(0),[savedBurst,setSavedBurst]=useState(0);
   const [bellPulse,setBellPulse]=useState(0);
@@ -58,10 +59,11 @@ export function Community({postId,render}:{postId:string;render?:(parts:Communit
     <p className="interaction-status" role="status">{status}</p><FormError>{error}</FormError></>;
   const discussion=<section ref={arrivals} className="community-comments" id="conversation" aria-label="讨论互动">
     <div className="conversation-heading"><div><span className="eyebrow">LET’S TALK.</span><h2>一起聊聊</h2></div>{user&&<SectionLink className="text-button" target="write-comment">写评论 ↓</SectionLink>}</div>
+    {group}
     {first.notificationsMuted&&<p className="muted-notice"><BellOff size={15} aria-hidden="true" />本帖已免打扰，新的评论、回复和点赞将不再提醒。</p>}
     {target&&<p className="form-note">正在查看消息对应的评论。<button className="text-button" onClick={()=>{located.current='';setParams(next=>{next.delete('comment');return next;},{replace:true});}}>查看全部评论</button></p>}
     {!user&&<p><Link to={'/login?next=/posts/'+postId}>登录后参与评论</Link></p>}
-    {comments.map(c=><article data-cloud-id={c.id} id={'comment-'+c.id} tabIndex={-1} key={c.id} className={'community-comment'+(target===c.id?' targeted-comment':'')}><div className="comment-byline"><StudentAvatar seed={c.id}/><strong>{c.nickname}</strong><time className="metadata">{new Date(c.createdAt).toLocaleString('zh-CN',{timeZone:'Asia/Shanghai'})}</time></div>{c.replyId&&<blockquote className="comment-quote">{c.reply?`回复 ${c.reply.nickname}：${c.reply.body}`:'原评论已不可用'}</blockquote>}<p>{c.body}</p><div className="comment-actions">{user&&<button className="text-button" disabled={busy||!!pending.current} onClick={()=>{setReplyId(c.id);document.getElementById('comment-body')?.focus();}}>回复此评论</button>}{c.canDelete&&<button className="text-button danger" disabled={busy} onClick={()=>void act('/comments/'+c.id,'DELETE')}>删除我的评论</button>}<ReportButton type="COMMENT" id={c.id} /></div></article>)}
+    {comments.map(c=><article data-cloud-id={c.id} id={'comment-'+c.id} tabIndex={-1} key={c.id} className={'community-comment'+(target===c.id?' targeted-comment':'')}><div className="comment-byline"><ContactAction userId={c.authorId} nickname={c.nickname} source={{ kind: "POST", postId, commentId: c.id }} sourceLabel="附上这条评论" className="comment-person" label={"查看 " + c.nickname + " 的资料"}><StudentAvatar seed={c.authorId}/><strong>{c.nickname}</strong></ContactAction><time className="metadata">{new Date(c.createdAt).toLocaleString('zh-CN',{timeZone:'Asia/Shanghai'})}</time></div>{c.replyId&&<blockquote className="comment-quote">{c.reply?`回复 ${c.reply.nickname}：${c.reply.body}`:'原评论已不可用'}</blockquote>}<p>{c.body}</p><div className="comment-actions">{user&&<button className="text-button" disabled={busy||!!pending.current} onClick={()=>{setReplyId(c.id);document.getElementById('comment-body')?.focus();}}>回复此评论</button>}{c.authorId && <ContactAction userId={c.authorId} nickname={c.nickname} source={{ kind: "POST", postId, commentId: c.id }} sourceLabel="附上这条评论" />}{c.canDelete&&<button className="text-button danger" disabled={busy} onClick={()=>void act('/comments/'+c.id,'DELETE')}>删除我的评论</button>}<ReportButton type="COMMENT" id={c.id} /></div></article>)}
     {!first.comments.length&&<p className="comment-empty">还没有评论，来聊聊你的想法。</p>}
     {result.hasNextPage&&<button className="text-button" disabled={result.isFetchingNextPage} onClick={()=>void result.fetchNextPage()}>更多评论</button>}
     {user&&<form className="form-stack comment-composer" id="write-comment" onSubmit={async e=>{

@@ -5,6 +5,10 @@ import type { Prisma } from './generated/prisma/client.js';
 import { db } from './db.js';
 import { requireUser, csrfGuard, writeLimit } from './auth.js';
 import { parse, ApiError } from './http.js';
+import { z } from 'zod';
+
+const listQuery = NotificationsQuerySchema.extend({ view: z.literal('activity').optional() });
+const activity: Prisma.NotificationWhereInput = { OR: [{ noticeId: null }, { notice: { kind: { not: 'APPLICATION_SUBMITTED' } } }] };
 
 const teamLink = { select: { id: true, recruitmentId: true } } as const;
 const include = { notice: { include: { post: { select: { title:true,status:true,_count:{select:{reactions:true}},mutes:{select:{userId:true}} } }, comment:{select:{body:true,status:true}} } }, actionNotice: { include: { action: { include: { team: teamLink } } } }, review: { include: { application: { select: { team: teamLink } } } }, memberChange: { include: { member: { select: { team: teamLink } } } }, closure: { include: { team: teamLink } }, closedApplication: { select: { slot: { select: { name: true } } } } } as const;
@@ -39,19 +43,29 @@ notificationsRouter.get('/me/notifications/summary', async (_req,res) => {
   const user=requireUser(res);
   const result=await db.$transaction(async tx=>{
     const latest=await tx.notification.findFirst({where:{recipientId:user.id},include,orderBy:[{createdAt:'desc'},{id:'desc'}]});
-    return {unreadCount:await tx.notification.count({where:{recipientId:user.id,readAt:null}}),latest:latest?dto(latest):null};
+    const unread = { recipientId: user.id, readAt: null };
+    const unreadCount = await tx.notification.count({ where: unread });
+    return { unreadCount, activityUnreadCount: unreadCount ? await tx.notification.count({ where: { ...unread, ...activity } }) : 0, latest: latest ? dto(latest) : null };
   });res.json({data:result});
 });
 notificationsRouter.get('/me/notifications', async (req, res) => {
-  const user = requireUser(res), input = parse(NotificationsQuerySchema, req.query);
+  const user = requireUser(res), input = parse(listQuery, req.query);
+  const visible = input.view === 'activity' ? activity : {};
   const result = await db.$transaction(async tx => {
     const cursor = input.cursor ? await tx.notification.findFirst({ where: { id: input.cursor, recipientId: user.id } }) : null;
     if (input.cursor && !cursor) throw new ApiError(400, 'INVALID_CURSOR', '分页位置无效，请刷新通知。');
-    const rows = await tx.notification.findMany({ where: { recipientId: user.id,
-      ...(cursor ? { OR: [{ createdAt: { lt: cursor.createdAt } }, { createdAt: cursor.createdAt, id: { lt: cursor.id } }] } : {}) },
+    const rows = await tx.notification.findMany({ where: { recipientId: user.id, AND: [visible,
+      ...(cursor ? [{ OR: [{ createdAt: { lt: cursor.createdAt } }, { createdAt: cursor.createdAt, id: { lt: cursor.id } }] }] : [])] },
       include, orderBy: [{ createdAt: 'desc' }, { id: 'desc' }], take: 21 });
-    const items = rows.slice(0, 20);
-    return { items: items.map(dto), nextCursor: rows.length > 20 ? items.at(-1)!.id : null, unreadCount: await tx.notification.count({ where: { recipientId: user.id, readAt: null } }) };
+    const items = rows.slice(0, 20), data = items.map(dto);
+    const teams = [...new Set(data.flatMap(row => row.teamId ?? []))];
+    const available = new Set(input.view === 'activity' && teams.length ? (await tx.teamMember.findMany({
+      where: { userId: user.id, status: 'ACTIVE', teamId: { in: teams }, team: { chatSpace: { purgedAt: null }, OR: [{ archiveUntil: null }, { archiveUntil: { gt: new Date() } }] } },
+      select: { teamId: true },
+    })).map(row => row.teamId) : []);
+    return { items: data.map(row => row.teamId && available.has(row.teamId) ? { ...row, chatAvailable: true } : row),
+      nextCursor: rows.length > 20 ? items.at(-1)!.id : null,
+      unreadCount: await tx.notification.count({ where: { recipientId: user.id, readAt: null, ...visible } }) };
   });
   res.json({ data: result });
 });

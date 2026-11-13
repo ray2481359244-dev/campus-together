@@ -4,10 +4,11 @@ import { db } from './db.js';
 import { IdSchema } from '@campus/contracts';
 import { databaseNow } from './time.js';
 import { archiveDeadline, purgeExpiredChats } from './archive.js';
+import { signalTeamChat } from './chat-events.js';
 
 // Both scheduled recovery and request fallback use the same locked transaction.
 export async function expireTeam(teamId: string) {
-  return db.$transaction(async tx => {
+  const expired = await db.$transaction(async tx => {
     const identity = await tx.team.findUnique({ where: { id: teamId }, select: { recruitmentId: true } });
     if (!identity) return false;
     await tx.$queryRaw`SELECT "id" FROM "Recruitment" WHERE "id"=${identity.recruitmentId}::uuid FOR UPDATE`;
@@ -29,6 +30,8 @@ export async function expireTeam(teamId: string) {
     await tx.domainEvent.create({ data: { teamId, kind: 'TEAM_EXPIRED', payload: { actionId: action.id, expiredCount: pending.length, deadline: team.recruitment.joinDeadline.toISOString() }, createdAt: now } });
     return true;
   }, { maxWait: 5000, timeout: 10000 });
+  if (expired) signalTeamChat(teamId);
+  return expired;
 }
 export async function expireDueTeams(batchSize = 100) {
   const rows = await db.$queryRaw<{ id: string }[]>`SELECT t."id" FROM "Team" t JOIN "Recruitment" r ON r."id"=t."recruitmentId" WHERE t."status" IN ('OPEN','FULL') AND r."publicationStatus"='PUBLISHED' AND r."joinDeadline" <= clock_timestamp() ORDER BY r."joinDeadline",t."id" LIMIT ${batchSize}`;

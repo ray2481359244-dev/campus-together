@@ -65,6 +65,13 @@ model User {
   teamActions TeamAction[]
   teamActionNotices TeamActionNotice[]
   chatMessages ChatMessage[]
+  socialMessages ConversationMessage[]
+  chatImages ChatImage[]
+  socialMemberships ConversationMember[]
+  startedConversations Conversation[]
+  blocks UserBlock[] @relation("BlockOwner")
+  blockedBy UserBlock[] @relation("BlockedUser")
+  allowMessageRequests Boolean @default(true)
   aiRequests AiRequest[]
   postImages PostImage[]
   comments Comment[]
@@ -141,6 +148,7 @@ model Topic {
 }
 
 model Post {
+  discussion Conversation?
   notices Notice[]
   mutes PostMute[]
   id        String        @id @default(uuid()) @db.Uuid
@@ -302,6 +310,8 @@ model TeamMember {
   revision Int @default(1)
   changes MembershipChange[]
   lastReadSeq Int @default(0)
+  chatPinnedAt DateTime? @db.Timestamptz(3)
+  chatMuted Boolean @default(false)
 
   @@unique([teamId, userId])
   @@unique([id, userId])
@@ -332,6 +342,13 @@ model ChatMessage {
   body String? @db.VarChar(2000)
   bodyHash String? @db.VarChar(64)
   redactsMessageId String? @db.Uuid
+  replyToId String? @db.Uuid
+  imageId String? @unique @db.Uuid
+  image ChatImage? @relation(fields: [imageId], references: [id], onDelete: SetNull)
+  mentionIds String[] @default([]) @db.Uuid
+  sourcePostId String? @db.Uuid
+  sourceCommentId String? @db.Uuid
+  sourceRecruitmentId String? @db.Uuid
   createdAt DateTime @default(now()) @db.Timestamptz(3)
   deletedAt DateTime? @db.Timestamptz(3)
   @@unique([teamId, seq])
@@ -348,6 +365,115 @@ model DomainEvent {
   kind String @db.VarChar(60)
   payload Json
   createdAt DateTime @default(now()) @db.Timestamptz(3)
+}
+
+enum ConversationKind {
+  DIRECT
+  DISCUSSION
+}
+
+enum ConversationState {
+  REQUESTED
+  ACTIVE
+  DECLINED
+}
+
+enum DiscussionJoinMode {
+  OPEN
+  APPROVAL
+}
+
+enum ConversationMemberStatus {
+  ACTIVE
+  PENDING
+  LEFT
+  REMOVED
+}
+
+model Conversation {
+  id String @id @default(uuid()) @db.Uuid
+  kind ConversationKind
+  state ConversationState @default(ACTIVE)
+  directKey String? @unique @db.VarChar(73)
+  ownerId String @db.Uuid
+  owner User @relation(fields: [ownerId], references: [id], onDelete: Restrict)
+  postId String? @unique @db.Uuid
+  post Post? @relation(fields: [postId], references: [id], onDelete: Restrict)
+  title String @default("") @db.VarChar(80)
+  joinMode DiscussionJoinMode @default(OPEN)
+  lastSeq Int @default(0)
+  closedAt DateTime? @db.Timestamptz(3)
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
+  lastActivityAt DateTime @default(now()) @db.Timestamptz(3)
+  members ConversationMember[]
+  messages ConversationMessage[]
+}
+
+model ConversationMember {
+  conversationId String @db.Uuid
+  conversation Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  userId String @db.Uuid
+  user User @relation(fields: [userId], references: [id], onDelete: Restrict)
+  status ConversationMemberStatus @default(ACTIVE)
+  joinedAfterSeq Int @default(0)
+  lastReadSeq Int @default(0)
+  pinnedAt DateTime? @db.Timestamptz(3)
+  muted Boolean @default(false)
+  updatedAt DateTime @updatedAt @db.Timestamptz(3)
+  @@id([conversationId, userId])
+  @@index([userId, status])
+}
+
+model ConversationMessage {
+  id String @id @default(uuid()) @db.Uuid
+  conversationId String @db.Uuid
+  conversation Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  senderId String? @db.Uuid
+  sender User? @relation(fields: [senderId], references: [id], onDelete: SetNull)
+  clientMessageId String? @db.Uuid
+  seq Int
+  nickname String @db.VarChar(80)
+  body String? @db.VarChar(2000)
+  bodyHash String? @db.Char(64)
+  replyToId String? @db.Uuid
+  redactsMessageId String? @db.Uuid
+  sourcePostId String? @db.Uuid
+  sourceCommentId String? @db.Uuid
+  sourceRecruitmentId String? @db.Uuid
+  imageId String? @unique @db.Uuid
+  image ChatImage? @relation(fields: [imageId], references: [id], onDelete: SetNull)
+  mentionIds String[] @default([]) @db.Uuid
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
+  deletedAt DateTime? @db.Timestamptz(3)
+  @@unique([conversationId, seq])
+  @@unique([conversationId, senderId, clientMessageId])
+  @@index([conversationId, senderId, createdAt])
+}
+
+model UserBlock {
+  blockerId String @db.Uuid
+  blocker User @relation("BlockOwner", fields: [blockerId], references: [id], onDelete: Cascade)
+  blockedId String @db.Uuid
+  blocked User @relation("BlockedUser", fields: [blockedId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
+  @@id([blockerId, blockedId])
+}
+
+model ChatImage {
+  id String @id @default(uuid()) @db.Uuid
+  authorId String @db.Uuid
+  author User @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  requestKey String @db.Uuid
+  hash String @db.Char(64)
+  scope String @db.VarChar(12)
+  roomId String @db.Uuid
+  bytes Bytes
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
+  teamMessage ChatMessage?
+  socialMessage ConversationMessage?
+  @@unique([authorId, requestKey])
+  @@index([scope, roomId, createdAt])
+  @@index([createdAt])
 }
 
 enum ApplicationStatus {

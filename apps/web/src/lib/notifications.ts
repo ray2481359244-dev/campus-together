@@ -7,15 +7,15 @@ export function useNotificationSummary(userId?: string) {
   return useQuery({queryKey:['notification-summary',userId],enabled:!!userId,retry:false,refetchInterval:5000,
     queryFn:({signal})=>api<NotificationSummaryDTO>('/me/notifications/summary',{signal})});
 }
-export function useNotifications(userId?: string) {
+export function useNotifications(userId?: string, activity = false) {
   const client=useQueryClient();
-  const result=useInfiniteQuery({queryKey:['notifications',userId],enabled:!!userId,initialPageParam:'',retry:false,staleTime:0,refetchInterval:5000,
-    queryFn:({pageParam,signal})=>api<NotificationsPageDTO>('/me/notifications'+(pageParam?'?cursor='+pageParam:''),{signal}),
+  const result=useInfiniteQuery({queryKey:['notifications',userId,activity],enabled:!!userId,initialPageParam:'',retry:false,staleTime:0,refetchInterval:5000,
+    queryFn:({pageParam,signal})=>api<NotificationsPageDTO>('/me/notifications?'+new URLSearchParams({...(activity?{view:'activity'}:{}),...(pageParam?{cursor:pageParam}:{})}),{signal}),
     getNextPageParam:last=>last.data.nextCursor||undefined});
   useEffect(()=>{
-    if(!userId||!result.data)return;
+    if(!userId||!result.data||activity)return;
     const page=result.data.pages[0].data;
     client.setQueryData(['notification-summary',userId],{data:{unreadCount:page.unreadCount,latest:page.items[0]||null}});
-  },[client,userId,result.data]);
+  },[client,userId,result.data,activity]);
   return result;
 }

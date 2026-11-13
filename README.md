@@ -1,6 +1,8 @@
 # 碰个头 / CampusTogether
 
-校园兴趣社区与可解释组队平台。已接通账号、四区讨论与图片 / 评论 / 点赞 / 收藏、四区招募 / 申请审核 / 直接入队、队伍管理、自动到期、文字群聊与 30 天归档、竞赛条件排序，以及举报、主题审核和管理员封禁。当前优先准备本地参赛演示，提供独立演示库和四角色启动入口；公网部署尚未执行。AI 按负责人要求暂缓配置，保持规则模式。见[本地演示](docs/competition/LOCAL_DEMO.md)、[部署交接](docs/DEPLOYMENT.md)、[动态计划](docs/ITERATION_PLAN.md)和[最新日志](docs/development/2026-10-30.md)。
+校园兴趣社区与可解释组队平台。围绕游戏、学习、竞赛和户外，同学可以发帖交流，从评论发起私聊或加入讨论群，从招募报名组队，并在同一「消息」列表找到正式队伍群。参赛演示用真实 PostgreSQL、独立演示库和四个虚构角色。应用内条件辅助采用规则模式。见[参赛说明](docs/competition/SUBMISSION_2026-11-14.md)、[本地演示](docs/competition/LOCAL_DEMO.md)与[部署交接](docs/DEPLOYMENT.md)。
+
+2026-11-14 参赛版已纳入四区轻量发布和两种加入方式、评论转私聊、帖子讨论群、统一消息与队伍群，以及可关闭的同主题交互反馈。队长从「通知 → 待处理」审核，新队员从「消息 → 我的队伍」进群，群资料提供成员、公告和管理入口。私聊、帖子讨论群和正式队伍按各自权限读取。完整演示和验收入口见[本轮参赛说明](docs/competition/SUBMISSION_2026-11-14.md)。本轮试用反馈已写入[体验改进计划](docs/体验微调与个人主页改进计划_2026-11-14.md)。
 
 2026-10-30 已将确认的 **想法云 UI** 与 **分层工作台** 实装到正式项目：原创 Q 版同学、四人圆桌与想法云；帖子正文、评论、招募各自成区，招募 / 队伍 / 群聊 / 消息等采用一致内容层次。全站按钮统一弹性压感，加入可关闭的鼠标跟随、可中断转场及页面预加载。真实业务保留，独立概念稿不代替正式功能。详见[全站交互复核](docs/INTERACTION_REVIEW_2026-10-30.md)与[当日验收记录](docs/development/2026-10-30.md)。
 
@@ -10,7 +12,7 @@
 
 同日继续修正：收藏成功后显示主色黄底 / 实心书签，并弹出黄色书签与星光动画；取消恢复原态，刷新保留收藏。修复从讨论板首次打开帖子时主页透出，以及正文 / 评论 / 招募导航丢失路由状态的问题，页内跳转保留未提交评论，返回仍回原卡片。详见 [I-015 日志](docs/development/2026-10-29.md#i-015-收藏反馈与帖子背景修复)。
 
-记录入口：[动态迭代计划](docs/ITERATION_PLAN.md) · [持续开发日志](DEVELOPMENT_LOG.md) · [最新详细记录](docs/development/2026-10-30.md) · [首周总结](docs/weekly/WEEK_01_REVIEW.md) · [参赛材料核对表](docs/competition/SUBMISSION_CHECKLIST.md) · [AI 证据索引](docs/ai/README.md)。
+记录入口：[动态迭代计划](docs/ITERATION_PLAN.md) · [持续开发日志](DEVELOPMENT_LOG.md) · [参赛材料核对表](docs/competition/SUBMISSION_CHECKLIST.md) · [AI 证据索引](docs/ai/README.md)。
 
 源码已上传到[公开 GitHub 仓库](https://github.com/ray2481359244-dev/campus-together)，默认分支为 `master`，保留从文档基线开始的完整提交历史。
 

@@ -5,5 +5,6 @@ if (!testUrl || !new URL(testUrl).pathname.endsWith('_test') || testUrl === proc
 for (const name of ['owner', 'participant', 'recruitment', 'observer']) rmSync(`.local/e2e-application-${name}.json`, { force: true });
 process.env.DATABASE_URL = testUrl; process.env.APP_MODE = 'DEMO';
 const { db } = await import('../apps/server/src/db.js');
+await db.conversation.deleteMany(); await db.chatImage.deleteMany();
 await db.recruitment.deleteMany(); await db.session.deleteMany(); await db.post.deleteMany(); await db.profile.deleteMany(); await db.user.deleteMany(); await db.topic.deleteMany(); await db.school.deleteMany();
 await import('../prisma/seed.js');

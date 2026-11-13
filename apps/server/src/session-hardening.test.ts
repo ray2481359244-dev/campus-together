@@ -15,6 +15,7 @@ async function signup(name: string) {
 }
 beforeAll(async () => {
   if (!new URL(config.databaseUrl!).pathname.endsWith('_test')) throw new Error('Not a test database');
+  await db.conversation.deleteMany(); await db.chatImage.deleteMany();
   await db.recruitment.deleteMany(); await db.session.deleteMany(); await db.post.deleteMany(); await db.profile.deleteMany(); await db.user.deleteMany(); await db.topic.deleteMany(); await db.school.deleteMany();
   await db.school.create({ data: { id: schoolId, name: '会话边界测试学校', city: '测试', isDemo: true } });
 });

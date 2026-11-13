@@ -75,7 +75,7 @@ test('profile failure preserves input and same-account CSRF renewal retries safe
   await expect(page.getByRole('alert')).toContainText('验证用保存失败');
   await expect(page.getByLabel('一句话介绍自己')).toHaveValue('保存失败后继续保留这段输入，再按同一账号安全重试。');
   await page.getByRole('button', { name: '保存资料', exact: true }).click();
-  await expect(page.getByRole('status')).toContainText('资料已保存');
+  await expect(page.getByRole('status').filter({ hasText: '资料已保存' })).toBeVisible();
   expect(writes).toBe(3); expect(new Set(identities).size).toBe(1); expect(identities[0]).toMatch(/^[a-f0-9-]{36}$/);
   await page.reload(); await expect(page.getByLabel('一句话介绍自己')).toHaveValue('保存失败后继续保留这段输入，再按同一账号安全重试。');
 });
@@ -93,8 +93,19 @@ test('an unavailable login-state request is recoverable and is not presented as 
 test('a lost session stops a pending profile write and keeps saved server data separate', async ({ page, context }) => {
   await register(page, 'expiry-browser'); await page.goto('/me');
   await page.getByLabel('一句话介绍自己').fill('会话失效后不应保存这段内容。');
-  await context.clearCookies();
+  await page.route('**/api/v1/me/profile', async route => {
+    const headers = route.request().headers();
+    const revoked = await context.request.post('/api/v1/auth/logout', { headers: {
+      origin: new URL(page.url()).origin,
+      'x-csrf-token': headers['x-csrf-token'],
+      'x-session-user': headers['x-session-user'],
+    } });
+    expect(revoked.ok()).toBe(true);
+    await route.continue();
+  }, { times: 1 });
+  const rejected = page.waitForResponse(response => response.url().endsWith('/api/v1/me/profile') && response.request().method() === 'PATCH');
   await page.getByRole('button', { name: '保存资料', exact: true }).click();
+  expect((await rejected).status()).toBe(401);
   await expect(page.getByRole('heading', { name: '登录已过期' })).toBeVisible();
   await expect(page.getByRole('button', { name: '保存资料', exact: true })).toHaveCount(0);
 });

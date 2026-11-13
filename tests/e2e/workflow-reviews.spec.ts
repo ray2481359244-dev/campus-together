@@ -1,6 +1,7 @@
 import { test, expect, type Page, type APIResponse } from '@playwright/test';
 import { existsSync } from 'node:fs';
 import { RecruitmentDraftSchema } from '../../packages/contracts/src/recruitments';
+import type { NotificationsPageDTO } from '../../packages/contracts/src/applications';
 
 const baseURL = 'http://127.0.0.1:3101';
 async function register(page: Page, label: string) {
@@ -75,7 +76,7 @@ test('three accounts review, recover an uncertain approval, join once and read p
     const bCard = panel.getByRole('article', { name: '岗位申请：' + mb.user.nickname, exact: true });
     const cCard = panel.getByRole('article', { name: '岗位申请：' + mc.user.nickname, exact: true });
     await expect(bCard).toContainText('乙的私有申请说明');
-    await bCard.locator('summary').click(); await expect(bCard).toContainText('资料中的自述技能覆盖该岗位标签');
+    await bCard.locator('summary').click(); await expect(bCard).toContainText('自述技能覆盖该岗位标签');
     for (const width of [320, 390, 1440]) {
       await a.setViewportSize({ width, height: 1000 });
       expect(await a.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(width + 1);
@@ -119,24 +120,30 @@ test('three accounts review, recover an uncertain approval, join once and read p
     await expect(c.getByRole('button', { name: '提交岗位申请', exact: true })).toBeDisabled();
     await b.getByRole('link', { name: '查看结果通知 →', exact: true }).click();
     const inbox = b.getByRole('region', { name: '站内通知', exact: true });
-    await expect(inbox).toContainText('申请已通过，已加入队伍。');
-    await expect(inbox).toContainText('未读 1');
+    const relatedNotices = inbox.getByRole('article', { name: draft.title + '的队伍通知', exact: true });
+    const approval = relatedNotices.filter({ has: b.getByRole('heading', { name: '申请已通过，已加入队伍。', exact: true }) });
+    await expect(approval).toHaveCount(1);
+    await expect(approval).toHaveClass(/\bunread\b/);
     for (const width of [320, 390, 1440]) {
       await b.setViewportSize({ width, height: 1000 });
       expect(await b.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(width + 1);
       await inbox.screenshot({ path: `.local/screenshots/i002-notifications-${width}.png` });
     }
-    const notification = (await (await b.request.get('/api/v1/me/notifications')).json()).data.items[0];
+    const { data: notifications } = await (await b.request.get('/api/v1/me/notifications')).json() as { data: NotificationsPageDTO };
+    const approvals = notifications.items.filter(row => row.kind === 'APPLICATION_APPROVED' && row.applicationId === rowB.id);
+    expect(approvals).toHaveLength(1);
+    const [notification] = approvals;
     expect((await c.request.post('/api/v1/me/notifications/' + notification.id + '/read', { headers: headers(mc), data: {} })).status()).toBe(404);
     await b.route('**/api/v1/me/notifications/' + notification.id + '/read', async route => { const response = await route.fetch(); expect(response.status()).toBe(200); await route.fulfill({ status: 503, contentType: 'application/json', body: JSON.stringify({ error: { code: 'TEST_READ_LOST', message: '验证用已读响应丢失' } }) }); }, { times: 1 });
-    await inbox.getByRole('button', { name: '标为已读', exact: true }).click();
+    await approval.getByRole('button', { name: '标为已读', exact: true }).click();
     await expect(inbox.getByRole('alert')).toContainText('验证用已读响应丢失');
-    await inbox.getByRole('button', { name: '标为已读', exact: true }).click();
-    await expect(inbox).toContainText('未读 0');
-    await b.reload(); await expect(inbox).toContainText('未读 0');
-    await inbox.getByRole('link', { name: '查看招募与申请 →', exact: true }).click();
+    await approval.getByRole('button', { name: '标为已读', exact: true }).click();
+    await expect(approval.getByText('已读', { exact: true })).toBeVisible();
+    await b.reload();
+    await expect(approval.getByText('已读', { exact: true })).toBeVisible();
+    await approval.getByRole('link', { name: '查看招募与申请 →', exact: true }).click();
     await expect(b.getByRole('status').filter({hasText:'已入队 · 当前有效成员'})).toContainText('已入队 · 当前有效成员');
-    await c.goto('/messages'); await expect(c.getByRole('region', { name: '站内通知', exact: true })).toContainText('本次岗位申请未通过。');
+    await c.goto('/messages?view=notifications&tab=activity'); await expect(c.getByRole('region', { name: '站内通知', exact: true })).toContainText('本次岗位申请未通过。');
     await expect(c.getByRole('region', { name: '站内通知', exact: true })).not.toContainText('欢迎加入，请一起承担界面开发。');
     expect(errors).toEqual([]);
   } finally { await owner.close(); await participant.close(); await outsider.close(); }

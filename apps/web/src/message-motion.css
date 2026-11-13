@@ -24,3 +24,12 @@
 [data-cloud-arriving=true]{will-change:transform,opacity}
 @media(prefers-reduced-motion:reduce){.bell-puff{display:none}}
 .motion-off .bell-puff{display:none}
+.cloud-platform :where(input:not([type=checkbox],[type=radio],[type=file]),textarea,select) {
+  transition: border-color 160ms ease, box-shadow 160ms ease, background-color 160ms ease;
+}
+.cloud-platform :where(input,textarea)::selection { color: #343039; background: #e0cbea; }
+.cloud-platform :where(input[type=checkbox],input[type=radio]) { accent-color: #74528a; }
+@media(prefers-reduced-motion:reduce) {
+  .cloud-platform :where(input,textarea,select) { transition: none; }
+}
+.motion-off .cloud-platform :where(input,textarea,select) { transition: none; }

@@ -1,0 +1,201 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>碰个头｜消息与我的队伍整合改进书</title>
+<style>
+:root{--ink:#252620;--paper:#faf8f1;--line:#deddd3;--yellow:#f2d35e;--green:#e2efdf;--muted:#66685d}*{box-sizing:border-box}html{scroll-behavior:smooth;scroll-padding-top:30px}body{margin:0;color:var(--ink);background:var(--paper);font:16px/1.85 "Microsoft YaHei","PingFang SC",sans-serif}a{color:#2a6455;text-underline-offset:4px}a:hover{color:#111}a:focus-visible,button:focus-visible{outline:3px solid #846b08;outline-offset:4px}.rail{position:fixed;inset:0 auto 0 0;width:280px;background:#f0eee4;border-right:1px solid var(--line);padding:30px 22px;overflow:auto}.brand{font-size:24px;font-weight:800;letter-spacing:2px}.brand span{display:inline-grid;place-items:center;width:44px;height:44px;background:var(--yellow);border:2px solid var(--ink);border-radius:12px;margin-right:10px}.rail p{font-size:12px;color:var(--muted);margin:10px 0 26px}.rail nav a{display:block;padding:8px 10px;border-radius:6px;text-decoration:none;font-size:13px;line-height:1.55;color:var(--ink)}.rail nav a:hover{background:#e4e1d4}main{max-width:1220px;padding:48px 58px 100px;margin-left:280px}.cover{display:flex;align-items:center;justify-content:space-between;border-bottom:2px solid var(--ink);padding-bottom:20px;margin-bottom:30px;gap:15px}.eyebrow{font-size:12px;letter-spacing:1px;color:var(--muted)}.badge{font-size:12px;background:var(--yellow);padding:4px 10px;border-radius:20px}button{font:inherit;font-size:13px;background:transparent;border:1px solid var(--ink);border-radius:6px;padding:8px 14px;cursor:pointer;min-height:44px}h1{font-size:clamp(26px,3vw,40px);line-height:1.4;margin:12px 0 24px;letter-spacing:-1px}h2{font-size:25px;line-height:1.55;border-top:1px solid var(--line);padding-top:36px;margin:54px 0 20px;scroll-margin-top:20px}h3{font-size:19px;margin:30px 0 12px}p{margin:14px 0}blockquote{border:0;border-left:5px solid var(--ink);background:var(--yellow);margin:26px 0;padding:22px 26px;font-size:20px;font-weight:600;line-height:1.8}.table-wrap{overflow-x:auto;border:1px solid var(--line);border-radius:10px;margin:20px 0 28px;background:#fffdf8}table{width:100%;border-collapse:collapse;font-size:14px;line-height:1.8}th{text-align:left;background:#ecebdf;font-weight:700;min-width:110px}td,th{padding:15px 16px;vertical-align:top;border-bottom:1px solid var(--line)}tr:last-child td{border-bottom:0}tbody tr:nth-child(even){background:#f6f5ee}td:first-child{font-weight:600}li{margin:10px 0;padding-left:4px}ul,ol{padding-left:24px}code{font-family:Consolas,monospace;font-size:.86em;background:#ecebe2;border-radius:3px;padding:2px 5px;overflow-wrap:anywhere}pre{font:14px/1.8 Consolas,"Microsoft YaHei",monospace;overflow:auto;padding:24px;background:#efeee7;border-radius:12px}.flow{display:flex;gap:12px;flex-wrap:wrap;align-items:center;background:#efeee5;border:1px solid var(--line);border-radius:12px;padding:24px;margin:24px 0}.flow span{background:white;border:1px solid #c5c6b8;border-radius:8px;padding:12px;font-size:14px}.flow .final{background:var(--green)}.flow small{width:100%;color:var(--muted)}footer{border-top:2px solid var(--ink);margin-top:50px;padding-top:20px;color:var(--muted);font-size:13px}.skip{position:absolute;left:-9999px}.skip:focus{left:20px;top:10px;z-index:99;background:white;padding:12px}@media(min-width:1600px){main{margin-left:calc(280px + (100vw - 1600px)/2)}}@media(max-width:1000px){.rail{width:220px;padding:24px 14px}main{margin-left:220px;padding:32px 30px 70px}.brand{font-size:20px}}@media(max-width:700px){.rail{position:relative;width:auto;border-right:0;border-bottom:1px solid var(--line);padding:18px 20px}.rail p{margin:5px 0}.rail nav{max-height:140px;overflow:auto;margin-top:12px;border-top:1px solid var(--line);padding-top:8px}.rail nav a{display:block}.brand{font-size:20px}main{margin:0;padding:26px 20px 60px}h2{font-size:22px}blockquote{padding:18px;font-size:18px}th{min-width:120px}.cover{align-items:flex-start}pre{font-size:12px;padding:14px}}@media(prefers-reduced-motion:reduce){html{scroll-behavior:auto}}@media print{body{background:white;font-size:10pt;line-height:1.65}.rail,.cover button,.skip{display:none}main{margin:0!important;padding:0;max-width:none}.cover{margin-bottom:20px}h1{font-size:25pt}h2{font-size:17pt;break-after:avoid;padding-top:18px;margin-top:28px}h3{break-after:avoid}table{font-size:9pt}.table-wrap{overflow:visible;break-inside:auto}tr{break-inside:avoid}th,td{padding:8px}thead{display:table-header-group}blockquote{font-size:13pt}a{color:inherit}pre{font-size:9pt}.flow{break-inside:avoid}@page{size:A4;margin:18mm 15mm}}
+
+:root{--paper:#fff9ef;--ink:#343039;--yellow:#f5ff72;--line:#d9d1ce;--muted:#62596a}
+[hidden]{display:none!important}
+.rail{background:#f4eee7}.rail nav a:hover{background:#eae1f3}
+.cover{margin-bottom:20px}.cover button{white-space:nowrap}
+.table-wrap{border-radius:10px}.table-wrap td{overflow-wrap:anywhere}
+h1{max-width:23em}.journey{margin:25px 0 30px;padding:24px;border:1px solid #d5c5df;border-radius:16px;background:#f2ebf8}
+.journey figcaption{font-size:13px;color:#61556a;margin-bottom:14px}
+.phone{width:min(100%,390px);margin:0 auto;background:#fffdf8;border:1px solid #baa8c6;border-radius:20px;overflow:hidden;box-shadow:4px 5px 0 #a78bb82e;color:#343039;font-size:14px;line-height:1.55}
+.demo-step{min-height:368px;display:flex;flex-direction:column}
+.demo-head{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:12px 14px;border-bottom:1px solid #e4dce7;min-height:65px}
+.demo-head strong{font-size:17px}.demo-head button{white-space:nowrap}.phone button{border:0;background:transparent;padding:7px 9px;font-size:13px;transition:scale 150ms ease,background 150ms ease}.phone button:active{scale:.97}.phone button:hover{background:#f0e8f7}
+.demo-search{display:grid;gap:5px;margin:12px 14px 8px}.demo-search span{font-size:12px;color:#61556a}.demo-search input{width:100%;min-height:40px;padding:6px 12px;border:1px solid #cdbdd7;border-radius:9px;background:#f6effa;font:inherit;color:inherit}
+.demo-filters{display:flex;flex-wrap:wrap;gap:6px;padding:0 14px 8px;border-bottom:1px solid #e4dce7}.demo-filters button[aria-pressed=true]{background:#e7dbf8;font-weight:700}
+.demo-rows{display:grid}.phone .demo-row{width:100%;display:grid;grid-template-columns:38px minmax(0,1fr) auto;gap:10px;align-items:center;text-align:left;padding:10px 14px;border-bottom:1px solid #ece5e7;border-radius:0;color:inherit}.demo-row strong{display:block;font-size:14px}.demo-row small{display:inline-block;color:#46633e;background:#e6efd9;padding:1px 4px;border-radius:4px;font-size:10px}.demo-row .preview{display:block;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;color:#62596a;font-size:12px}.demo-avatar{display:grid;place-items:center;width:38px;height:38px;border-radius:12px;font-weight:700}.study{background:#d4e9f8}.person{background:#efddf0}.event{background:#e6efd9}.demo-row .end{display:grid;gap:5px;justify-items:end}.phone time{font-size:11px;color:#62596a}.count{display:inline-grid;place-items:center;border-radius:999px;background:#6e428b;color:white;min-width:18px;height:18px;padding:0 4px;font-size:11px}.demo-archive{padding:8px 14px;color:#65546d}.demo-archive summary{cursor:pointer;padding-block:6px}.no-results{padding:0 14px}
+.demo-announcement{padding:8px 15px;background:#edf2e6;color:#3a5c34}.demo-chat{flex:1;padding:12px 14px;display:grid;align-content:start;gap:8px;background:#f7f2fa}.demo-chat time{text-align:center}.demo-chat div{max-width:87%;justify-self:start}.demo-chat div.mine{justify-self:end}.demo-chat small{color:#62596a}.demo-chat p{margin:3px 0 0;padding:8px 10px;border-radius:10px;background:#fffdf8;border:1px solid #e2d9e8}.demo-chat .mine p{background:#e8efda}.demo-chat q{display:block;font-size:12px;margin-bottom:5px;color:#594c60}.demo-compose{display:flex;justify-content:space-between;gap:8px;padding:11px 14px;border-top:1px solid #e4dce7}.demo-compose span:first-child{flex:1;border:1px solid #e4dce7;background:#f7f2fa;padding:7px 10px;border-radius:8px;color:#62596a}.demo-compose span:last-child{background:#edf481;color:#343039;padding:7px 12px;border-radius:8px}.demo-info{padding:13px 15px}.demo-info p{margin:5px 0 11px;color:#62596a}.demo-settings{margin:0;padding:0 14px}.demo-settings>div{padding:10px 0;border-top:1px solid #e4dce7;display:flex;gap:10px;justify-content:space-between}.demo-settings dd{margin:0;color:#62596a;text-align:right}
+.desktop-illustration{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.25fr) minmax(0,.9fr);gap:1px;background:#d9cadf;border:1px solid #d9cadf;border-radius:12px;overflow:hidden;margin:20px 0}.desktop-illustration section{padding:15px;background:#fffdf8;min-width:0}.desktop-illustration section:first-child{background:#f1eafa}.desktop-illustration section:last-child{background:#edf2e6}.desktop-illustration h4{margin:0 0 8px}.desktop-illustration p{margin:5px 0;font-size:13px}
+@media(max-width:700px){.cover{gap:8px}.cover button{font-size:11px;padding:6px 10px}.journey{padding:12px}.demo-head{padding-inline:8px}.demo-head strong{font-size:14px}.demo-head button{padding-inline:6px}.desktop-illustration{grid-template-columns:1fr}}
+@media(prefers-reduced-motion:reduce){.phone button{transition:none}.phone button:active{scale:1}}
+@media print{.journey{break-inside:avoid}.desktop-illustration{break-inside:avoid}.phone{box-shadow:none}}
+</style>
+</head>
+<body>
+<a class="skip" href="#content">跳到正文</a>
+<aside class="rail"><div class="brand"><span>碰</span>碰个头</div><p>消息与队伍 · 产品审阅稿</p><nav aria-label="文档目录"><a href="#section-1">1. 对照当前项目</a><a href="#section-2">2. 从 QQ 借鉴哪些体验</a><a href="#section-3">3. 消息首页与原入口去向</a><a href="#section-4">4. 手机与电脑布局</a><a href="#section-5">5. 群资料与队伍生命周期</a><a href="#section-6">6. 消息怎么发、怎么收、怎么读</a><a href="#section-7">7. 聊天动作与主题动效</a><a href="#section-8">8. 实现顺序与项目衔接</a><a href="#section-9">9. 建议试用和回归</a><a href="#section-10">10. 需要审阅的产品选择</a><a href="#section-11">附录 · 项目对照位置</a></nav></aside>
+<main id="content">
+<div class="cover"><div class="eyebrow">产品审阅 · 2026年11月13日</div><button type="button" onclick="window.print()">打印 / 保存为 PDF</button></div>
+<h1 id="heading-0">碰个头｜消息与我的队伍整合改进书</h1>
+<p><strong>审阅稿 v1.0 · 2026年11月13日</strong></p>
+<p>建议把底部「消息」做成统一的聊天首页。私聊和队伍群在同一列表里，点队伍就进群。「我的队伍」保留为列表筛选，成员、公告、招募进度和管理从群名进入。用手机找群时，从底部导航到开聊只需两次点击。</p>
+<p>本稿细化上一版的消息中心、群聊和通知方案，可用于下一轮实现与验收。 <a href="招募与社交消息改进详情书_2026-11-03.md">11 月 3 日改进书</a></p>
+<h2 id="section-1">1. 对照当前项目</h2>
+<div class="table-wrap"><table><thead><tr><th scope="col">现在的路径或能力</th><th scope="col">使用中要解决的问题</th><th scope="col">建议调整</th></tr></thead><tbody><tr><td>底部「消息」打开站内通知，评论、点赞、审核、队伍进展混排</td><td>看得到进展，找不到正在聊的队伍</td><td>默认打开聊天列表，把互动、申请和结果收进页顶「通知」</td></tr><tr><td>「我的」→「我的队伍」→队伍详情→群聊</td><td>只想说一句话也要经过两层队伍页面</td><td>「消息」→点队伍→聊天。「我的」原入口打开同一列表的「我的队伍」筛选</td></tr><tr><td>群聊先显示状态、公告、同步和已读按钮，再显示聊天</td><td>最近消息和输入框难找</td><td>群名、消息区和固定输入框形成主布局。公告只显示一行摘要</td></tr><tr><td>队伍详情已有成员、岗位、关闭招募、转交队长、开始和结束活动</td><td>合并入口时容易重新做一套管理页面</td><td>将现有详情和管理能力接入「群资料」，继续使用当前角色与状态校验</td></tr><tr><td>群聊已有数据库持久化、重复发送保护、历史分页与序号补取</td><td>断线可补取，但接收依赖页面定时同步，已读需要手动标记</td><td>先统一已读、补取与错误提示，再接实时变化提醒</td></tr><tr><td>申请、退队、移除和归档已有独立状态与通知</td><td>同一事件可能出现在队伍群和通知里，也可能改变会话访问权限</td><td>用真实成员资格驱动会话列表，明确每种状态的入口、历史与角标</td></tr></tbody></table></div>
+<p>对照依据是本地工作区的路由、消息页、队伍页和聊天接口。当前正式路径仍是上述结构。工作区已存在私聊与讨论群的契约、数据库迁移及实时事件代码草稿，当前应用路由尚未接通这些会话。本稿将它们作为后续接入点，预计效果留待实际验证。</p>
+<h2 id="section-2">2. 从 QQ 借鉴哪些体验</h2>
+<div class="table-wrap"><table><thead><tr><th scope="col">公开资料能确认的做法</th><th scope="col">在「碰个头」的应用</th></tr></thead><tbody><tr><td>手机 QQ 支持好友消息和群消息。Mac QQ 的更新记录描述了合并聊天窗口、缩窄消息列表与分类搜索。 <a href="https://apps.apple.com/cn/app/qq/id444934666" target="_blank" rel="noopener noreferrer">手机 QQ 应用介绍</a> · <a href="https://apps.apple.com/tw/app/qq/id451108668?mt=12" target="_blank" rel="noopener noreferrer">Mac QQ 更新记录</a></td><td>统一会话列表。电脑左侧切换会话，右侧持续显示当前聊天。手机点开一行后进入独立聊天视图</td></tr><tr><td>Mac QQ 公布了按日期和发送人筛选聊天记录的功能。 <a href="https://apps.apple.com/cn/app/qq/id451108668?mt=12" target="_blank" rel="noopener noreferrer">Mac QQ 更新记录</a></td><td>先支持按人名和队伍名找会话，再从群资料进入本群记录搜索。记录搜索能跳回原消息位置</td></tr><tr><td>腾讯云即时通信的产品实践描述了会话草稿、置顶、消息回复、群内 @、搜索与跨设备历史。 <a href="https://cloud.tencent.com.cn/document/practice/269/86727" target="_blank" rel="noopener noreferrer">腾讯云熟人社交场景实践</a></td><td>给「碰个头」制定聊天能力优先级，先做好未读、草稿、置顶和接收控制。这份资料对应腾讯云产品</td></tr><tr><td>腾讯云将免打扰定义为接收消息并抑制提醒。 <a href="https://main.qcloudimg.com/raw/document/debug/product/pdf/269_75260_cn.pdf" target="_blank" rel="noopener noreferrer">腾讯云消息免打扰文档</a></td><td>免打扰的会话继续更新列表和历史。用静音图标与低强调未读点表示状态</td></tr></tbody></table></div>
+<p>以上来自公开产品资料，检索于 2026 年 11 月 13 日。下文的布局、角标口径和队伍规则均为「碰个头」的设计建议。</p>
+<h2 id="section-3">3. 消息首页与原入口去向</h2>
+<p>消息首页只留一个标题、一个搜索框、三项筛选和一个「通知」按钮。默认筛选「全部」，显示有权限的会话。恢复上一会话由用户点开，打开消息首页时保留未读。</p>
+<div class="table-wrap"><table><thead><tr><th scope="col">入口</th><th scope="col">打开后看到什么</th><th scope="col">点下一步会去哪里</th></tr></thead><tbody><tr><td>底部「消息」</td><td>全部会话，按置顶与最近活动排序</td><td>点队伍行进队伍群，点私聊行打开对应会话</td></tr><tr><td>首页「我的队伍」筛选</td><td>所有当前有效成员的队伍，含暂无聊天消息的队伍</td><td>点名称进群。已结束队伍由列表底部「已归档队伍」展开</td></tr><tr><td>首页「私聊」筛选</td><td>可打开的一对一会话</td><td>点会话开聊。陌生人首条请求在通知中处理</td></tr><tr><td>「我的」里的「我的队伍」</td><td>消息页直接选中「我的队伍」</td><td>和底部入口共享同一批会话与已读状态</td></tr><tr><td>页顶「通知」</td><td>「待处理」与「动态」</td><td>待处理含队长收到的申请、入群申请和新联系人。动态含评论、点赞、审批结果及系统通知</td></tr><tr><td>招募详情、批准结果、发布成功页</td><td>仍是有效成员时显示「进入队伍群」</td><td>直达同一会话。待审时显示「查看申请」</td></tr><tr><td>帖子评论的「私聊」与关联群</td><td>打开已有私聊、发起联系请求或查看讨论群</td><td>请求接受后归入会话列表。讨论群行显示「讨论群」</td></tr></tbody></table></div>
+<p>与上一稿的差异是将「互动」「通知」从首页并列标签收拢进页顶入口。消息首页以找人和找群为主。通知打开后默认优先显示「待处理」，空时显示「动态」。从具体通知跳到评论、申请或群聊后，返回时恢复原通知分组和滚动位置。</p>
+<h3 id="heading-48">3.1 会话行怎样排</h3>
+<ul>
+<li>一行显示头像、名称、最近一条可见消息的摘要、时间和未读标记。私聊名称直接用对方昵称。队伍群在名称旁显示「队伍」，需要时显示「队长」「招募中」或「只读」。</li>
+<li>置顶会话固定在上方，置顶区按置顶时间排序。其余会话按最近一条已保存且可见的聊天消息排序。空队伍以加入或创建时间定位，并显示「发条消息约个时间」。草稿和已读变化只更新对应行。轮询读到真实新消息时才更新该行的活动时间。切换筛选后仍是同一会话。</li>
+<li>列表搜索按用户昵称、群名和队伍名检索已有会话。点结果直达会话。搜索覆盖分页后的全部可见会话，命中不了时提示「没有匹配的会话」，并保留筛选条件。</li>
+<li>每行提供可发现的「更多」入口，含置顶、免打扰和标为已读。手机长按和电脑右键可作为快捷方式。菜单支持键盘操作并回到原触发点。</li>
+<li>草稿按账号和会话保存。同一登录会话内切走再回来可继续编辑。列表用「草稿」提示，最近消息时间保持原值。退出登录后清除本次本地输入。</li>
+</ul>
+<h2 id="section-4">4. 手机与电脑布局</h2>
+<p>以下用同一个队伍展示「找群 → 聊天 → 看群资料」的路径。名字、时间和消息为虚构示例。</p>
+
+<figure class="journey">
+  <figcaption>手机端操作示意 · 示例数据</figcaption>
+  <div class="phone" id="message-demo">
+    <div class="demo-step" data-screen="list">
+      <div class="demo-head"><strong>消息</strong><button type="button" data-open="notice">通知 <span class="count">1</span></button></div>
+      <label class="demo-search"><span>搜索会话</span><input type="search" placeholder="联系人或队伍" aria-label="搜索示例会话"></label>
+      <div class="demo-filters" aria-label="会话筛选">
+        <button type="button" data-filter="all" aria-pressed="true">全部</button>
+        <button type="button" data-filter="direct" aria-pressed="false">私聊</button>
+        <button type="button" data-filter="team" aria-pressed="false">我的队伍</button>
+      </div>
+      <div class="demo-rows">
+        <button type="button" class="demo-row" data-open="team" data-kind="team" data-name="高数复习队">
+          <span class="demo-avatar study">学</span><span><strong>高数复习队 <small>队伍 · 置顶</small></strong><span class="preview">小林：我把错题整理好了</span></span><span class="end"><time>15:42</time><span class="count">2</span></span>
+        </button>
+        <button type="button" class="demo-row" data-open="direct" data-kind="direct" data-name="周同学">
+          <span class="demo-avatar person">周</span><span><strong>周同学</strong><span class="preview">周六有空，可以一起准备</span></span><span class="end"><time>14:06</time></span>
+        </button>
+        <button type="button" class="demo-row" data-open="empty" data-kind="team" data-name="校园影像赛">
+          <span class="demo-avatar event">赛</span><span><strong>校园影像赛 <small>队伍</small></strong><span class="preview">发条消息约个时间</span></span><span class="end"><time>昨天</time></span>
+        </button>
+        <p class="no-results" hidden>没有匹配的会话</p>
+      </div>
+      <details class="demo-archive"><summary>已归档队伍</summary><p>周末摄影小队 · 活动结束</p></details>
+    </div>
+    <div class="demo-step" data-screen="team" hidden>
+      <div class="demo-head"><button type="button" data-open="list">返回</button><strong>高数复习队 · 3 人</strong><button type="button" data-open="details">群资料</button></div>
+      <div class="demo-announcement">周六 14:00，图书馆二楼</div>
+      <div class="demo-chat"><time>15:42</time><div><small>小林</small><p>我把错题整理好了。</p></div><div class="mine"><p>我带往年题。</p></div><div><small>小林</small><p><q>我带往年题。</q>到时发给大家一起做。</p></div></div>
+      <div class="demo-compose"><span>输入消息</span><span>发送</span></div>
+    </div>
+    <div class="demo-step" data-screen="details" hidden>
+      <div class="demo-head"><button type="button" data-open="team">返回群聊</button><strong>群资料</strong></div>
+      <div class="demo-info"><strong>高数复习队</strong><p>3 / 4 人 · 招募中 · 我是队长</p></div>
+      <dl class="demo-settings"><div><dt>公告</dt><dd>周六 14:00，图书馆二楼</dd></div><div><dt>成员</dt><dd>小林、周同学、我</dd></div><div><dt>加入申请</dt><dd>1 条待确认</dd></div><div><dt>会话置顶</dt><dd>已开启</dd></div><div><dt>消息免打扰</dt><dd>已关闭</dd></div><div><dt>队伍管理</dt><dd>招募、角色与活动</dd></div></dl>
+    </div>
+    <div class="demo-step" data-screen="notice" hidden>
+      <div class="demo-head"><button type="button" data-open="list">返回</button><strong>通知</strong></div>
+      <div class="demo-info"><strong>待处理 · 1</strong><p>高数复习队收到 1 份加入申请。</p><strong>动态</strong><p>周同学回复了你的评论。</p></div>
+    </div>
+    <div class="demo-step" data-screen="direct" hidden>
+      <div class="demo-head"><button type="button" data-open="list">返回</button><strong>周同学</strong></div>
+      <div class="demo-chat"><time>14:06</time><div><p>周六有空，可以一起准备。</p></div></div>
+      <div class="demo-compose"><span>输入消息</span><span>发送</span></div>
+    </div>
+    <div class="demo-step" data-screen="empty" hidden>
+      <div class="demo-head"><button type="button" data-open="list">返回</button><strong>校园影像赛</strong></div>
+      <div class="demo-chat"><p>发条消息约个时间。</p></div>
+      <div class="demo-compose"><span>输入消息</span><span>发送</span></div>
+    </div>
+  </div>
+</figure>
+
+<p><strong>手机</strong>用单列。「消息」底部导航留在列表页。打开群后优先给聊天视图腾出高度。群名和「群资料」均可打开详情，返回时回到原会话和读到的位置。软键盘弹出时输入框与发送按钮仍可触达。列表、聊天、群资料分别记住滚动位置。</p>
+<p><strong>电脑</strong>用双栏。左侧宽约 300—360 像素，承载搜索、筛选、会话和通知入口。右侧聊天独立滚动，选中会话时保留左侧列表。群资料在宽屏打开可收起侧栏，较窄时用抽屉。窄屏采用手机路径。标题、输入和消息长文本须在 320 像素宽度可操作。</p>
+<div class="desktop-illustration"><section><h4>左栏 · 消息列表</h4><p>消息 / 通知</p><p>搜索联系人或队伍</p><p>全部 / 私聊 / 我的队伍</p><p>高数复习队 · 2 条未读</p><p>周同学 · 14:06</p><p>校园影像赛 · 昨天</p></section><section><h4>中栏 · 当前会话</h4><p>高数复习队 · 3人</p><p>一行公告</p><p>聊天历史独立滚动</p><p>输入消息 / 发送</p></section><section><h4>右栏 · 打开后显示</h4><p>群资料</p><p>成员与岗位</p><p>公告与招募</p><p>待处理申请</p><p>置顶与免打扰</p><p>队伍管理</p></section></div>
+<p>视觉使用项目现有米白底、浅紫选中态、浅绿队伍标识和主色按钮。消息列表用紧凑行与细分隔线，聊天用清晰气泡，时间与未读分隔条对齐。保留完整的键盘焦点、文字状态和可读的对比度。</p>
+<h2 id="section-5">5. 群资料与队伍生命周期</h2>
+<p>进入队伍群就能看见群名和人数。群资料聚合当前可见公告、正式人数、岗位、我的角色和招募入口。普通成员可查看安排、成员和个人会话设置。队长还能审批、维护公告、转交队长、关闭招募及管理活动，沿用现有确认步骤和服务端事务。</p>
+<div class="table-wrap"><table><thead><tr><th scope="col">事件</th><th scope="col">列表与通知</th><th scope="col">进入后</th></tr></thead><tbody><tr><td>自己发布、直接加入、申请获批</td><td>成功后同一队伍行出现。批准通知可直达聊天</td><td>状态变为正式成员，按队伍历史规则查看消息</td></tr><tr><td>申请待审、拒绝、撤回或失效</td><td>在申请或通知显示状态</td><td>可查看自己的结果。群入口在获得成员资格后出现</td></tr><tr><td>关闭招募或满员</td><td>队伍行继续显示，状态更新</td><td>现有成员照常聊天。队长管理入口按实际权限显示</td></tr><tr><td>活动开始</td><td>更新「进行中」</td><td>可继续发言和查看公告</td></tr><tr><td>完成、取消或到期</td><td>进入「已归档队伍」，保留仍有效的入口</td><td>群聊按当前政策只读。详情提示确切保留期限</td></tr><tr><td>归档期限结束</td><td>保留可见的队伍摘要和结束状态</td><td>历史、公告、最新消息摘要及搜索结果一并收起，仍可查看有权限的队伍资料</td></tr><tr><td>退出、被移除或账号失效</td><td>移出可读会话列表。相关结果通知仍按账号权限显示</td><td>正在打开的聊天收起，回到列表并说明状态。若后续具备重入资格，依服务端确认后恢复访问</td></tr><tr><td>仅加入帖子讨论群</td><td>在全部会话显示「讨论群」</td><td>只读取该讨论群允许查看的范围，正式队伍名额保持原值</td></tr></tbody></table></div>
+<p>当前项目队伍终态归档默认 30 天，可配置。改版时，列表摘要、历史、群资料、引用和搜索应共用同一权限与归档判定。用户关闭「群资料」后应回到群里，处理申请后仍能从消息页返回原筛选。</p>
+<h2 id="section-6">6. 消息怎么发、怎么收、怎么读</h2>
+<div class="table-wrap"><table><thead><tr><th scope="col">场景</th><th scope="col">建议行为</th><th scope="col">用户能看到什么</th></tr></thead><tbody><tr><td>发送一条消息</td><td>点击发送后立即显示临时气泡，后台保存成功后与正式消息合并</td><td>「发送中」随后显示正常时间。列表摘要在保存成功后更新</td></tr><tr><td>明确发送失败</td><td>保留正文和引用。允许重试或继续编辑</td><td>气泡旁显示「发送失败 · 重试」，错误原因靠近对应消息</td></tr><tr><td>提交超时，结果未知</td><td>使用原发送编号查询或重试，服务端识别同一次发送</td><td>「待确认 · 重试」，对方最终只收到一条</td></tr><tr><td>前台正看最新消息</td><td>新消息进入底部。窗口在前台、消息实际可见时推进已读位置</td><td>聊天仍留在底部，当前会话免于弹重复提示</td></tr><tr><td>正在翻旧消息</td><td>保持当前滚动位置，新消息累计在底部跳转提示</td><td>「有 3 条新消息」，点击后定位。未浏览的记录保留未读</td></tr><tr><td>刚打开有未读的会话</td><td>可加载到首条未读时，从「以下为新消息」处开始</td><td>一眼知道从哪里读。大量积压可手动「标为已读」</td></tr><tr><td>断网或切到后台后返回</td><td>恢复时重新核对权限，从上次收到的消息序号补取并去重</td><td>连接异常时才显示「正在重连」。已看到的历史保持原位置</td></tr><tr><td>多端登录</td><td>已读位置由服务端记录，并按会话单调推进。刷新会话同步摘要、设置与未读</td><td>手机读完，电脑角标随下一次同步更新</td></tr></tbody></table></div>
+<p>「已发送」表示服务端已保存。首期使用个人已读位置做未读数同步。向发送者公开的阅读回执可以后续按需设计。</p>
+<h3 id="heading-158">6.1 未读和免打扰</h3>
+<ul>
+<li>行尾数字表示本会话未读消息条数，最多显示「99+」。自己的发送、历史分页和普通群状态条目不增加聊天未读。</li>
+<li>底部「消息」数字建议表示<strong>有未读的非静音会话数</strong>。例如两个群分别有 5 条和 2 条未读，底部显示「2」，两行分别显示「5」和「2」。通知入口显示待处理数量，只有新动态时显示提示点。底部无聊天未读但有待处理事项时也使用一个提示点。</li>
+<li>静音会话继续收取并显示摘要，行尾用静音图标和低强调未读点。申请待审核、移除或其他账号相关的重要进展仍在「通知」保留记录。群内 @ 提醒上线后，由用户决定免打扰是否为 @ 自己保留例外。</li>
+<li>打开首页、筛选或看群资料时，未读保持原值。点击会话并实际看到新消息时才自动标记。只在连续已读范围内推进，跨过未看的区段需明确标为已读。已读写入合并发送，避免每条消息都请求一次。</li>
+</ul>
+<h3 id="heading-165">6.2 通知怎么少而清楚</h3>
+<div class="table-wrap"><table><thead><tr><th scope="col">内容</th><th scope="col">落点</th><th scope="col">主要操作</th></tr></thead><tbody><tr><td>聊天正文、回复、后续 @</td><td>对应会话</td><td>回到消息位置继续聊</td></tr><tr><td>队长收到加入申请、新联系人或讨论群请求</td><td>通知 → 待处理</td><td>查看申请、接受、拒绝，处理后从待处理移除</td></tr><tr><td>自己申请获批、拒绝、失效</td><td>通知 → 动态</td><td>已获批的有效成员直接进群，其余查看自己的申请</td></tr><tr><td>评论、回复、点赞</td><td>通知 → 动态</td><td>定位原评论。连续点赞按帖子聚合</td></tr><tr><td>队伍开始、取消、归档</td><td>群内状态条及相关成员的结果通知</td><td>已在前台看群时使用轻量状态反馈，减少重复弹窗</td></tr></tbody></table></div>
+<p>「标为已读」只改变提醒状态。待处理事项完成后才退出待处理列表。发起人处理完一条申请，其他设备也应看到同样结果。陌生人请求保留一条文本和来源，接受后进入私聊。已拒绝、拉黑或关闭接收时按账号设置执行。</p>
+<h2 id="section-7">7. 聊天动作与主题动效</h2>
+<p>首屏常驻的是返回、群名或联系人名、群资料、输入和发送。公告有内容才显示，可点开看完整。消息的回复、复制、举报等收进单条消息菜单。键盘焦点、触屏和鼠标均可操作。电脑默认用 Enter 发送、Shift＋Enter 换行，中文输入法选字期间保留 Enter 的选字行为。手机保留明确的发送按钮。</p>
+<div class="table-wrap"><table><thead><tr><th scope="col">交互</th><th scope="col">动效与状态</th><th scope="col">建议验收</th></tr></thead><tbody><tr><td>点发送、返回、更多、群资料</td><td>沿用「碰个头」轻压回弹。触摸和键盘也给反馈</td><td>立即响应，导航和发请求可在动效进行时开始</td></tr><tr><td>筛选与会话选中</td><td>浅紫选中底和标签指示平滑移动，保留可见焦点</td><td>快速连点可中断，最后一次选择对应实际内容</td></tr><tr><td>群资料与消息菜单</td><td>短距离展开，关掉后回到原触发点</td><td>背景滚动和输入草稿保持。Esc 与返回键有效</td></tr><tr><td>自己发送与新消息</td><td>临时气泡轻入场，保存回执只更新状态。接收时仅真正新增的记录短暂出现</td><td>断线补取多条时一次更新。旧历史、轮询和已读变化静态刷新</td></tr><tr><td>置顶、免打扰、申请处理</td><td>按下先反馈。请求完成后才变更图标、排序或显示结果</td><td>失败时保留真实状态，并给出重试</td></tr><tr><td>搜索、输入、上传等后续动作</td><td>聚焦时清楚描边，保留文本选区。请求与进度用文字和轻量反馈</td><td>关闭动效或系统要求减少动态效果时，仍能看清焦点、状态和进度</td></tr></tbody></table></div>
+<p>建议按钮回弹约 180—260 毫秒，聊天气泡约 120—180 毫秒。群资料在较宽屏幕用侧栏，小屏用抽屉。动效优先在位置、透明度和按钮按压上表达变化，聊天滚动保持稳定。整站仍用现有动效偏好控制。</p>
+<h2 id="section-8">8. 实现顺序与项目衔接</h2>
+<div class="table-wrap"><table><thead><tr><th scope="col">优先级</th><th scope="col">交付范围</th><th scope="col">可核对的完成条件</th></tr></thead><tbody><tr><td>P0 · 统一入口</td><td>消息列表、我的队伍筛选、手机单列和电脑双栏、群资料、通知入口、旧链接承接</td><td>发布或入队后自动出现队伍行。有效成员点一行即可聊天，管理动作仍可执行</td></tr><tr><td>P0 · 可靠收发</td><td>序号补取、已读、草稿、置顶、免打扰、即时更新、失权处理和动效</td><td>两个账号互发、断线重连、重复发送、退出和归档均通过测试</td></tr><tr><td>P0 · 私聊接入</td><td>接上上一轮的评论私聊与联系人请求，进入同一个会话列表</td><td>已有会话可复用，首条请求可处理，聊天与通知角标各自正确</td></tr><tr><td>P1 · 常用聊天能力</td><td>引用回复、群内 @、本群历史搜索、图片、分享帖子或招募、讨论群接入</td><td>只有当前有权限的用户能看到对应内容。讨论群与正式队伍身份清楚</td></tr><tr><td>P2 · 进阶沟通</td><td>跨会话历史搜索、文件、快捷回复、活动提醒、网页后台推送评估</td><td>根据真实试用确定先做哪项。系统推送需单独验证浏览器支持和权限</td></tr></tbody></table></div>
+<p>私聊可以在队伍列表先验收后接入。首期最终验收时，私聊和队伍群须在「全部」列表同时可用。桌面和手机使用同一会话标识与接口。</p>
+<h3 id="heading-204">8.1 可直接复用的代码</h3>
+<p>现有队伍聊天继续使用队伍成员身份、消息序号、重复发送保护和归档策略。统一列表把队伍群、私聊和讨论群映射到一套行数据。每行带会话类型与标识、标题、最近可见消息、活动时间、未读、置顶、静音和访问状态。队伍群权限仍从正式成员记录判断，私聊和讨论群使用各自成员与请求状态。</p>
+<p>当前「我的队伍」和队伍详情已读到成员、角色与活动状态。前端可以将这两处的列表与管理组件接入消息页。聊天中的队伍资料在打开时再读取。列表摘要批量返回，避免每个队伍先打开一次聊天接口才能得到最新消息。分页、搜索和未读汇总均按账号及权限计算。</p>
+<h3 id="heading-210">8.2 更新、回退与兼容</h3>
+<ul>
+<li>建议由已授权的长连接发送轻量变更提醒，再走当前的受权限保护读取接口获取消息。序号补取仍负责重连恢复。工作区中的事件流代码可作为接入起点，需确认路由、身份校验、跨标签页、代理连接和降级轮询后再启用。</li>
+<li>列表刷新和当前会话补取要合并，防止多条提醒触发重复请求。轮询作为降级路径，可见页面缩短同步间隔，后台降低频率。退出、移除和归档后重新校验列表、摘要与打开的聊天。</li>
+<li>旧「我的队伍」入口落到消息页的「我的队伍」筛选。旧群链接跳到同一会话。旧队伍详情可进入群资料。旧通知链接跳转保留目标和返回路径。</li>
+<li>先在独立演示库验证迁移和两个账号的历史。需要更新会话数据时保持原队伍标识与已读序号。新版入口可先用项目配置逐步启用，恢复旧入口时同一批消息仍可读取。</li>
+</ul>
+<h2 id="section-9">9. 建议试用和回归</h2>
+<div class="table-wrap"><table><thead><tr><th scope="col">任务</th><th scope="col">可接受的结果</th></tr></thead><tbody><tr><td>在手机上打开「消息」找一支已加入队伍</td><td>从底部入口起两次点击进群。队伍还没人发言时也找得到</td></tr><tr><td>电脑同时看私聊和队伍群</td><td>左栏切换，右栏换会话。输入到一半切走再回来，原稿仍在</td></tr><tr><td>队长审一个申请</td><td>从「通知」或「群资料」看申请。批准后申请者出现队伍行，已处理项从待处理消失</td></tr><tr><td>同时给两支队伍发消息，静音其中一支</td><td>两行摘要和未读按规则更新。底部只统计未静音的未读会话</td></tr><tr><td>一方翻历史时对方连续发三条</td><td>历史位置稳定，显示新消息入口。定位后条目和数量一致</td></tr><tr><td>发送后模拟响应丢失并重试</td><td>同一消息只保存和显示一次</td></tr><tr><td>断网后恢复，同时让手机和电脑打开同一群</td><td>漏掉的消息按序补齐。旧设备的已读写入不能使新读过的消息变回未读</td></tr><tr><td>从旧队伍链接、批准通知和帖子评论分别跳转</td><td>均打开正确位置，返回恢复原页面与筛选</td></tr><tr><td>账号退队、被移除、归档到期</td><td>对应历史、摘要、搜索与输入权限一致。其他有效成员仍按规则使用</td></tr><tr><td>手机 320 像素宽、中文输入法、键盘和减少动态效果</td><td>文本可换行、发送可触达、选字时不误发。关闭动效时状态与焦点仍清楚</td></tr></tbody></table></div>
+<p>试用时建议让 6—8 位同学分别用手机和电脑完成找群、回复和处理通知。记录点击次数、是否误进队伍详情、是否误解未读与静音、发送或重连是否需要手动操作。健康本地环境可把「保存成功至另一前台客户端显示」的第 95 百分位 2 秒内作为初始目标，记录浏览器、延迟和测试轮数。以上是目标，验收结果按实测填写。</p>
+<h2 id="section-10">10. 需要审阅的产品选择</h2>
+<div class="table-wrap"><table><thead><tr><th scope="col">议题</th><th scope="col">本稿建议</th><th scope="col">可调整之处</th></tr></thead><tbody><tr><td>「我的队伍」放哪</td><td>作为「消息」的醒目筛选，个人页提供同一路径</td><td>试用中若经常被忽略，可放在搜索框下固定位置</td></tr><tr><td>点击队伍先看什么</td><td>进入聊天。点群名看资料</td><td>队长可从行尾菜单直接打开待审</td></tr><tr><td>归档放哪</td><td>折叠到队伍列表底部，保留到期状态</td><td>可按试用反馈增加独立的「已归档」筛选</td></tr><tr><td>通知是否常驻在聊天页</td><td>列表页顶一个入口，内有待处理和动态</td><td>电脑可在保留会话列表时开通知面板，手机用独立视图</td></tr><tr><td>先做到 QQ 的哪些能力</td><td>统一会话、可控提醒、清晰未读、易找群和可靠同步</td><td>语音、文件和推送按使用数据决定顺序</td></tr></tbody></table></div>
+<h2 id="section-11">附录 · 项目对照位置</h2>
+<ul>
+<li>路由与主导航 <a href="../apps/web/src/App.tsx">App.tsx</a>、<a href="../apps/web/src/components/Layout.tsx">Layout.tsx</a>、<a href="../apps/web/src/pages/Profile.tsx">Profile.tsx</a>。</li>
+<li>现有消息、队伍和群聊 <a href="../apps/web/src/pages/Notifications.tsx">Notifications.tsx</a>、<a href="../apps/web/src/pages/MyTeams.tsx">MyTeams.tsx</a>、<a href="../apps/web/src/pages/TeamDetail.tsx">TeamDetail.tsx</a>、<a href="../apps/web/src/pages/TeamChat.tsx">TeamChat.tsx</a>。</li>
+<li>权限、收发与归档 <a href="../apps/server/src/notifications.ts">notifications.ts</a>、<a href="../apps/server/src/teams.ts">teams.ts</a>、<a href="../apps/server/src/chat.ts">chat.ts</a>、<a href="../apps/server/src/archive.ts">archive.ts</a>。</li>
+<li>待接入的会话基础 <a href="../packages/contracts/src/social.ts">social.ts</a>、<a href="../apps/server/src/chat-events.ts">chat-events.ts</a>、<a href="../prisma/migrations/202611120001_social_conversations/migration.sql">数据库迁移</a>。</li>
+<li>已有回归 <a href="../apps/server/src/chat.test.ts">聊天测试</a>、<a href="../apps/server/src/archive.test.ts">归档测试</a>、<a href="../tests/e2e/workflow-z-chat.spec.ts">多人群聊浏览器测试</a>、<a href="../tests/e2e/post-notifications.spec.ts">互动通知浏览器测试</a>。</li>
+</ul>
+</main>
+<script>
+const demo = document.getElementById('message-demo');
+const screens = [...demo.querySelectorAll('[data-screen]')];
+const filters = [...demo.querySelectorAll('[data-filter]')];
+const rows = [...demo.querySelectorAll('[data-kind]')];
+const search = demo.querySelector('input');
+let active = 'all';
+const origin = new Map();
+function updateRows() {
+  const query = search.value.trim();
+  for (const row of rows) row.hidden = (active !== 'all' && row.dataset.kind !== active) || !row.dataset.name.includes(query);
+  demo.querySelector('.no-results').hidden = rows.some(row => !row.hidden);
+  demo.querySelector('.demo-archive').hidden = active === 'direct' || !!query;
+}
+demo.addEventListener('click', event => {
+  const button = event.target.closest('button');
+  if (!button) return;
+  if (button.dataset.filter) {
+    active = button.dataset.filter;
+    for (const filter of filters) filter.setAttribute('aria-pressed', String(filter === button));
+    updateRows();
+  }
+  if (!button.dataset.open) return;
+  const previous = button.closest('[data-screen]');
+  const next = screens.find(screen => screen.dataset.screen === button.dataset.open);
+  if (!next) return;
+  const returning = origin.get(previous) && next.contains(origin.get(previous));
+  if (!returning) origin.set(next, button);
+  for (const screen of screens) screen.hidden = screen !== next;
+  const focus = returning ? origin.get(previous) : next.querySelector('button');
+  focus?.focus({ preventScroll: true });
+});
+search.addEventListener('input', updateRows);
+</script>
+</body>
+</html>

@@ -1,4 +1,5 @@
 export * from './chat.js';
+export * from './social.js';
 export * from './assistance.js';
 import { z } from 'zod';
 export * from './recruitments.js';
@@ -45,6 +46,6 @@ export interface PostDTO { id: string; title: string; body: string; revision: nu
 export interface ApiErrorBody { error: { code: string; message: string; fields?: Record<string, string[]> }; requestId: string }
 export interface ApiResponse<T> { data: T; meta?: { nextCursor?: string | null; appMode?: 'DEMO' | 'STANDARD' } }
 
-export interface CommentDTO { id: string; body: string; replyId: string | null; reply: { body: string; nickname: string } | null; nickname: string; canDelete: boolean; createdAt: string }
+export interface CommentDTO { id: string; authorId: string; body: string; replyId: string | null; reply: { body: string; nickname: string } | null; nickname: string; canDelete: boolean; createdAt: string }
 export interface CommunityDTO { likes: number; liked: boolean; saved: boolean; notificationsMuted: boolean; comments: CommentDTO[]; nextCursor: string | null }
 export interface SavedDTO { id: string; postId: string | null; recruitmentId: string | null; title: string; available: boolean }

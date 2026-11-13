@@ -8,6 +8,7 @@ import { db } from './db.js';
 import { requireUser, csrfGuard, writeLimit } from './auth.js';
 import { ApiError, parse } from './http.js';
 import { recruitingWindow } from './team-rules.js';
+import { signalTeamChat } from './chat-events.js';
 import type { Prisma } from './generated/prisma/client.js';
 
 const teamInclude = { recruitment: true, slots: { orderBy: { position: 'asc' as const } }, members: true } as const;
@@ -30,14 +31,17 @@ async function publishedTeam(tx: Prisma.TransactionClient, id: string, lock = fa
 }
 export async function eligibility(tx: Prisma.TransactionClient, team: Team, userId: string, input: EligibilityInput, now: Date): Promise<EligibilityDTO> {
   const user = await tx.user.findUniqueOrThrow({ where: { id: userId }, include: { profile: { include: { school: true } } } });
+  const draft = RecruitmentDraftSchema.parse(team.recruitment.payload), plan = draft.plan, answers = input.answers;
   const checks: EligibilityDTO['checks'] = [];
-  const add = (code: string, label: string, status: 'PASS' | 'FAIL' | 'UNKNOWN', reason: string) => checks.push({ code, label, status, reason });
+  const add = (code: string, label: string, status: 'PASS' | 'FAIL' | 'UNKNOWN', reason: string, blocking = true) =>
+    checks.push({ code, label, status, reason, ...(blocking ? {} : { blocking: false as const }) });
   add('ACCOUNT', '账号状态', user.status === 'ACTIVE' ? 'PASS' : 'FAIL', user.status === 'ACTIVE' ? '当前账号可提交申请。' : '当前账号不可申请。');
   const members = team.members.filter(m => m.status === 'ACTIVE');
   const open = !team.recruitment.hiddenAt && recruitingWindow(team.status, team.recruitment.joinDeadline, now, team.recruitmentClosedAt);
   add('RECRUITING', '招募时间与总名额', open && members.length < team.recruitment.capacity ? 'PASS' : 'FAIL', !open ? '招募已停止或截止，不能提交新申请。' : members.length >= team.recruitment.capacity ? '当前队伍已满，不接收新申请。' : '招募进行中，待审核申请不占名额。');
   const member = team.members.find(m => m.userId === userId);
-  add('MEMBERSHIP', '成员身份', member ? 'FAIL' : 'PASS', member?.status === 'ACTIVE' ? '你已是队伍成员，无需申请。' : member?.status === 'REMOVED' ? '被移除后不能再次申请同一队伍。' : member?.status === 'LEFT' ? '本版本退出后不能再次加入同一队伍。' : '你目前不是该队有效成员。');
+  const canRejoin = !!plan && member?.status === 'LEFT';
+  add('MEMBERSHIP', '成员身份', member && !canRejoin ? 'FAIL' : 'PASS', member?.status === 'ACTIVE' ? '你已是队伍成员，无需申请。' : member?.status === 'REMOVED' ? '被移除后不能再次申请同一队伍。' : canRejoin ? '你可以重新申请空出的名额。' : member?.status === 'LEFT' ? '这支队伍不支持退出后重新加入。' : '你目前不是该队有效成员。');
   const profile = user.profile;
   add('SCHOOL', '学校范围（自述）', !profile?.school.active ? 'UNKNOWN' : team.recruitment.allowCrossSchool || profile.schoolId === team.recruitment.schoolId ? 'PASS' : 'FAIL', !profile?.school.active ? '请先补充有效的学校资料。' : team.recruitment.allowCrossSchool ? '发布者接受跨校意向；学校资料未核验。' : profile.schoolId === team.recruitment.schoolId ? '你的自述学校符合仅同校范围，未做认证。' : '你的身份资料学校不符合同校范围，浏览学校筛选不能替代身份资料。');
   const slot = team.slots.find(s => s.id === input.slotId);
@@ -45,20 +49,29 @@ export async function eligibility(tx: Prisma.TransactionClient, team: Team, user
   add('SLOT', '申请岗位', !input.slotId ? 'UNKNOWN' : !slot || occupied >= slot.capacity ? 'FAIL' : 'PASS', !input.slotId ? '请选择要申请的岗位。' : !slot ? '该岗位不属于这支队伍。' : occupied >= slot.capacity ? '这个岗位已满，请选择其他岗位。' : `岗位「${slot.name}」还有 ${slot.capacity - occupied} 个名额，审核通过才占位。`);
   const normalized = new Set((profile?.skills || []).map(s => s.normalize('NFKC').trim().toLowerCase()));
   const missing = slot?.requiredSkills.filter(s => !normalized.has(s.normalize('NFKC').trim().toLowerCase())) || [];
-  add('SKILLS', '岗位技能（自述）', !slot || missing.length ? 'UNKNOWN' : 'PASS', !slot ? '选定岗位后才能核对技能。' : missing.length ? `资料尚未声明：${missing.join('、')}。请补充真实技能后重查；缺失不代表你没有能力。` : slot.requiredSkills.length ? '资料中的自述技能覆盖该岗位标签，仅作信息对照，不代表能力认证。' : '该岗位没有额外技能标签要求。');
-  add('TIME', '本次时间确认', input.timeConfirmed === null ? 'UNKNOWN' : input.timeConfirmed ? 'PASS' : 'FAIL', input.timeConfirmed === null ? '请阅读协作起止、每周投入与时段，确认本次能否安排。' : input.timeConfirmed ? '你已确认本次可以安排所列协作时间与投入；不从自由文本自动推断时间匹配。' : '你本次无法安排所列协作时间，请选择其他招募。');
-  const draft = RecruitmentDraftSchema.parse(team.recruitment.payload), answers = input.answers;
+  const hardSkills = !plan || plan.skillsRequired;
+  add('SKILLS', hardSkills ? '岗位技能（自述）' : '岗位技能偏好', !slot || missing.length ? 'UNKNOWN' : 'PASS',
+    !slot ? '请先选定岗位。' : missing.length ? `资料尚未声明：${missing.join('、')}。${hardSkills ? '请补充真实技能后重查。' : '仍可申请，可在介绍中说明你的经验。'}`
+      : slot.requiredSkills.length ? '自述技能覆盖该岗位标签。' : '该岗位没有额外技能标签要求。', hardSkills);
+  const agreed = input.timeConfirmed === null ? 'UNKNOWN' : input.timeConfirmed ? 'PASS' : 'FAIL';
+  if (plan && plan.schedule !== 'FIXED') {
+    add('TIME', '协商安排', agreed, input.timeConfirmed ? '你同意和队友继续商量时间。' : '请确认愿意和队友商量具体时间。');
+  } else {
+    add('TIME', '本次时间确认', agreed, input.timeConfirmed === null ? '请阅读协作时间与安排，确认本次能否参加。' : input.timeConfirmed ? '你已确认本次可以安排所列时间。' : '你本次无法安排所列时间。');
+  }
   const same = (a: string | undefined, b: string) => a?.normalize('NFKC').trim().toLowerCase() === b.normalize('NFKC').trim().toLowerCase();
   if (draft.category === 'GAME' && draft.game) {
     const g = draft.game;
-    add('SERVER', '游戏服务器（自述）', g.server === '不限' ? 'PASS' : !answers?.server ? 'UNKNOWN' : same(answers.server, g.server) ? 'PASS' : 'FAIL', `所需服务器：${g.server}；本次填写：${answers?.server || '未填写'}。`);
-    add('PLATFORM', '游戏平台（自述）', g.platform === 'ANY' ? 'PASS' : !answers?.platform ? 'UNKNOWN' : answers.platform === g.platform ? 'PASS' : 'FAIL', `所需平台：${g.platform}；本次填写：${answers?.platform || '未填写'}。`);
+    if (!plan || plan.serverRequired) add('SERVER', '游戏服务器（自述）', g.server === '不限' ? 'PASS' : !answers?.server ? 'UNKNOWN' : same(answers.server, g.server) ? 'PASS' : 'FAIL', `所需服务器：${g.server}，本次填写：${answers?.server || '未填写'}。`);
+    if (!plan || plan.platformRequired) add('PLATFORM', '游戏平台（自述）', g.platform === 'ANY' ? 'PASS' : !answers?.platform ? 'UNKNOWN' : answers.platform === g.platform ? 'PASS' : 'FAIL', `所需平台：${g.platform}，本次填写：${answers?.platform || '未填写'}。`);
   }
   if (draft.category === 'STUDY' && draft.study?.methodRequired) add('STUDY_METHOD', '学习方式', !answers?.studyMethod ? 'UNKNOWN' : answers.studyMethod === draft.study.method ? 'PASS' : 'FAIL', `要求方式：${draft.study.method}；本次选择：${answers?.studyMethod || '未选择'}。`);
   for (const [field, label, requirement] of [['experienceConfirmed','经验要求',draft.outdoor?.experience],['equipmentConfirmed','装备要求',draft.outdoor?.equipment]] as const) {
-    if (draft.category === 'OUTDOOR' && requirement) add(field, label, answers?.[field] === undefined ? 'UNKNOWN' : answers[field] ? 'PASS' : 'FAIL', `${requirement}；${answers?.[field] ? '本次已自行确认满足' : '需本人确认是否满足'}。`);
+    const required = !plan || (field === 'experienceConfirmed' ? plan.experienceRequired : plan.equipmentRequired);
+    if (draft.category === 'OUTDOOR' && requirement && required) add(field, label, answers?.[field] === undefined ? 'UNKNOWN' : answers[field] ? 'PASS' : 'FAIL', `${requirement}。${answers?.[field] ? '本次已自行确认满足' : '需本人确认是否满足'}。`);
   }
-  return { ruleVersion: draft.category === 'COMPETITION' ? 'competition-application-v2' : 'scene-application-v1', assessedAt: now.toISOString(), status: checks.some(c => c.status === 'FAIL') ? 'FAIL' : checks.some(c => c.status === 'UNKNOWN') ? 'UNKNOWN' : 'PASS', checks };
+  const required = checks.filter(c => c.blocking !== false);
+  return { ruleVersion: draft.category === 'COMPETITION' ? 'competition-application-v2' : 'scene-application-v1', assessedAt: now.toISOString(), status: required.some(c => c.status === 'FAIL') ? 'FAIL' : required.some(c => c.status === 'UNKNOWN') ? 'UNKNOWN' : 'PASS', checks };
 }
 function dto(row: Application, now = new Date()): ApplicationDTO {
   const status = row.status === 'PENDING' && !recruitingWindow(row.team.status, row.team.recruitment.joinDeadline, now, row.team.recruitmentClosedAt) ? 'EXPIRED' : row.status;
@@ -66,7 +79,7 @@ function dto(row: Application, now = new Date()): ApplicationDTO {
   return { id: row.id, teamId: row.teamId, recruitmentId: row.team.recruitmentId, recruitmentTitle: row.team.recruitment.title,
     slotId: row.slotId, slotName: row.slot.name, status, message: row.message, timeConfirmed: row.timeConfirmed,
     revision: row.revision, submission: row.submission, submittedAt: row.submittedAt.toISOString(), resolvedAt: row.resolvedAt?.toISOString() ?? null,
-    canWithdraw: status === 'PENDING', reapplyAt: ['WITHDRAWN', 'REJECTED'].includes(row.status) && row.resolvedAt ? new Date(row.resolvedAt.getTime() + cooldownMs).toISOString() : null,
+    canWithdraw: status === 'PENDING', reapplyAt: (row.status === 'REJECTED' || row.status === 'WITHDRAWN' && !RecruitmentDraftSchema.parse(row.team.recruitment.payload).plan) && row.resolvedAt ? new Date(row.resolvedAt.getTime() + cooldownMs).toISOString() : null,
     eligibilitySnapshot: row.eligibilitySnapshot as unknown as EligibilityDTO, reviewAvailable: true,
     review: review ? { decision: review.decision, reason: review.reason, reviewedAt: review.createdAt.toISOString(), eligibilitySnapshot: review.eligibilitySnapshot as unknown as EligibilityDTO | null } : null,
     membership: member ? { status: member.status, slotName: member.slot.name, joinedAt: member.joinedAt.toISOString() } : null };
@@ -143,6 +156,7 @@ applicationsRouter.post('/applications/:id/review', privateRead, writeLimit, csr
     await tx.domainEvent.create({ data: { teamId: team.id, actorId: user.id, kind: input.decision === 'APPROVE' ? 'APPLICATION_APPROVED' : 'APPLICATION_REJECTED', payload: { applicationId: id, submission: current.submission, reviewId: review.id, slotId: current.slotId } } });
     return tx.application.findUniqueOrThrow({ where: { id }, include: captainInclude });
   }, { maxWait: 5000, timeout: 10000 });
+  signalTeamChat(row.teamId, [row.applicantId]);
   res.json({ data: captainDto(row) });
 });
 applicationsRouter.post('/teams/:id/applications', privateRead, writeLimit, csrfGuard, async (req, res) => {
@@ -160,22 +174,29 @@ applicationsRouter.post('/teams/:id/applications', privateRead, writeLimit, csrf
       return { row: prior.application, created: false };
     }
     const team = await publishedTeam(tx, teamId, true), now = new Date();
-    const direct = RecruitmentDraftSchema.parse(team.recruitment.payload).joinMode === 'AUTO';
+    const draft = RecruitmentDraftSchema.parse(team.recruitment.payload), direct = draft.joinMode === 'AUTO';
     let row = await tx.application.findUnique({ where: { teamId_applicantId: { teamId, applicantId: user.id } }, include: applicationInclude });
     const duplicate = row?.status === 'PENDING';
     if (duplicate && row!.submissionHash !== hash) throw new ApiError(409, 'APPLICATION_EXISTS', '你已有该队申请，请先核对或撤回，不能覆盖原申请。');
     if (!duplicate) {
       const assessment = await eligibility(tx, team, user.id, input, now);
       if (assessment.status !== 'PASS') throw new ApiError(422, 'ELIGIBILITY_NOT_PASSED', '条件尚未通过，请重新核对并补齐信息。', Object.fromEntries(assessment.checks.filter(c => c.status !== 'PASS').map(c => [c.code, [c.reason]])));
-      if (row && ['APPROVED'].includes(row.status)) throw new ApiError(409, 'APPLICATION_NOT_OPEN', '这份申请已处理，请核对当前状态。');
-      if (row?.resolvedAt && ['WITHDRAWN', 'REJECTED'].includes(row.status) && now.getTime() < row.resolvedAt.getTime() + cooldownMs) throw new ApiError(409, 'APPLICATION_COOLDOWN', '撤回或被拒绝后需等待 10 分钟才能再次申请。');
+      const rejoining = draft.plan && team.members.some(member => member.userId === user.id && member.status === 'LEFT');
+      if (row?.status === 'APPROVED' && !rejoining) throw new ApiError(409, 'APPLICATION_NOT_OPEN', '这份申请已处理，请核对当前状态。');
+      const cooldown = row?.status === 'REJECTED' || row?.status === 'WITHDRAWN' && !draft.plan;
+      if (row?.resolvedAt && cooldown && now.getTime() < row.resolvedAt.getTime() + cooldownMs) throw new ApiError(409, 'APPLICATION_COOLDOWN', '请在上次处理后的 10 分钟再申请。');
+      if (draft.plan && row && row.submission >= 3 && now.getTime() - row.submittedAt.getTime() < 60_000) throw new ApiError(429, 'APPLICATION_REPEAT_LIMIT', '申请提交太频繁，请稍后再试。');
       const pending = { status: 'PENDING' as const, team: { status: { in: ['OPEN', 'FULL'] as ('OPEN' | 'FULL')[] }, recruitmentClosedAt: null, recruitment: { joinDeadline: { gt: now } } } };
       if (await tx.application.count({ where: { ...pending, applicantId: user.id } }) >= 10 || await tx.application.count({ where: { ...pending, teamId } }) >= 100) throw new ApiError(409, 'APPLICATION_LIMIT', '待审核申请已达上限（每人 10 条、每队 100 条）。');
-      const values = { ...(input.answers ? { answers: input.answers as Prisma.InputJsonValue } : {}), slotId: input.slotId, message: input.message, timeConfirmed: input.timeConfirmed, eligibilitySnapshot: assessment as unknown as Prisma.InputJsonValue, submissionHash: hash, status: direct ? 'APPROVED' as const : 'PENDING' as const, submittedAt: now, resolvedAt: direct ? now : null };
+      const values = { answers: input.answers ?? {}, slotId: input.slotId, message: input.message, timeConfirmed: input.timeConfirmed, eligibilitySnapshot: assessment as unknown as Prisma.InputJsonValue, submissionHash: hash, status: direct ? 'APPROVED' as const : 'PENDING' as const, submittedAt: now, resolvedAt: direct ? now : null };
       row = row ? await tx.application.update({ where: { id: row.id }, data: { ...values, revision: { increment: 1 }, submission: { increment: 1 } }, include: applicationInclude })
         : await tx.application.create({ data: { ...values, teamId, applicantId: user.id }, include: applicationInclude });
       if (direct) {
-        await tx.teamMember.create({ data: { teamId, userId: user.id, slotId: input.slotId, role: 'MEMBER', joinedAt: now } });
+        await tx.teamMember.upsert({
+          where: { teamId_userId: { teamId, userId: user.id } },
+          create: { teamId, userId: user.id, slotId: input.slotId, role: 'MEMBER', joinedAt: now },
+          update: { slotId: input.slotId, role: 'MEMBER', status: 'ACTIVE', joinedAt: now, leftAt: null, revision: { increment: 1 } },
+        });
         await tx.team.update({ where: { id: teamId }, data: { status: team.members.filter(m => m.status === 'ACTIVE').length + 1 >= team.recruitment.capacity ? 'FULL' : 'OPEN' } });
       }
       await notify(tx,{recipientId:team.captainUserId,sourceKey:'application:'+row.id+':'+row.submission,kind:direct?'MEMBER_JOINED':'APPLICATION_SUBMITTED',title:team.recruitment.title,reason:direct?'有成员已通过条件直接加入，请到队伍查看。':'收到一份新申请，请在招募详情核对并审核。',teamId,recruitmentId:team.recruitmentId});
@@ -187,6 +208,7 @@ applicationsRouter.post('/teams/:id/applications', privateRead, writeLimit, csrf
       snapshot: { slotId: row.slotId, message: row.message, timeConfirmed: row.timeConfirmed, eligibility: row.eligibilitySnapshot } } });
     return { row, created: !duplicate };
   }, { maxWait: 5000, timeout: 10000 });
+  signalTeamChat(teamId, [user.id]);
   res.status(result.created ? 201 : 200).json({ data: dto(result.row) });
 });
 applicationsRouter.post('/applications/:id/withdraw', privateRead, writeLimit, csrfGuard, async (req, res) => {
@@ -203,5 +225,6 @@ applicationsRouter.post('/applications/:id/withdraw', privateRead, writeLimit, c
     await tx.domainEvent.create({ data: { teamId: current.teamId, actorId: user.id, kind: 'APPLICATION_WITHDRAWN', payload: { applicationId: id, submission: current.submission } } });
     return updated;
   }, { maxWait: 5000, timeout: 10000 });
+  signalTeamChat(row.teamId, [user.id]);
   res.json({ data: dto(row) });
 });

@@ -27,6 +27,7 @@ const submit = (r: Awaited<ReturnType<typeof team>>, body = content(r), key = ra
 const check = (r: Awaited<ReturnType<typeof team>>, input: object = {}) => write(b, tokenB, '/recruitments/' + r.id + '/eligibility', { slotId: content(r).slotId, timeConfirmed: true, ...input });
 beforeAll(async () => {
   if (!new URL(config.databaseUrl!).pathname.endsWith('_test')) throw new Error('Not a test database');
+  await db.conversation.deleteMany(); await db.chatImage.deleteMany();
   await db.recruitment.deleteMany(); await db.session.deleteMany(); await db.post.deleteMany(); await db.profile.deleteMany(); await db.user.deleteMany(); await db.topic.deleteMany(); await db.school.deleteMany();
   await db.school.createMany({ data: [{ id: school, name: '申请甲校', city: '测试' }, { id: otherSchool, name: '申请乙校', city: '测试' }] });
   topicId = (await db.topic.create({ data: { category: 'COMPETITION', name: '应用开发', normalizedName: '应用开发' } })).id;

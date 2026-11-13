@@ -11,6 +11,9 @@ import { notify } from './notices.js';
 import { ApiError, parse } from './http.js';
 import { terminal } from './archive.js';
 import { databaseNow } from './time.js';
+import { signalChats, signalTeamChat } from './chat-events.js';
+import { socialAccess, lockRoom } from './social-access.js';
+import { redactSocialMessage } from './social-chat.js';
 const digest=(value:unknown)=>createHash('sha256').update(JSON.stringify(value)).digest('hex');
 const normalize=(name:string)=>name.normalize('NFKC').trim().toLowerCase().replace(/\s+/g,' ');
 const reason=z.string().trim().min(5).max(500), key=z.uuid(), version=z.number().int().positive();
@@ -47,7 +50,7 @@ async function lockContent(tx:Prisma.TransactionClient,type:string,id:string) {
 export const moderationRouter=Router();
 moderationRouter.use((_req,res,next)=>{res.setHeader('Cache-Control','no-store');next();});
 moderationRouter.post('/reports',writeLimit,csrfGuard,async(req,res)=>{
-  const user=requireUser(res),input=parse(mutation.extend({targetType:z.enum(['POST','COMMENT','RECRUITMENT','CHAT_MESSAGE','USER']),targetId:z.uuid()}).strict(),req.body),requestHash=digest(input);
+  const user=requireUser(res),input=parse(mutation.extend({targetType:z.enum(['POST','COMMENT','RECRUITMENT','CHAT_MESSAGE','SOCIAL_MESSAGE','USER']),targetId:z.uuid()}).strict(),req.body),requestHash=digest(input);
   const result=await db.$transaction(async tx=>{
     await activeUser(tx,user.id);const where={reporterId_requestKey:{reporterId:user.id,requestKey:input.requestKey}},known=await tx.report.findUnique({where,select:{id:true,requestHash:true}});
     if(known){if(known.requestHash!==requestHash)throw new ApiError(409,'REQUEST_KEY_CONFLICT','举报请求内容不同。');return {id:known.id};}
@@ -62,8 +65,18 @@ moderationRouter.post('/reports',writeLimit,csrfGuard,async(req,res)=>{
       if(identity){const t=await tx.team.findUniqueOrThrow({where:{id:identity.teamId},select:{recruitmentId:true}});await tx.$queryRaw`SELECT "id" FROM "Recruitment" WHERE "id"=${t.recruitmentId}::uuid FOR UPDATE`;await tx.$queryRaw`SELECT "id" FROM "Team" WHERE "id"=${identity.teamId}::uuid FOR UPDATE`;
         const team=await tx.team.findUniqueOrThrow({where:{id:identity.teamId},include:{chatSpace:true}}),now=await databaseNow(tx);
         if(await tx.teamMember.findFirst({where:{teamId:identity.teamId,userId:user.id,status:'ACTIVE'}})&&!team.chatSpace?.purgedAt&&(!terminal(team.status)||!!team.archiveUntil&&team.archiveUntil>now)){
-          const m=await tx.chatMessage.findFirst({where:{id:input.targetId,kind:'TEXT',deletedAt:null}});if(m?.body)evidence={body:m.body,nickname:m.nickname,seq:m.seq,createdAt:m.createdAt.toISOString()};
+          const m=await tx.chatMessage.findFirst({where:{id:input.targetId,kind:'TEXT',deletedAt:null}});
+          if(m)evidence={body:m.body || (m.imageId ? '[图片]' : '[内容卡片]'),nickname:m.nickname,seq:m.seq,createdAt:m.createdAt.toISOString()};
         }
+      }
+    }
+    if (input.targetType === 'SOCIAL_MESSAGE') {
+      const m = await tx.conversationMessage.findFirst({ where: { id: input.targetId, deletedAt: null, redactsMessageId: null } });
+      if (m) {
+        await lockRoom(tx, m.conversationId);
+        const access = await socialAccess(tx, m.conversationId, user.id);
+        const visible = await tx.conversationMessage.findFirst({ where: { id: m.id, deletedAt: null, seq: { gt: access.member.joinedAfterSeq } } });
+        if (visible) evidence = { body: visible.body || (visible.imageId ? '[图片]' : '[内容卡片]'), nickname: visible.nickname, seq: visible.seq, createdAt: visible.createdAt.toISOString() };
       }
     }
     if(!evidence)throw new ApiError(404,'NOT_FOUND','目标不存在或当前无权提交此内容的证据。');
@@ -90,7 +103,7 @@ moderationRouter.get('/admin/:collection',async(req,res)=>{
   const pagination={take:51,orderBy:{id:'desc' as const},...(input.cursor?{cursor:{id:input.cursor},skip:1}:{})};
   let rows:({id:string}&object)[]=[];
   if(collection==='reports'){
-    rows=await db.$transaction(async tx=>{await admin(tx,user.id);const rows=await tx.report.findMany({...pagination,select:{id:true,targetType:true,targetId:true,reason:true,evidence:true,status:true,revision:true,createdAt:true,resolution:true}});for(const row of rows.filter(r=>r.targetType==='CHAT_MESSAGE'))await tx.moderationAction.create({data:{adminId:user.id,requestKey:randomUUID(),requestHash:digest(row.id),action:'VIEW_REPORTED_EVIDENCE',targetType:'REPORT',targetId:row.id,reason:'查看成员主动提交的举报证据',result:{reportId:row.id}}});return rows;});
+    rows=await db.$transaction(async tx=>{await admin(tx,user.id);const rows=await tx.report.findMany({...pagination,select:{id:true,targetType:true,targetId:true,reason:true,evidence:true,status:true,revision:true,createdAt:true,resolution:true}});for(const row of rows.filter(r=>['CHAT_MESSAGE','SOCIAL_MESSAGE'].includes(r.targetType)))await tx.moderationAction.create({data:{adminId:user.id,requestKey:randomUUID(),requestHash:digest(row.id),action:'VIEW_REPORTED_EVIDENCE',targetType:'REPORT',targetId:row.id,reason:'查看成员主动提交的举报证据',result:{reportId:row.id}}});return rows;});
   } else if(collection==='topics')rows=await db.topicRequest.findMany({...pagination,select:{id:true,category:true,name:true,description:true,status:true,revision:true,reason:true,topicId:true}});
   else if(collection==='topic-settings')rows=await db.topic.findMany({...pagination,select:{id:true,name:true,category:true,active:true}});
   else if(collection==='users')rows=await db.user.findMany({...pagination,where:input.q?{profile:{nickname:{contains:input.q,mode:'insensitive'}}}:{},select:{id:true,status:true,role:true,profile:{select:{nickname:true}}}});
@@ -114,10 +127,29 @@ moderationRouter.post('/admin/reports/:id/resolve',writeLimit,csrfGuard,async(re
       else if(row.targetType==='CHAT_MESSAGE'){
         const msg=await tx.chatMessage.findUnique({where:{id:row.targetId},select:{id:true,teamId:true,deletedAt:true}});
         if(msg&&!msg.deletedAt){const identity=await tx.team.findUniqueOrThrow({where:{id:msg.teamId},select:{recruitmentId:true}});await tx.$queryRaw`SELECT "id" FROM "Recruitment" WHERE "id"=${identity.recruitmentId}::uuid FOR UPDATE`;await tx.$queryRaw`SELECT "id" FROM "Team" WHERE "id"=${msg.teamId}::uuid FOR UPDATE`;await tx.chatMessage.update({where:{id:msg.id},data:{body:null,deletedAt:new Date()}});const space=await tx.chatSpace.update({where:{teamId:msg.teamId},data:{lastSeq:{increment:1}}});await tx.chatMessage.create({data:{teamId:msg.teamId,seq:space.lastSeq,kind:'SYSTEM',nickname:'队伍动态',body:'一条消息已由管理员依据举报隐藏。',redactsMessageId:msg.id}});}
+      } else if (row.targetType === 'SOCIAL_MESSAGE') {
+        const identity = await tx.conversationMessage.findUnique({ where: { id: row.targetId }, select: { conversationId: true } });
+        if (identity) {
+          await lockRoom(tx, identity.conversationId);
+          const message = await tx.conversationMessage.findFirst({ where: { id: row.targetId, deletedAt: null, redactsMessageId: null } });
+          if (message) await redactSocialMessage(tx, message);
+        }
       } else throw new ApiError(422,'INVALID_ACTION','账号举报请在账号管理中处理。');
     }
     const status=input.outcome==='DISMISSED'?'DISMISSED':'RESOLVED';await tx.report.update({where:{id},data:{status,resolution:input.reason,handledAt:new Date(),revision:{increment:1}}});await notify(tx,{recipientId:row.reporterId,sourceKey:'report:'+id,kind:'REPORT_RESOLVED',title:'举报处理结果',reason:input.reason});return {id,status};
-  });});res.json({data:result});
+  });});
+  if (input.outcome === 'HIDE') {
+    const report = await db.report.findUnique({ where: { id }, select: { targetType: true, targetId: true } });
+    if (report?.targetType === 'CHAT_MESSAGE') {
+      const message = await db.chatMessage.findUnique({ where: { id: report.targetId }, select: { teamId: true } });
+      if (message) signalTeamChat(message.teamId);
+    }
+    if (report?.targetType === 'SOCIAL_MESSAGE') {
+      const message = await db.conversationMessage.findUnique({ where: { id: report.targetId }, select: { conversation: { select: { members: { where: { status: 'ACTIVE' }, select: { userId: true } } } } } });
+      if (message) signalChats(message.conversation.members.map(member => member.userId));
+    }
+  }
+  res.json({data:result});
 });
 moderationRouter.post('/admin/topic-requests/:id/review',writeLimit,csrfGuard,async(req,res)=>{
   const user=requireUser(res),id=parse(IdSchema,req.params.id),input=parse(mutation.extend({revision:version,approved:z.boolean()}).strict(),req.body);

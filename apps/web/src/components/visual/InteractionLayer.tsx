@@ -17,13 +17,22 @@ export function InteractionLayer(){
     const fine=matchMedia('(hover:hover) and (pointer:fine)');
     const animations=new Map<HTMLElement,Animation>(),pressed=new Set<HTMLElement>();
     let frame=0,visible=false,hot=false,x=0,y=0,tx=0,ty=0,last=0;
-    const control=(target:EventTarget|null)=>target instanceof Element?target.closest<HTMLElement>('button,a[href],summary,[role="button"],input[type="checkbox"],input[type="radio"]'):null;
-    const allowed=(node:HTMLElement|null)=>node&&!node.matches(':disabled,[aria-disabled="true"]')&&!node.closest('[inert],[data-motion-own]');
+    const interactive='button,a[href],summary,[role="button"],[role="tab"],[role="switch"],input[type="checkbox"],input[type="radio"],input[type="submit"],input[type="reset"],input[type="button"],input[type="file"]';
+    function control(target:EventTarget|null){
+      if(!(target instanceof Element))return null;
+      const element=target.closest<HTMLElement>(interactive);
+      const label=target.closest('label');
+      const field=label?.control;
+      if(field?.matches(':is(input[type="checkbox"],input[type="radio"])')&&(!element||element===field))return label;
+      return element;
+    }
+    const allowed=(node:HTMLElement|null)=>node?.isConnected&&!node.matches(':disabled,[aria-disabled="true"]')&&!node.closest('[inert],[data-motion-own]')&&!(node instanceof HTMLLabelElement&&node.control?.matches(':disabled'));
     function spring(node:HTMLElement,down=false){
       if(!allowed(node)){animations.get(node)?.cancel();animations.delete(node);return;}
       const scale=getComputedStyle(node).scale,from=scale==='none'?'1':scale;
       animations.get(node)?.cancel();
-      const animation=node.animate(down?[{scale:from},{scale:'.975'}]:[{scale:from},{scale:'1.025',offset:.43},{scale:'.996',offset:.73},{scale:'1'}],{duration:down?80:380,easing:down?'ease-out':'cubic-bezier(.2,.8,.2,1)',fill:down?'forwards':'none'});
+      const compact=!!node.closest('.messages-page,.message-dialog');
+      const animation=node.animate(down?[{scale:from},{scale:'.975'}]:[{scale:from},{scale:compact?'1.014':'1.025',offset:.43},{scale:'.996',offset:.73},{scale:'1'}],{duration:down?80:compact?220:380,easing:down?'ease-out':'cubic-bezier(.2,.8,.2,1)',fill:down?'forwards':'none'});
       animations.set(node,animation);
       // A held press uses forwards fill: retain it until release so it can be
       // cancelled. Dropping this reference left a permanent .955 scale below rebound.
@@ -44,7 +53,7 @@ export function InteractionLayer(){
       if(!visible){x=tx;y=ty;visible=true;}if(!frame)frame=requestAnimationFrame(tick);
     }
     function hide(){visible=false;if(frame)cancelAnimationFrame(frame);frame=0;for(const node of pressed){animations.get(node)?.cancel();animations.delete(node);}pressed.clear();if(ring.current){ring.current.dataset.visible='false';ring.current.dataset.running='false';}}
-    function down(event:globalThis.PointerEvent){const node=control(event.target);if(!allowed(node))return;pressed.add(node!);spring(node!,true);}
+    function down(event:globalThis.PointerEvent){const node=control(event.target);if(event.button!==0||!event.isPrimary||!allowed(node))return;pressed.add(node!);spring(node!,true);}
     function up(){for(const node of pressed)spring(node);pressed.clear();}
     function click(event:MouseEvent){
       const node=control(event.target);if(!allowed(node))return;

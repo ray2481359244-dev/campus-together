@@ -10,6 +10,7 @@ import { api, messageOf } from '../lib/api';
 import { PageTitle, FormError, Loading, LoginGate, ErrorState } from '../components/UI';
 import { Link } from 'react-router-dom';
 import {StudentAvatar} from '../components/visual/StudentArtwork';
+import { ContactPreferences } from '../components/ContactPreferences';
 
 export function Profile() {
   const auth = useAuth(), { schools } = useSchool(), [error, setError] = useState(''), [saved, setSaved] = useState(false), [loggingOut, setLoggingOut] = useState(false), [skillsText, setSkillsText] = useState('');
@@ -20,7 +21,7 @@ export function Profile() {
   if (auth.error) return <ErrorState message={auth.error.message} retry={() => void auth.reload()} />;
   if (!auth.user) return <LoginGate next="/me" />;
   return <section className="form-page"><PageTitle title="你好，同频的你。" eyebrow="THIS IS YOUR CORNER." />
-    <Link className="button secondary my-teams-link" to="/topic-requests">我的申请与举报 →</Link>{auth.user?.role === 'ADMIN' && <Link className="button secondary my-teams-link" to="/admin">社区管理 →</Link>}<Link className="button secondary my-teams-link" to="/saved">我的收藏 →</Link><Link className="button secondary my-teams-link" to="/teams">我的队伍 →</Link>
+    <Link className="button secondary my-teams-link" to="/topic-requests">我的申请与举报 →</Link>{auth.user?.role === 'ADMIN' && <Link className="button secondary my-teams-link" to="/admin">社区管理 →</Link>}<Link className="button secondary my-teams-link" to="/saved">我的收藏 →</Link><Link className="button secondary my-teams-link" to="/messages?filter=team">我的队伍 →</Link>
     <div className="profile-summary"><StudentAvatar seed={auth.user.id}/><div><h2>{auth.user.nickname}</h2><p>{auth.user.email}</p><span>邮箱未验证 · 学校与技能均为自述</span></div></div>
     <form className="paper form-stack" onChange={() => setSaved(false)} onSubmit={handleSubmit(async values => { setError(''); setSaved(false); try { const r = await api<MeDTO>('/me/profile', { method: 'PATCH', body: values }); auth.accept(r.data); setSaved(true); } catch (e) { setError(messageOf(e)); } })}>
       <div className="form-row"><label>昵称<input {...register('nickname')} maxLength={20} /></label><label>学校（自述）<select {...register('schoolId')}>{schools.map(s => <option value={s.id} key={s.id}>{s.name}</option>)}</select></label></div>{(errors.nickname || errors.schoolId) && <FormError>昵称需要 2—20 个字，并选择有效学校。</FormError>}
@@ -30,6 +31,6 @@ export function Profile() {
       <fieldset className="interest-fields"><legend>最近想一起做什么？</legend><div className="interest-options">{(['COMPETITION', 'STUDY', 'GAME', 'OUTDOOR'] as const).map(c => <button key={c} type="button" className={'interest-option cat-' + c} aria-pressed={interests.includes(c)} onClick={() => { setValue('interests', interests.includes(c) ? interests.filter(v => v !== c) : [...interests, c], { shouldDirty: true }); setSaved(false); }}>{interests.includes(c) && <Check size={15} />}{categoryInfo[c].name}</button>)}</div></fieldset>
       <FormError>{error}</FormError>{saved && <p className="success-text" role="status">资料已保存到账号，刷新后仍会保留。</p>}
       <button className="button wide" type="submit" disabled={isSubmitting}>{isSubmitting ? '正在保存……' : '保存资料'}<ArrowUpRight size={19} /></button>
-    </form><div className="profile-bottom"><p>公开资料包含昵称、自述学校、兴趣与技能；登录邮箱仅本人可见。</p><button className="button secondary" disabled={loggingOut} onClick={async () => { setLoggingOut(true); try { await auth.logout(); } catch (e) { setError(messageOf(e)); } finally { setLoggingOut(false); } }}><LogOut size={17} />{loggingOut ? '正在退出……' : '退出登录'}</button></div>
+    </form><ContactPreferences userId={auth.user.id} /><div className="profile-bottom"><p>公开资料包含昵称、自述学校、兴趣与技能。</p><button className="button secondary" disabled={loggingOut} onClick={async () => { setLoggingOut(true); try { await auth.logout(); } catch (e) { setError(messageOf(e)); } finally { setLoggingOut(false); } }}><LogOut size={17} />{loggingOut ? '正在退出……' : '退出登录'}</button></div>
   </section>;
 }

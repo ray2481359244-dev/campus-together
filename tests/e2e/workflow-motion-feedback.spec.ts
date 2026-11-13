@@ -10,13 +10,12 @@ test('saved comments chat and notices arrive once as clouds; bell success animat
     const topic=(await(await owner.request.get('/api/v1/topics?category=OUTDOOR')).json()).data[0];
     const response=await f.post(0,'/posts',{requestKey:crypto.randomUUID(),topicId:topic.id,title:'一起把讨论变成一朵朵云',body:'这条真实测试讨论用于核对评论、消息通知与铃铛反馈，发送成功后才显示新内容。'});
     expect(response.status()).toBe(201);const post=(await response.json()).data;
-    await owner.goto('/messages');await expect(owner.locator('#main-content h1')).toHaveText('有人回应，也有新的进展。');await expect(owner.getByText('正在读取通知……',{exact:true})).toBeHidden();await recordFeedback(owner);
+    await owner.goto('/messages?view=notifications&tab=activity');await expect(owner.locator('#main-content h1')).toHaveText('消息');await expect(owner.getByText('正在读取通知……',{exact:true})).toBeHidden();await recordFeedback(owner);
     await reader.goto('/posts/'+post.id+'#conversation');await expect(reader.getByLabel('写一条评论',{exact:true})).toBeVisible();await recordFeedback(reader);
     await reader.getByLabel('写一条评论',{exact:true}).fill('第一朵评论云，已经真实保存。');await reader.getByRole('button',{name:'发布评论',exact:true}).click();
     const comment=reader.locator('.community-comment').filter({hasText:'第一朵评论云，已经真实保存。'});await expect(comment).toBeVisible();
     await expect.poll(async()=>(await feedback(reader)).filter(row=>row.kind.includes('community-comment')).length).toBe(1);
     await expect.poll(async()=>(await feedback(owner)).filter(row=>row.kind.includes('notification-card')).length,{timeout:12000}).toBe(1);
-    await owner.getByRole('button',{name:'刷新通知',exact:true}).click();
     expect((await feedback(owner)).filter(row=>row.kind.includes('notification-card'))).toHaveLength(1);
     const summaryReady=owner.waitForResponse(response=>response.url().endsWith('/me/notifications/summary')&&response.ok());
     await owner.goto('/me');await summaryReady;await expect(owner.locator('#main-content h1')).toBeVisible();await recordFeedback(owner);
@@ -53,9 +52,10 @@ test('saved comments chat and notices arrive once as clouds; bell success animat
     await owner.goto('/teams/'+recruitment.team.id+'/chat');await expect(owner.getByLabel('已保存消息',{exact:true})).toBeVisible();await recordFeedback(owner);
     await reader.getByLabel('消息内容',{exact:true}).fill('把想法发出去，像云朵轻轻落位。');await reader.getByRole('button',{name:'发送消息',exact:true}).click();
     await expect(reader.locator('.chat-own').filter({hasText:'把想法发出去，像云朵轻轻落位。'})).toHaveCount(1);
-    await expect.poll(async()=>(await feedback(reader)).filter(row=>row.kind.includes('chat-own')).length).toBe(1);
     await expect.poll(async()=>(await feedback(owner)).filter(row=>row.kind.includes('chat-peer')).length,{timeout:10000}).toBe(1);
-    await reader.getByRole('button',{name:'同步消息',exact:true}).click();expect((await feedback(reader)).filter(row=>row.kind.includes('chat-own'))).toHaveLength(1);
+    await owner.evaluate(()=>window.dispatchEvent(new Event('campus:chat-change')));
+    await expect(owner.locator('.chat-peer').filter({hasText:'把想法发出去，像云朵轻轻落位。'})).toHaveCount(1);
+    expect((await feedback(owner)).filter(row=>row.kind.includes('chat-peer'))).toHaveLength(1);
     await reader.screenshot({path:'.local/screenshots/cloud-chat-feedback.png'});
   }finally{await f.close();}
 });

@@ -30,6 +30,7 @@ const manage = (id: string, kind: string, revision = 1, agent = a, token = token
 const transfer = (id: string, member: { id: string; revision: number }, revision = 1, agent = a, token = tokenA) => manage(id, 'TRANSFER', revision, agent, token, { targetMemberId: member.id, targetRevision: member.revision });
 beforeAll(async () => {
   if (!new URL(config.databaseUrl!).pathname.endsWith('_test')) throw new Error('Not a test database');
+  await db.conversation.deleteMany(); await db.chatImage.deleteMany();
   await db.recruitment.deleteMany(); await db.session.deleteMany(); await db.post.deleteMany(); await db.profile.deleteMany(); await db.user.deleteMany(); await db.topic.deleteMany(); await db.school.deleteMany();
   await db.school.create({ data: { id: school, name: '成员管理演示校', city: '测试' } });
   topicId = (await db.topic.create({ data: { category: 'COMPETITION', name: '协作开发', normalizedName: '协作开发' } })).id;

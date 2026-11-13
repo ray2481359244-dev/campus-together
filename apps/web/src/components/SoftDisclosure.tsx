@@ -2,8 +2,8 @@ import {useEffect,useRef} from 'react';
 import type {ReactNode} from 'react';
 import {useVisualPreferences} from '../lib/visual-preferences';
 
-export function SoftDisclosure({title,children}:{title:ReactNode;children:ReactNode}){
-  const ref=useRef<HTMLDetailsElement>(null),desired=useRef(false),animations=useRef<Animation[]>([]),{motionEnabled}=useVisualPreferences();
+export function SoftDisclosure({title,children,initialOpen=false}:{title:ReactNode;children:ReactNode;initialOpen?:boolean}){
+  const ref=useRef<HTMLDetailsElement>(null),desired=useRef(initialOpen),animations=useRef<Animation[]>([]),{motionEnabled}=useVisualPreferences();
   function settle(){const node=ref.current;if(!node)return;animations.current.forEach(a=>a.cancel());animations.current=[];node.open=desired.current;node.style.removeProperty('height');node.style.removeProperty('overflow');}
   useEffect(()=>{if(!motionEnabled)settle();},[motionEnabled]);
   useEffect(()=>()=>{animations.current.forEach(a=>a.cancel());},[]);
@@ -19,5 +19,5 @@ export function SoftDisclosure({title,children}:{title:ReactNode;children:ReactN
     animations.current.push(height);
     height.finished.then(()=>{if(animations.current.includes(height))settle();}).catch(()=>{});
   }
-  return <details className="soft-disclosure" ref={ref}><summary onClick={event=>{event.preventDefault();toggle();}}>{title}</summary><div className="soft-disclosure-content">{children}</div></details>;
+  return <details className="soft-disclosure" ref={ref} open={initialOpen}><summary onClick={event=>{event.preventDefault();toggle();}}>{title}</summary><div className="soft-disclosure-content">{children}</div></details>;
 }

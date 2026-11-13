@@ -11,7 +11,6 @@ test('未入队的评论与回复进入消息，点赞动态计数、红点弹�
     const title='周末一起去公园看秋天吧';
     const created=await f.post(0,'/posts',{requestKey:crypto.randomUUID(),topicId:topic.id,title,body:'想找几个同学周末去附近公园走走，带上相机和零食，评论区一起商量时间吧。'});expect(created.status()).toBe(201);
     const post=(await created.json()).data,path='/posts/'+post.id;
-    const baseline=(await (await owner.request.get('/api/v1/me/notifications/summary')).json()).data.unreadCount;
     const ready=owner.waitForResponse(r=>r.url().endsWith('/me/notifications/summary')&&r.ok());
     await owner.goto('/me');await ready;
     await reader.goto(path);
@@ -19,7 +18,7 @@ test('未入队的评论与回复进入消息，点赞动态计数、红点弹�
     await reader.getByRole('button',{name:'点赞 · 0',exact:true}).click();
     await expect(reader.getByRole('button',{name:'取消点赞 · 1',exact:true})).toHaveClass(/is-liked/);
     await expect(reader.locator('.like-burst')).toHaveCount(1);
-    await expect(owner.locator('.desktop-nav .unread-badge')).toHaveText(String(baseline+1),{timeout:10000});
+    await expect(owner.locator('.desktop-nav .nav-notice-dot')).toBeVisible({timeout:10000});
     await expect(owner.getByRole('status').filter({hasText:'帖子有了新互动'})).toBeVisible();
     await reader.getByRole('navigation',{name:'帖子内容导航'}).getByRole('link',{name:'02 评论互动',exact:true}).click();await reader.getByLabel('写一条评论',{exact:true}).fill('我也想参加，周六下午方便吗？');
     await reader.getByRole('button',{name:'发布评论',exact:true}).click();
@@ -28,6 +27,8 @@ test('未入队的评论与回复进入消息，点赞动态计数、红点弹�
     await reader.evaluate(()=>{(document.activeElement as HTMLElement)?.blur();window.scrollTo({top:0,behavior:'instant'});});
     await reader.screenshot({path:'.local/screenshots/post-interactions-390.png',fullPage:true});
     await owner.getByRole('navigation',{name:'桌面主导航'}).getByRole('link',{name:/消息/}).click();
+    await owner.getByRole('link',{name:/^通知/}).click();
+    await owner.getByRole('button',{name:'动态',exact:true}).click();
     const likes=owner.locator('.notification-card').filter({hasText:title}).filter({hasText:'你的帖子收到了点赞。'});
     await expect(likes).toContainText('当前共 1 个赞');
     const notice=owner.locator('.notification-card').filter({hasText:title}).filter({hasText:'你的帖子有了新评论。'});
@@ -41,8 +42,8 @@ test('未入队的评论与回复进入消息，点赞动态计数、红点弹�
     const readerReady=reader.waitForResponse(r=>r.url().endsWith('/me/notifications/summary')&&r.ok());
     await reader.goto('/me');await readerReady;
     await owner.getByRole('button',{name:'发布评论',exact:true}).click();
-    await expect(reader.locator('.mobile-nav .unread-badge')).toBeVisible({timeout:10000});
-    await reader.goto('/messages');
+    await expect(reader.locator('.mobile-nav .nav-notice-dot')).toBeVisible({timeout:10000});
+    await reader.goto('/messages?view=notifications&tab=activity');
     await expect(reader.locator('.notification-card').filter({hasText:title}).filter({hasText:'有人回复了你的评论。'})).toContainText('可以，周六两点在校门口见！');
     await owner.getByRole('button',{name:'关闭本帖提醒',exact:true}).click();
     await owner.reload();await expect(owner.getByRole('button',{name:'开启本帖提醒',exact:true})).toHaveAttribute('aria-pressed','true');

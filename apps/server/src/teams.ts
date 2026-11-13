@@ -7,6 +7,7 @@ import { csrfGuard, requireUser, writeLimit } from './auth.js';
 import { ApiError, parse } from './http.js';
 import { acceptingStatus } from './team-rules.js';
 import { archiveDeadline } from './archive.js';
+import { signalTeamChat } from './chat-events.js';
 
 const include = { recruitment: true, slots: true, members: { include: { user: { select: { profile: { select: { nickname: true, skills: true, school: { select: { name: true } } } } } } } } } as const;
 type Team = Prisma.TeamGetPayload<{ include: typeof include }>;
@@ -151,15 +152,22 @@ teamsRouter.get('/teams/:id', async (req, res) => {
 });
 teamsRouter.post('/teams/:id/leave', writeLimit, csrfGuard, async (req, res) => {
   const user = requireUser(res), teamId = parse(IdSchema, req.params.id), input = parse(LeaveTeamSchema, req.body);
-  res.json({ data: await changeMember({ teamId, actorId: user.id, revision: input.revision, kind: 'LEFT', reason: '成员主动退出队伍。' }) });
+  const data = await changeMember({ teamId, actorId: user.id, revision: input.revision, kind: 'LEFT', reason: '成员主动退出队伍。' });
+  signalTeamChat(teamId, [user.id]);
+  res.json({ data });
 });
 teamsRouter.post('/teams/:id/actions', writeLimit, csrfGuard, async (req, res) => {
   const user = requireUser(res), teamId = parse(IdSchema, req.params.id), input = parse(TeamActionSchema, req.body);
-  res.json({ data: await manageTeam(teamId, user.id, input) });
+  const data = await manageTeam(teamId, user.id, input);
+  signalTeamChat(teamId);
+  res.json({ data });
 });
 teamsRouter.post('/teams/:id/members/:memberId/remove', writeLimit, csrfGuard, async (req, res) => {
   const user = requireUser(res), teamId = parse(IdSchema, req.params.id), memberId = parse(IdSchema, req.params.memberId), input = parse(RemoveMemberSchema, req.body);
-  res.json({ data: await changeMember({ teamId, memberId, actorId: user.id, ...input, kind: 'REMOVED' }) });
+  const data = await changeMember({ teamId, memberId, actorId: user.id, ...input, kind: 'REMOVED' });
+  const member = await db.teamMember.findUnique({ where: { id: data.memberId }, select: { userId: true } });
+  signalTeamChat(teamId, member ? [member.userId] : []);
+  res.json({ data });
 });
 teamsRouter.post('/teams/:id/close-recruitment', writeLimit, csrfGuard, async (req, res) => {
   const user = requireUser(res), teamId = parse(IdSchema, req.params.id), input = parse(CloseRecruitmentSchema, req.body);
@@ -180,5 +188,6 @@ teamsRouter.post('/teams/:id/close-recruitment', writeLimit, csrfGuard, async (r
     await tx.domainEvent.create({ data: { teamId, actorId: user.id, kind: 'RECRUITMENT_CLOSED', payload: { closureId: closure.id, expiredCount: pending.length } } });
     return { teamId, closedAt: now.toISOString(), expiredCount: pending.length, reason: input.reason };
   }, { maxWait: 5000, timeout: 10000 });
+  signalTeamChat(teamId);
   res.json({ data: result });
 });

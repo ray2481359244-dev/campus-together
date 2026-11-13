@@ -58,7 +58,7 @@ test('two independent accounts publish, read, edit, save profiles and revoke ses
     await a.getByLabel('自述技能').pressSequentially('photo');
     await a.getByRole('button', { name: '竞赛组队', exact: true }).click();
     await a.getByRole('button', { name: '保存资料', exact: true }).click();
-    await expect(a.getByRole('status')).toContainText('资料已保存');
+    await expect(a.getByRole('status').filter({ hasText: '资料已保存' })).toBeVisible();
     await a.reload();
     await expect(a.getByLabel('一句话介绍自己')).toHaveValue('喜欢把校园里的想法做成能用的东西。');
     await expect(a.getByLabel('自述技能')).toHaveValue('前端开发，photo');

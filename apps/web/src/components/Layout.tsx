@@ -1,6 +1,6 @@
 import { NavLink, Outlet, Link, useLocation } from 'react-router-dom';
 import { Grid2X2, Users, Plus, MessageSquare, UserRound, ArrowUpRight } from 'lucide-react';
-import { motion, useReducedMotion } from 'motion/react';
+import { motion } from 'motion/react';
 import { useQuery } from '@tanstack/react-query';
 import { api } from '../lib/api';
 import { useAuth } from '../lib/auth';
@@ -8,24 +8,49 @@ import {useSchool} from '../lib/school';
 export {useSchool} from '../lib/school';
 import { useNotificationSummary } from '../lib/notifications';
 import { NotificationToast } from './NotificationToast';
-import {MotionToggle} from '../lib/visual-preferences';
+import {MotionToggle, useVisualPreferences} from '../lib/visual-preferences';
 import {StudentAvatar} from './visual/StudentArtwork';
+import { MessagesProvider, useChatBadge } from '../lib/messaging';
+import { useEffect, useRef } from 'react';
 
 export function Layout() {
-  const { user } = useAuth(), reduce = useReducedMotion(), location = useLocation();
+  const { user } = useAuth();
+  return <MessagesProvider key={user?.id} userId={user?.id}><LayoutContent /></MessagesProvider>;
+}
+
+function LayoutContent() {
+  const { user } = useAuth(), { motionEnabled } = useVisualPreferences(), reduce = !motionEnabled, location = useLocation();
   const {schoolId,setSchoolId,schools:schoolList,schoolsLoading,schoolsError,reloadSchools}=useSchool();
   const health = useQuery({ queryKey: ['health'], queryFn: () => api<{ appMode: string }>('/health') });
-  const summary=useNotificationSummary(user?.id),unread=summary.data?.data.unreadCount||0;
+  const summary = useNotificationSummary(user?.id), chatBadge = useChatBadge(user?.id);
+  const unread = chatBadge.data?.data.unreadCount ?? 0;
+  const hasNotice = (chatBadge.data?.data.requests ?? 0) > 0 || (summary.data?.data.activityUnreadCount ?? summary.data?.data.unreadCount ?? 0) > 0;
   const reading=/^\/posts\/[^/]+$/.test(location.pathname),composing=location.pathname==='/publish'||/^\/posts\/[^/]+\/edit$/.test(location.pathname);
+  const inbox = location.pathname === '/messages', query = new URLSearchParams(location.search);
+  const messageFocus = inbox && (query.has('team') || query.has('chat') || query.get('view') === 'notifications');
+  const shell = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const node = shell.current, viewport = window.visualViewport;
+    if (!node || !viewport || !messageFocus) return;
+    const resize = () => {
+      if (viewport.scale === 1 && viewport.height < window.innerHeight) {
+        node.style.setProperty('--message-viewport', viewport.height + 'px');
+      } else node.style.removeProperty('--message-viewport');
+    };
+    viewport.addEventListener('resize', resize);
+    resize();
+    return () => { viewport.removeEventListener('resize', resize); node.style.removeProperty('--message-viewport'); };
+  }, [messageFocus]);
   const selected=(to:string,isActive:boolean)=>isActive||(to==='/discover'&&reading)||(to==='/publish'&&composing);
-  const badge=unread>0?<span className="unread-badge" aria-label={unread+' 条未读消息'}>{unread>99?'99+':unread}</span>:null;
+  const badge = unread > 0 ? <span className="unread-badge" aria-label={unread + ' 个未读会话'}>{unread > 99 ? '99+' : unread}</span>
+    : hasNotice ? <span className="message-dot nav-notice-dot" aria-label="有新通知" /> : null;
   const nav = [{ to: '/discover', title: '发现', icon: Grid2X2 }, { to: '/recruitments', title: '招募', icon: Users }, { to: '/publish', title: '发布', icon: Plus }, { to: '/messages', title: '消息', icon: MessageSquare }, { to: '/me', title: '我的', icon: UserRound }];
-  return <><a className="skip-link" href="#main-content" onClick={event => { event.preventDefault(); const main = document.getElementById('main-content'); main?.focus({ preventScroll: true }); main?.scrollIntoView({ block: 'start', behavior: 'instant' }); }}>跳到主要内容</a><div className="app-shell cloud-platform">
+  return <><a className="skip-link" href="#main-content" onClick={event => { event.preventDefault(); const main = document.getElementById('main-content'); main?.focus({ preventScroll: true }); main?.scrollIntoView({ block: 'start', behavior: 'instant' }); }}>跳到主要内容</a><div ref={shell} className={'app-shell cloud-platform' + (inbox ? ' inbox-shell' : '') + (messageFocus ? ' inbox-focus-shell' : '')}>
     <aside className="sidebar"><Link className="brand" to="/discover" aria-label="碰个头首页"><span className="brand-mark">碰</span><span>碰个头<small>Campus Together</small></span></Link><div className="sidebar-line" /><p className="sidebar-note">把喜欢的事，<br />一起做。</p><nav className="desktop-nav" aria-label="桌面主导航">{nav.map(({ to, title, icon: Icon }) => <NavLink to={to} key={to} className={({ isActive }) => 'nav-item' + (selected(to,isActive) ? ' selected' : '')}><Icon size={21} aria-hidden="true" /><span>{title}</span>{to==='/messages'&&badge}<ArrowUpRight size={15} className="nav-arrow" aria-hidden="true" /></NavLink>)}</nav><div className="sidebar-bottom"><p className="sidebar-cloud">好想法，<br />不孤单。</p><Link className="text-button" to="/">返回品牌封面</Link><p>学校与技能均为自述<br />以真实协作，连接彼此。</p></div></aside>
     <div className="workspace"><header className="topbar"><Link className="mobile-brand" to="/" aria-label="碰个头品牌封面"><span className="brand-mark">碰</span><strong>碰个头</strong></Link><div className="school-control"><label htmlFor="browse-school">浏览学校</label><select id="browse-school" value={schoolId} onChange={e => setSchoolId(e.target.value)} disabled={schoolsLoading}>{schoolsLoading && <option>正在加载学校……</option>}{schoolList.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}</select></div><div className="topbar-account"><MotionToggle />{user ? <Link className="account-link" to="/me"><StudentAvatar seed={user.id}/><span>{user.nickname}</span></Link> : <Link className="button compact" to={'/login?next=' + encodeURIComponent(location.pathname + location.search)}>登录 / 注册<ArrowUpRight size={16} /></Link>}</div></header>
     {health.data?.data.appMode === 'DEMO' && <div className="demo-banner"><span>DEMO</span>本地演示环境 · 学校与示例人物均为虚构，新增内容会真实保存。</div>}
     {schoolsError && <div className="inline-error" role="alert">学校加载失败。<button onClick={reloadSchools}>重试</button></div>}
-    <main id="main-content" className={'main-content'+(reading?' reading-mode':composing?' composing-mode':'')} tabIndex={-1}><Outlet /></main><footer className="page-footer">CAMPUS TOGETHER / 从兴趣出发，向行动靠近。</footer></div>
+    <main id="main-content" className={'main-content'+(reading?' reading-mode':composing?' composing-mode':'') + (inbox ? ' inbox-content' : '')} tabIndex={-1}><Outlet /></main><footer className="page-footer">CAMPUS TOGETHER / 从兴趣出发，向行动靠近。</footer></div>
     <NotificationToast summary={summary.data?.data} userId={user?.id} />
     <nav className="mobile-nav" aria-label="手机主导航">{nav.map(({ to, title, icon: Icon }) => <NavLink key={to} to={to} className={({ isActive }) => 'mobile-nav-item' + (selected(to,isActive) ? ' selected' : '')}>{({ isActive }) => <>{selected(to,isActive) && <motion.span className="mobile-nav-indicator" layoutId="mobile-nav" transition={reduce ? { duration: 0 } : { type: 'spring', stiffness: 440, damping: 34 }} />}<Icon size={21} /><span>{title}</span>{to==='/messages'&&badge}</>}</NavLink>)}</nav>
   </div></>;

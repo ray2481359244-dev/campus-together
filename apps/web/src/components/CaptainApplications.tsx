@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useInfiniteQuery, useQueryClient } from '@tanstack/react-query';
-import type { CaptainApplicationDTO, CaptainApplicationsPageDTO, RecruitmentDTO, ReviewApplicationInput } from '@campus/contracts';
+import type { CaptainApplicationDTO, CaptainApplicationsPageDTO, ReviewApplicationInput } from '@campus/contracts';
 import { api, ApiError, messageOf } from '../lib/api';
 import { useAuth } from '../lib/auth';
 import { beijingTime } from '../lib/recruitments';
@@ -9,15 +9,15 @@ import { ErrorState, FormError, Loading } from './UI';
 
 const statusLabels = { PENDING: '待审核', APPROVED: '已批准', REJECTED: '已拒绝', WITHDRAWN: '已撤回', EXPIRED: '已失效' };
 const conditionLabels = { PASS: '通过', FAIL: '不符合', UNKNOWN: '待补充' };
-export function CaptainApplications({ recruitment: r }: { recruitment: RecruitmentDTO }) {
-  const { user } = useAuth(), client = useQueryClient(), teamId = r.team!.id;
+export function CaptainApplications({ teamId, recruitmentId, captainId, compact = false }: { teamId: string; recruitmentId: string; captainId: string; compact?: boolean }) {
+  const { user } = useAuth(), client = useQueryClient();
   const [filter, setFilter] = useState<'PENDING' | 'ALL'>('PENDING');
   const [selected, setSelected] = useState<{ row: CaptainApplicationDTO; decision: ReviewApplicationInput['decision'] } | null>(null);
   const [reason, setReason] = useState(''), [busy, setBusy] = useState(false), [blocked, setBlocked] = useState(false);
   const [uncertain, setUncertain] = useState(false), [error, setError] = useState(''), [notice, setNotice] = useState(''), [evidence, setEvidence] = useState<string[]>([]);
   const pending = useRef<ReviewApplicationInput | null>(null), heading = useRef<HTMLHeadingElement>(null);
   const queryKey = ['team-applications', user?.id, teamId];
-  const result = useInfiniteQuery({ queryKey: [...queryKey, filter], enabled: user?.id === r.team!.captainUserId, initialPageParam: '', retry: false,
+  const result = useInfiniteQuery({ queryKey: [...queryKey, filter], enabled: user?.id === captainId, initialPageParam: '', retry: false,
     queryFn: ({ pageParam, signal }) => api<CaptainApplicationsPageDTO>('/teams/' + teamId + '/applications?' + new URLSearchParams({ status: filter, ...(pageParam ? { cursor: pageParam } : {}) }), { signal }),
     getNextPageParam: last => last.data.nextCursor || undefined });
   useEffect(() => { if (selected) heading.current?.focus(); }, [selected]);
@@ -28,7 +28,7 @@ export function CaptainApplications({ recruitment: r }: { recruitment: Recruitme
   async function refresh() {
     if (busy) return;
     const response = await result.refetch();
-    if (!response.isError) { pending.current = null; setSelected(null); setUncertain(false); setBlocked(false); setError(''); setEvidence([]); await client.invalidateQueries({ queryKey: ['recruitment', r.id] }); }
+    if (!response.isError) { pending.current = null; setSelected(null); setUncertain(false); setBlocked(false); setError(''); setEvidence([]); await client.invalidateQueries({ queryKey: ['recruitment', recruitmentId] }); }
   }
   async function review() {
     if (!selected || busy || blocked || result.isError) return;
@@ -38,7 +38,8 @@ export function CaptainApplications({ recruitment: r }: { recruitment: Recruitme
       const saved = (await api<CaptainApplicationDTO>('/applications/' + selected.row.id + '/review', { method: 'POST', body: pending.current })).data;
       pending.current = null; setUncertain(false); setSelected(null);
       setNotice(saved.status === 'APPROVED' ? '已批准入队，成员与岗位人数已更新，结果通知已保存。' : '已拒绝申请，结果通知已保存。');
-      await Promise.all([client.invalidateQueries({ queryKey }), client.invalidateQueries({ queryKey: ['recruitment', r.id] }), client.invalidateQueries({ queryKey: ['recruitments'] }), client.invalidateQueries({ queryKey: ['my-recruitments'] })]);
+      await Promise.all([client.invalidateQueries({ queryKey }), client.invalidateQueries({ queryKey: ['recruitment', recruitmentId] }), client.invalidateQueries({ queryKey: ['recruitments'] }), client.invalidateQueries({ queryKey: ['my-recruitments'] }),
+        ...['chat-inbox', 'chat-badge', 'chat-pending', 'team'].map(name => client.invalidateQueries({ queryKey: [name] }))]);
     } catch (e) {
       setError(messageOf(e)); setEvidence(e instanceof ApiError ? [...new Set(Object.values(e.fields || {}).flat())] : []);
       if (e instanceof ApiError && ['APPLICATION_CHANGED', 'ELIGIBILITY_NOT_PASSED', 'NOT_FOUND', 'INVALID_INPUT'].includes(e.code)) { pending.current = null; setUncertain(false); setBlocked(true); }
@@ -48,7 +49,7 @@ export function CaptainApplications({ recruitment: r }: { recruitment: Recruitme
   if (result.isPending) return <Loading label="正在读取本队申请……" />;
   if (result.isError && !result.data) return <ErrorState message={messageOf(result.error)} retry={() => void result.refetch()} />;
   const items = result.data?.pages.flatMap(p => p.data.items) || [], locked = busy || !!pending.current;
-  return <section className="application-panel" aria-label="队长申请管理"><h2>处理岗位申请。</h2><Link className="text-button" to={'/teams/' + teamId}>查看队伍与成员管理 →</Link><p className="form-note">仅本队队长可查看申请说明。待审核不占名额；批准时会重新核对资料、时间与岗位余量。</p>
+  return <section className="application-panel" aria-label="队长申请管理"><h2>处理岗位申请</h2>{!compact && <Link className="text-button" to={'/teams/' + teamId}>查看队伍与成员管理 →</Link>}<p className="form-note">待审核申请不占名额。批准时重新核对资料、时间与岗位余量。</p>
     <div className="review-toolbar"><div className="button-row"><button className="button secondary" aria-pressed={filter === 'PENDING'} disabled={locked} onClick={() => setFilter('PENDING')}>待审核（{result.data?.pages[0].data.pendingCount || 0}）</button><button className="button secondary" aria-pressed={filter === 'ALL'} disabled={locked} onClick={() => setFilter('ALL')}>全部申请</button></div><button className="text-button" disabled={busy || result.isFetching} onClick={() => void refresh()}>刷新并核对申请</button></div>
     {result.isError && <ErrorState message={messageOf(result.error)} retry={() => void refresh()} />}
     {notice && <p className="success-notice" role="status">{notice}</p>}

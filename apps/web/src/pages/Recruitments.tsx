@@ -6,7 +6,7 @@ import { useInfiniteQuery, useQuery, useQueryClient } from '@tanstack/react-quer
 import type { RecruitmentDTO, TopicDTO } from '@campus/contracts';
 import { ArrowUpRight, Clock3, Plus, Users, FileText } from 'lucide-react';
 import { api, messageOf } from '../lib/api';
-import { beijingTime } from '../lib/recruitments';
+import { beijingTime, scheduleLabel } from '../lib/recruitments';
 import { useAuth } from '../lib/auth';
 import { useSchool } from '../components/Layout';
 import { PageTitle, Loading, ErrorState, EmptyState, FormError } from '../components/UI';
@@ -14,7 +14,16 @@ import { MyApplications } from '../components/ApplicationPanel';
 import { MyRecruitments } from '../components/MyRecruitments';
 
 export function RecruitmentCard({ value }: { value: RecruitmentDTO }) {
-  return <Link className="post-card recruitment-card" to={'/recruitments/' + value.id}><div className="post-card-top"><span className={'topic-badge cat-' + value.category}>{value.topic?.name || '竞赛招募'}</span><span className="metadata">{value.team?.acceptingStatus === 'CLOSED' ? '招募已停止' : value.team?.acceptingStatus === 'FULL' ? '当前已满' : '公开招募'}</span></div><h3>{value.title}</h3><p className="post-excerpt">{value.draft.goal} · {value.draft.game?.server || value.draft.study?.subject || value.draft.outdoor?.activity || value.draft.competitionName} · {value.draft.joinMode === 'AUTO' ? '直接加入' : '申请审核'}</p><div className="recruitment-meta"><span><Users size={16} />{value.team?.memberCount || 0} / {value.draft.capacity} 人（含队长）</span><span><Clock3 size={16} />{value.draft.mode === 'ONLINE' ? '线上协作' : value.draft.locationPublic}</span></div><p className="field-note">截止 {beijingTime(value.draft.joinDeadline || value.draft.startAt)}（北京时间）</p><div className="post-card-footer"><span>{value.author.nickname} · 岗位与时间已说明</span><ArrowUpRight size={20} /></div></Link>;
+  const draft = value.draft, deadline = value.joinClosesAt || draft.joinDeadline || draft.startAt;
+  const blurb = draft.goal || draft.game?.playMode || draft.study?.subject || draft.outdoor?.activity || draft.competitionName;
+  return <Link className="post-card recruitment-card" to={'/recruitments/' + value.id}>
+    <div className="post-card-top"><span className={'topic-badge cat-' + value.category}>{value.topic?.name || categoryInfo[value.category].name}</span>
+      <span className="metadata">{value.team?.acceptingStatus === 'CLOSED' ? '招募已停止' : value.team?.acceptingStatus === 'FULL' ? '当前已满' : '公开招募'}</span></div>
+    <h3>{value.title}</h3><p className="post-excerpt">{[blurb, draft.joinMode === 'AUTO' ? '直接加入' : '发起人确认'].filter(Boolean).join(' · ')}</p>
+    <div className="recruitment-meta"><span><Users size={16} />{value.team?.memberCount || 0} / {draft.capacity} 人（含队长）</span><span><Clock3 size={16} />{draft.mode === 'ONLINE' ? '线上协作' : draft.locationPublic}</span></div>
+    <p className="field-note">{deadline ? '招募截止 ' + beijingTime(deadline) + '（北京时间）' : scheduleLabel(draft)}</p>
+    <div className="post-card-footer"><span>{value.author.nickname}</span><ArrowUpRight size={20} /></div>
+  </Link>;
 }
 function MyDrafts() {
   const { user } = useAuth(), client = useQueryClient();

@@ -57,6 +57,10 @@ test('an author converts a discussion, resumes a draft and safely retries a comm
     await expect(b.getByLabel('招募标题', { exact: true })).toHaveCount(0);
     await b.goto('/recruitments');
     await expect(b.locator('.recruitment-grid')).toHaveCount(0);
+    await a.getByRole('combobox', { name: '时间安排', exact: true }).selectOption('FIXED');
+    await a.getByText('更多安排与要求', { exact: true }).click();
+    await a.getByLabel('细分岗位', { exact: true }).check();
+    await a.getByLabel('岗位技能为必要条件', { exact: true }).check();
     await a.getByLabel('比赛名称', { exact: true }).fill('校园应用创新赛');
     await a.getByLabel('项目方向', { exact: true }).fill('校园兴趣社区与协作');
     await a.getByLabel('本次目标', { exact: true }).fill('完成可以演示的作品');
@@ -69,10 +73,11 @@ test('an author converts a discussion, resumes a draft and safely retries a comm
     await a.getByLabel('岗位 2 所需技能', { exact: true }).pressSequentially(',');
     await expect(a.getByLabel('岗位 2 所需技能', { exact: true })).toHaveValue('React,');
     await a.getByLabel('岗位 2 所需技能', { exact: true }).pressSequentially('design');
-    await a.getByLabel('队伍总人数（含队长）', { exact: true }).fill('4');
+    await a.getByLabel('再找几位', { exact: true }).fill('3');
     await a.getByRole('button', { name: '预览并发布', exact: true }).click();
     await expect(a.getByRole('alert')).toContainText('岗位人数之和必须等于总人数');
-    await a.getByLabel('队伍总人数（含队长）', { exact: true }).fill('3');
+    await a.getByLabel('岗位 2 人数', { exact: true }).fill('2');
+    await a.getByLabel('再找几位', { exact: true }).fill('2');
     await a.setViewportSize({ width: 320, height: 1000 }); await noOverflow(a);
     await a.screenshot({ path: '.local/screenshots/recruitment-form-320.png', fullPage: true });
     await a.setViewportSize({ width: 390, height: 1000 });
@@ -92,7 +97,7 @@ test('an author converts a discussion, resumes a draft and safely retries a comm
     await a.getByRole('button', { name: '确认发布招募', exact: true }).click();
     await expect(a.getByRole('alert')).toContainText('验证用响应丢失');
     await expect(a.getByRole('heading', { name: '确认这份招募。' })).toBeVisible();
-    await a.getByRole('button', { name: '确认发布招募', exact: true }).click();
+    await a.getByRole('button', { name: '核对发布结果', exact: true }).click();
     await expect(a).toHaveURL(new RegExp('/recruitments/' + id + '$'));
     const publishedRead = staleEditor.waitForResponse(r => r.url().endsWith('/api/v1/recruitments/' + id) && r.request().method() === 'GET');
     await staleEditor.bringToFront();
@@ -110,9 +115,8 @@ test('an author converts a discussion, resumes a draft and safely retries a comm
     await a.screenshot({ path: '.local/screenshots/recruitment-detail-390.png', fullPage: true });
     await b.goto(a.url()); await expect(b.getByRole('heading', { name: title, exact: true })).toBeVisible();
     await expect(b.getByRole('link', { name: /继续编辑/ })).toHaveCount(0);
-    await expect(b.getByRole('button', { name: /加入|群聊/ })).toHaveCount(0);
-    await expect(b.getByRole('button', { name: '提交岗位申请', exact: true })).toBeDisabled();
-    await expect(b.getByRole('button', { name: '核对申请条件', exact: true })).toBeEnabled();
+    await expect(b.getByRole('link', { name: '打开队伍群', exact: true })).toHaveCount(0);
+    await expect(b.getByRole('button', { name: '申请加入', exact: true })).toBeEnabled();
     await noOverflow(b); await b.screenshot({ path: '.local/screenshots/recruitment-detail-1440.png', fullPage: true });
     await b.goto('/recruitments');
     await expect(b.locator('.recruitment-grid')).toContainText(title);

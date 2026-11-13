@@ -15,7 +15,7 @@ export type EligibilityInput = z.infer<typeof EligibilityInputSchema>;
 export type ConditionStatus = 'PASS' | 'FAIL' | 'UNKNOWN';
 export interface EligibilityDTO {
   ruleVersion: 'competition-application-v1' | 'competition-application-v2' | 'scene-application-v1'; assessedAt: string; status: ConditionStatus;
-  checks: { code: string; label: string; status: ConditionStatus; reason: string }[];
+  checks: { code: string; label: string; status: ConditionStatus; reason: string; blocking?: false }[];
 }
 export interface ApplicationDTO {
   id: string; teamId: string; recruitmentId: string; recruitmentTitle: string; slotId: string; slotName: string;
@@ -33,8 +33,9 @@ export interface CaptainApplicationDTO extends ApplicationDTO {
 export interface CaptainApplicationsPageDTO { items: CaptainApplicationDTO[]; nextCursor: string | null; pendingCount: number }
 export interface NotificationDTO {
   id: string; applicationId: string | null; teamId: string | null; recruitmentId: string | null; recruitmentTitle: string; slotName: string;
+  chatAvailable?: boolean;
   postId?: string; postTitle?: string; commentId?: string | null; postAvailable?: boolean; likes?: number; notificationsMuted?: boolean;
   kind: 'POST_COMMENT' | 'POST_REPLY' | 'POST_LIKED' | 'APPLICATION_SUBMITTED' | 'MEMBER_JOINED' | 'TOPIC_APPROVED' | 'TOPIC_REJECTED' | 'REPORT_RESOLVED' | 'APPLICATION_APPROVED' | 'APPLICATION_REJECTED' | 'MEMBER_LEFT' | 'MEMBER_REMOVED' | 'RECRUITMENT_CLOSED' | 'CAPTAIN_TRANSFERRED' | 'TEAM_STARTED' | 'TEAM_COMPLETED' | 'TEAM_CANCELLED' | 'APPLICATION_EXPIRED' | 'TEAM_EXPIRED'; reason: string; createdAt: string; readAt: string | null;
 }
-export interface NotificationSummaryDTO { unreadCount: number; latest: NotificationDTO | null }
+export interface NotificationSummaryDTO { unreadCount: number; activityUnreadCount?: number; latest: NotificationDTO | null }
 export interface NotificationsPageDTO { items: NotificationDTO[]; nextCursor: string | null; unreadCount: number }

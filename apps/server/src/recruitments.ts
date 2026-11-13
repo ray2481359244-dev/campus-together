@@ -9,6 +9,7 @@ import { csrfGuard, requireUser, writeLimit } from './auth.js';
 import { parse, ApiError } from './http.js';
 import { userInclude } from './dto.js';
 import { acceptingStatus } from './team-rules.js';
+import { signalChats, signalTeamChat } from './chat-events.js';
 import type { Prisma } from './generated/prisma/client.js';
 
 const include = { school: true, topic: true, sourcePost: { select: { status: true } }, author: { include: userInclude }, team: { include: { slots: { orderBy: { position: 'asc' as const } }, members: { where: { status: 'ACTIVE' as const }, select: { userId: true, slotId: true, role: true } } } } } as const;
@@ -21,6 +22,7 @@ function dto(row: Record, userId?: string): RecruitmentDTO {
     author: { id: row.authorId, nickname: row.author.profile?.nickname || '校园用户' },
     canEditDraft: row.publicationStatus === 'DRAFT' && row.authorId === userId, sourceAvailable: row.sourcePost?.status === 'PUBLISHED',
     createdAt: row.createdAt.toISOString(), updatedAt: row.updatedAt.toISOString(), publishedAt: row.publishedAt?.toISOString() ?? null,
+    joinClosesAt: row.joinDeadline?.toISOString() ?? null,
     draft, team: row.team ? { id: row.team.id, status: row.team.status, closedAt: row.team.recruitmentClosedAt?.toISOString() ?? null, memberCount: row.team.members.length, capacity: row.capacity,
       captainUserId: row.team.captainUserId, acceptingStatus: acceptingStatus(row.team.status, row.joinDeadline, row.team.members.length, row.capacity, row.team.recruitmentClosedAt), chatAvailable: true,
       slots: row.team.slots.map(s => ({ id: s.id, name: s.name, capacity: s.capacity, requiredSkills: s.requiredSkills, occupied: row.team!.members.filter(m => m.slotId === s.id).length })),
@@ -145,8 +147,13 @@ recruitmentsRouter.post('/recruitments/:id/publish', async (req, res) => {
     const draft = parse(PublishableRecruitmentSchema, current.payload);
     const schoolId = await references(tx, user.id, draft, true);
     if (schoolId !== current.schoolId) throw new ApiError(422, 'SCHOOL_CHANGED', '你的学校资料已有变化，请重新保存草稿再发布。');
-    const deadline = new Date(draft.joinDeadline || draft.startAt!);
-    if (deadline <= new Date() || (draft.category === 'COMPETITION' && new Date(draft.competitionDeadline!) <= new Date())) throw new ApiError(422, 'INVALID_TIME', '招募截止与比赛截止须晚于现在，请修改后发布。');
+    const now = new Date();
+    const startAt = draft.startAt ? new Date(draft.startAt) : null;
+    const endAt = draft.endAt ? new Date(draft.endAt) : null;
+    const competitionDeadline = draft.category === 'COMPETITION' && draft.competitionDeadline ? Date.parse(draft.competitionDeadline) : Infinity;
+    const deadline = draft.joinDeadline ? new Date(draft.joinDeadline)
+      : new Date(Math.min(startAt?.getTime() ?? now.getTime() + 7 * 86400_000, competitionDeadline));
+    if (deadline <= now || competitionDeadline <= now.getTime()) throw new ApiError(422, 'INVALID_TIME', '招募截止与比赛截止须晚于现在，请修改后发布。');
     const team = await tx.team.create({ data: { recruitmentId: id, captainUserId: user.id } });
     let captainSlotId = '';
     for (const [position, slot] of draft.slots.entries()) {
@@ -156,21 +163,23 @@ recruitmentsRouter.post('/recruitments/:id/publish', async (req, res) => {
     await tx.teamMember.create({ data: { teamId: team.id, userId: user.id, slotId: captainSlotId, role: 'CAPTAIN' } });
     await tx.chatSpace.create({ data: { teamId: team.id } });
     await tx.domainEvent.create({ data: { teamId: team.id, actorId: user.id, kind: 'TEAM_CREATED', payload: { recruitmentId: id, capacity: draft.capacity, captainSlotId } } });
-    const row = await tx.recruitment.update({ where: { id }, data: { publicationStatus: 'PUBLISHED', publishedAt: new Date(), startAt: new Date(draft.startAt!), endAt: new Date(draft.endAt!), joinDeadline: deadline, revision: { increment: 1 } }, include });
+    const row = await tx.recruitment.update({ where: { id }, data: { publicationStatus: 'PUBLISHED', publishedAt: now, startAt, endAt, joinDeadline: deadline, revision: { increment: 1 } }, include });
     return { row, created: true };
   }, { maxWait: 5000, timeout: 10000 });
+  signalChats([user.id]);
   res.status(result.created ? 201 : 200).json({ data: dto(result.row, user.id) });
 });
 
 recruitmentsRouter.patch('/recruitments/:id/text', async (req, res) => {
   const user = requireUser(res), id = parse(IdSchema, req.params.id);
-  const input = parse(z.object({ revision: z.number().int().positive(), title: z.string().trim().min(5).max(60), description: z.string().trim().min(20).max(3000) }).strict(), req.body);
+  const input = parse(z.object({ revision: z.number().int().positive(), title: z.string().trim().min(3).max(60), description: z.string().trim().max(3000) }).strict(), req.body);
   const row = await db.$transaction(async tx => {
     await activeUser(tx,user.id);
     const current = await ownedLocked(tx, id, user.id);
     if (current.publicationStatus !== 'PUBLISHED' || current.revision !== input.revision) throw new ApiError(409, 'REVISION_CONFLICT', '内容状态已有变化，请重新核对。');
-    const payload = { ...RecruitmentDraftSchema.parse(current.payload), title: input.title, description: input.description };
+    const payload = parse(PublishableRecruitmentSchema, { ...RecruitmentDraftSchema.parse(current.payload), title: input.title, description: input.description });
     return tx.recruitment.update({ where: { id }, data: { title: input.title, description: input.description, payload, revision: { increment: 1 } }, include });
   });
+  if (row.team) signalTeamChat(row.team.id);
   res.json({ data: dto(row, user.id) });
 });

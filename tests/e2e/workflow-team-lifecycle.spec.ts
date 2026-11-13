@@ -70,7 +70,7 @@ test('captain transfer survives lost responses, new captain starts and completes
     await formB.getByLabel('操作说明', { exact: true }).fill('两名成员确认开始本次活动。'); await formB.getByRole('button', { name: '确认开始活动', exact: true }).click();
     await expect(detailB).toContainText('活动进行中'); await expect(detailB.getByRole('button', { name: '关闭招募', exact: true })).toHaveCount(0);
     expect((await (await c.request.get('/api/v1/me/applications?teamId=' + r.team.id)).json()).data[0]).toMatchObject({ id: pending.id, status: 'EXPIRED' });
-    await c.goto('/messages'); await expect(c.locator('.notification-card').filter({ hasText: r.title })).toContainText('本次待审申请已失效');
+    await c.goto('/messages?view=notifications&tab=activity'); await expect(c.locator('.notification-card').filter({ hasText: r.title })).toContainText('本次待审申请已失效');
     await detailB.getByRole('button', { name: '结束活动', exact: true }).click(); await formB.getByLabel('操作说明', { exact: true }).fill('本轮任务已完成，保留队伍记录。');
     await b.route('**/api/v1/teams/' + r.team.id + '/actions', async route => { const response = await route.fetch(); expect(response.status()).toBe(200); await route.fulfill({ status: 503, contentType: 'application/json', body: JSON.stringify({ error: { code: 'TEST_COMPLETE_LOST', message: '验证用结束响应丢失' } }) }); }, { times: 1 });
     await formB.getByRole('button', { name: '确认结束活动', exact: true }).click(); await expect(formB.getByRole('alert')).toContainText('验证用结束响应丢失');
@@ -80,12 +80,12 @@ test('captain transfer survives lost responses, new captain starts and completes
       for (const name of ['转交队长', '退出队伍', '移除成员', '开始活动', '结束活动', '取消活动', '关闭招募']) await expect(detail.getByRole('button', { name, exact: true })).toHaveCount(0);
     }
     for (const width of [320, 390, 768, 1440]) { await b.setViewportSize({ width, height: 1000 }); expect(await b.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(width + 1); await detailB.screenshot({ path: `.local/screenshots/i004-completed-${width}.png` }); }
-    await b.goto('/messages'); const completion = b.locator('.notification-card').filter({ hasText: r.title }).filter({ hasText: '活动已结束' });
+    await b.goto('/messages?view=notifications&tab=activity'); const completion = b.locator('.notification-card').filter({ hasText: r.title }).filter({ hasText: '活动已结束' });
     await completion.getByRole('button', { name: '标为已读', exact: true }).click(); await expect(completion).toContainText('已读');
     const next = await createTeam('活动取消浏览器验收'); await apply(b, mb, next); await a.goto('/teams/' + next.team.id);
     await detailA.getByRole('button', { name: '取消活动', exact: true }).click(); await formA.getByLabel('操作说明', { exact: true }).fill('安排有变，本轮取消，之后重新发起。'); await formA.getByRole('button', { name: '确认取消活动', exact: true }).click();
     await expect(detailA).toContainText('活动已取消 · 队伍信息只读'); await a.reload(); await expect(detailA).toContainText('活动已取消 · 队伍信息只读');
-    await b.goto('/messages'); await expect(b.locator('.notification-card').filter({ hasText: next.title })).toContainText('本次待审申请已失效');
+    await b.goto('/messages?view=notifications&tab=activity'); await expect(b.locator('.notification-card').filter({ hasText: next.title })).toContainText('本次待审申请已失效');
     expect(errors).toEqual([]);
   } catch (error) { primaryFailure = error; throw error; }
   finally {

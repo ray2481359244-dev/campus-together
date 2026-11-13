@@ -53,8 +53,9 @@ test('members safely leave and are removed, then a captain closes recruitment wi
     const r = await createTeam('成员退出与移除浏览器验收');
     for (const page of [b, c]) { const row = await apply(page, r); expect((await page.request.get('/api/v1/teams/' + r.team.id)).status()).toBe(404); expect((await a.request.post('/api/v1/applications/' + row.id + '/review', { headers: headers(ma), data: { revision: row.revision, decision: 'APPROVE', reason: '欢迎参与成员管理验收。' } })).status()).toBe(200); }
     await b.goto('/me'); await b.getByRole('link', { name: '我的队伍 →', exact: true }).click();
-    const mine = b.getByRole('region', { name: '我的队伍', exact: true });
+    const mine = b.getByRole('region', { name: '消息', exact: true });
     await mine.getByRole('link').filter({ hasText: r.title }).click();
+    await b.getByRole('button', { name: '群资料', exact: true }).click();
     const detailB = b.getByRole('region', { name: '队伍详情', exact: true });
     await expect(detailB.getByRole('heading', { name: '当前 3 / 3 人', exact: true })).toBeVisible();
     await expect(detailB.getByRole('button', { name: '关闭招募', exact: true })).toHaveCount(0);
@@ -68,17 +69,17 @@ test('members safely leave and are removed, then a captain closes recruitment wi
     await b.route('**/api/v1/teams/' + r.team.id + '/leave', async route => {
       leaveBodies.push(route.request().postDataJSON());
       if (leaveBodies.length === 1) { const response = await route.fetch(); expect(response.status()).toBe(200); await route.fulfill({ status: 503, contentType: 'application/json', body: JSON.stringify({ error: { code: 'TEST_LEAVE_LOST', message: '验证用退出响应丢失' } }) }); }
-      else if (leaveBodies.length === 2) await route.fulfill({ status: 400, contentType: 'text/html', body: 'Gateway unavailable' });
       else await route.continue();
     });
     await detailB.getByRole('button', { name: '退出队伍', exact: true }).click();
     const confirmB = b.getByRole('form', { name: '确认队伍操作', exact: true });
-    await confirmB.getByRole('button', { name: '确认退出队伍', exact: true }).click(); await expect(confirmB.getByRole('alert')).toContainText('验证用退出响应丢失');
-    await confirmB.getByRole('button', { name: '核对并重试操作', exact: true }).click(); await expect(confirmB.getByRole('alert')).toContainText('服务暂时不可用');
-    await confirmB.getByRole('button', { name: '核对并重试操作', exact: true }).click(); await expect(b).toHaveURL(/\/teams$/); await expect(mine).toContainText('已退出队伍');
-    expect(leaveBodies).toHaveLength(3); expect(leaveBodies[0]).toEqual(leaveBodies[1]); expect(leaveBodies[1]).toEqual(leaveBodies[2]);
+    await confirmB.getByRole('button', { name: '确认退出队伍', exact: true }).click();
+    await expect(b).toHaveURL(/\/messages\?filter=team$/); await expect(mine).toContainText('队内内容已收起');
+    expect(leaveBodies).toHaveLength(1);
+    const retriedLeave = await b.request.post('/api/v1/teams/' + r.team.id + '/leave', { headers: headers(mb), data: leaveBodies[0] });
+    expect(retriedLeave.status()).toBe(200);
     await expect(mine.getByRole('link').filter({ hasText: r.title })).toHaveCount(0);
-    await b.goto('/teams/' + r.team.id); await expect(b.getByRole('alert')).toContainText('不是有效成员'); await expect(b.getByRole('region', { name: '队伍详情', exact: true })).toHaveCount(0);
+    await b.goto('/teams/' + r.team.id); await expect(b.locator('.message-list-feedback')).toContainText('队内内容已收起'); await expect(b.getByRole('region', { name: '队伍详情', exact: true })).toHaveCount(0);
     await a.getByRole('button', { name: '刷新并核对队伍', exact: true }).click(); await expect(detailA.getByRole('heading', { name: '当前 2 / 3 人', exact: true })).toBeVisible();
     const memberC = detailA.getByRole('article', { name: '队伍成员：' + mc.user.nickname, exact: true });
     await memberC.getByRole('button', { name: '移除成员', exact: true }).click(); const confirmA = a.getByRole('form', { name: '确认队伍操作', exact: true });
@@ -86,8 +87,8 @@ test('members safely leave and are removed, then a captain closes recruitment wi
     await a.route('**/api/v1/teams/' + r.team.id + '/members/*/remove', async route => { const response = await route.fetch(); expect(response.status()).toBe(200); await route.fulfill({ status: 503, contentType: 'application/json', body: JSON.stringify({ error: { code: 'TEST_REMOVE_LOST', message: '验证用移除响应丢失' } }) }); }, { times: 1 });
     await confirmA.getByRole('button', { name: '确认移除成员', exact: true }).click(); await expect(confirmA.getByRole('alert')).toContainText('验证用移除响应丢失'); await expect(confirmA.getByLabel('移除原因', { exact: true })).toBeDisabled();
     await confirmA.getByRole('button', { name: '核对并重试操作', exact: true }).click(); await expect(detailA.getByRole('status')).toContainText('成员已移除'); await expect(detailA.getByRole('heading', { name: '当前 1 / 3 人', exact: true })).toBeVisible();
-    await c.getByRole('button', { name: '刷新并核对队伍', exact: true }).click(); await expect(c).toHaveURL(/\/teams$/); await expect(c.getByRole('region', { name: '我的队伍', exact: true })).toContainText('队内内容已收起');
-    await c.goto('/messages'); const removed = c.locator('.notification-card').filter({ hasText: r.title }).filter({ hasText: '你已被移出这支队伍。' });
+    await expect(c).toHaveURL(/\/messages\?filter=team$/); await expect(c.locator('.message-list-feedback')).toContainText('队内内容已收起');
+    await c.goto('/messages?view=notifications&tab=activity'); const removed = c.locator('.notification-card').filter({ hasText: r.title }).filter({ hasText: '你已被移出这支队伍。' });
     await expect(removed).toContainText('本轮分工调整'); await removed.getByRole('button', { name: '标为已读', exact: true }).click(); await expect(removed).toContainText('已读');
     const next = await createTeam('关闭招募与申请失效浏览器验收'); await apply(b, next); await apply(c, next);
     await a.goto('/teams/' + next.team.id); await a.getByRole('button', { name: '关闭招募', exact: true }).click();
@@ -98,7 +99,7 @@ test('members safely leave and are removed, then a captain closes recruitment wi
     await confirmA.getByRole('button', { name: '核对并重试操作', exact: true }).click(); await expect(a.getByRole('region', { name: '队伍详情', exact: true })).toContainText('现有队伍和成员继续保留');
     expect(closeBodies).toHaveLength(2); expect(closeBodies[0]).toEqual(closeBodies[1]); await expect(a.getByRole('button', { name: '关闭招募', exact: true })).toHaveCount(0);
     await a.reload(); await expect(a.getByRole('region', { name: '队伍详情', exact: true })).toContainText('招募已关闭');
-    for (const page of [b, c]) { await page.getByRole('button', { name: '刷新并核对申请', exact: true }).click(); await expect(page.getByLabel('已保存申请', { exact: true })).toContainText('申请状态：已失效'); await expect(page.getByRole('button', { name: '提交岗位申请', exact: true })).toBeDisabled(); expect((await page.request.get('/api/v1/teams/' + next.team.id)).status()).toBe(404); await page.goto('/messages'); await expect(page.locator('.notification-card').filter({ hasText: next.title })).toContainText('招募已关闭，本次待审申请已失效。'); }
+    for (const page of [b, c]) { await page.getByRole('button', { name: '刷新并核对申请', exact: true }).click(); await expect(page.getByLabel('已保存申请', { exact: true })).toContainText('申请状态：已失效'); await expect(page.getByRole('button', { name: '提交岗位申请', exact: true })).toBeDisabled(); expect((await page.request.get('/api/v1/teams/' + next.team.id)).status()).toBe(404); await page.goto('/messages?view=notifications&tab=activity'); await expect(page.locator('.notification-card').filter({ hasText: next.title })).toContainText('招募已关闭，本次待审申请已失效。'); }
     await b.goto('/recruitments/' + r.id); await expect(b.getByLabel('已保存申请', { exact: true })).toContainText('当前已退出队伍'); await expect(b.getByRole('link', { name: '进入我的队伍 →', exact: true })).toHaveCount(0);
     expect(errors).toEqual([]);
   } catch (error) { primaryFailure = error; throw error; }

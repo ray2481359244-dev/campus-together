@@ -24,6 +24,7 @@ const create = (draft = valid(), key = randomUUID()) => write(a, csrfA, 'post', 
 const publish = (id: string, revision = 1) => write(a, csrfA, 'post', `/api/v1/recruitments/${id}/publish`, { revision });
 beforeAll(async () => {
   if (!new URL(config.databaseUrl!).pathname.endsWith('_test')) throw new Error('Not a test database');
+  await db.conversation.deleteMany(); await db.chatImage.deleteMany();
   await db.recruitment.deleteMany(); await db.session.deleteMany(); await db.post.deleteMany(); await db.profile.deleteMany(); await db.user.deleteMany(); await db.topic.deleteMany(); await db.school.deleteMany();
   await db.school.createMany({ data: [{ id: schoolA, name: '招募测试甲校', city: '测试' }, { id: schoolB, name: '招募测试乙校', city: '测试' }] });
   topicId = (await db.topic.create({ data: { category: 'COMPETITION', name: '应用开发', normalizedName: '应用开发' } })).id;
@@ -77,6 +78,28 @@ describe('real recruitment drafts and transactional publication', () => {
       await publish(id).expect(400);
       expect(await db.team.count({ where: { recruitmentId: id } })).toBe(0);
       expect((await db.recruitment.findUniqueOrThrow({ where: { id } })).publicationStatus).toBe('DRAFT');
+    }
+  });
+  it('publishes minimal plans in all four categories and stores a real closing time', async () => {
+    const gameTopic = await db.topic.create({ data: { category: 'GAME', name: '开黑', normalizedName: '开黑' } });
+    const outdoorTopic = await db.topic.create({ data: { category: 'OUTDOOR', name: '校园步行', normalizedName: '校园步行' } });
+    const cases = [
+      { category: 'COMPETITION', topicId, plan: { schedule: 'FLEXIBLE' } },
+      { category: 'GAME', topicId: gameTopic.id, plan: { schedule: 'RECURRING' }, game: { server: '', platform: 'ANY', playMode: '' } },
+      { category: 'STUDY', topicId: wrongTopic, plan: { schedule: 'FIXED' }, startAt: at(24),
+        study: { subject: '', method: 'SELF', methodRequired: false, frequency: '', level: '' } },
+      { category: 'OUTDOOR', topicId: outdoorTopic.id, plan: { schedule: 'FLEXIBLE' }, mode: 'OFFLINE', locationPublic: '学校东区',
+        outdoor: { activity: '', region: '学校东区', budget: 0, distance: '', intensity: 'LOW', experience: '', equipment: '' } },
+    ];
+    for (const entry of cases) {
+      const captain = randomUUID();
+      const draft = RecruitmentDraftSchema.parse({ ...entry, title: '一起做', capacity: 2, weeklyHours: null,
+        slots: [{ key: captain, name: '成员', capacity: 2 }], captainSlotKey: captain });
+      const saved = (await create(draft).expect(201)).body.data;
+      const result: RecruitmentDTO = (await publish(saved.id).expect(201)).body.data;
+      expect(result.team?.memberCount).toBe(1);
+      expect(result.draft.endAt).toBeNull();
+      expect(Date.parse(result.joinClosesAt!)).toBeGreaterThan(Date.now());
     }
   });
   it('validates source ownership and records an actual discussion link', async () => {

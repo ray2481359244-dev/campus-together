@@ -12,11 +12,14 @@ export async function purgeTeamChat(teamId: string) {
     const team=await tx.team.findUniqueOrThrow({where:{id:teamId},include:{chatSpace:true}}),now=await databaseNow(tx);
     if(!terminal(team.status)||!team.archiveUntil||team.archiveUntil>now||!team.chatSpace||team.chatSpace.purgedAt)return false;
     await tx.chatMessage.updateMany({where:{teamId},data:{body:null,bodyHash:null,deletedAt:now,nickname:'已归档'}});
+    await tx.chatImage.deleteMany({ where: { scope: 'TEAM', roomId: teamId } });
     await tx.chatSpace.update({where:{teamId},data:{announcement:'',announcementRevision:{increment:1},purgedAt:now}});
     await tx.domainEvent.create({data:{teamId,kind:'CHAT_ARCHIVE_PURGED',payload:{archiveUntil:team.archiveUntil.toISOString()},createdAt:now}});return true;
   },{maxWait:5000,timeout:10000});
 }
 export async function purgeExpiredChats(batchSize=100){
   const rows=await db.$queryRaw<{id:string}[]>`SELECT t."id" FROM "Team" t JOIN "ChatSpace" s ON s."teamId"=t."id" WHERE t."status" IN ('COMPLETED','CANCELLED','EXPIRED') AND t."archiveUntil"<=clock_timestamp() AND s."purgedAt" IS NULL ORDER BY t."archiveUntil",t."id" LIMIT ${batchSize}`;
-  let purged=0,failed=0;for(const row of rows){try{if(await purgeTeamChat(row.id))purged++;}catch{failed++;console.error('One archive cleanup failed; later scans will retry.');}}return{scanned:rows.length,purged,failed};
+  let purged=0,failed=0;for(const row of rows){try{if(await purgeTeamChat(row.id))purged++;}catch{failed++;console.error('One archive cleanup failed; later scans will retry.');}}
+  await db.chatImage.deleteMany({ where: { teamMessage: null, socialMessage: null, createdAt: { lt: new Date(Date.now() - 86_400_000) } } });
+  return{scanned:rows.length,purged,failed};
 }

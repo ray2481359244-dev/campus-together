@@ -13,8 +13,8 @@ test('deadline fallback persists expiry and notifies members and pending applica
     await database.query('UPDATE "Recruitment" SET "joinDeadline"=clock_timestamp()-interval \'1 second\' WHERE "id"=$1', [r.id]);
     await a.goto('/teams/' + r.team.id); await expect(a.getByRole('region', { name: '队伍详情', exact: true })).toContainText('已截止，未开始 · 队伍信息只读');
     await expect(a.getByRole('button', { name: '开始活动', exact: true })).toHaveCount(0);
-    await b.goto('/messages'); await expect(b.locator('.notification-card').filter({ hasText: r.title }).filter({ hasText: '队伍已自动到期' })).toHaveCount(1);
-    await c.goto('/messages'); await expect(c.locator('.notification-card').filter({ hasText: r.title })).toContainText('待审申请已失效');
+    await b.goto('/messages?view=notifications&tab=activity'); await expect(b.locator('.notification-card').filter({ hasText: r.title }).filter({ hasText: '队伍已自动到期' })).toHaveCount(1);
+    await c.goto('/messages?view=notifications&tab=activity'); await expect(c.locator('.notification-card').filter({ hasText: r.title })).toContainText('待审申请已失效');
     await a.reload(); expect((await database.query('SELECT count(*)::int AS n FROM "TeamAction" WHERE "teamId"=$1 AND "kind"=\'EXPIRE\'', [r.team.id])).rows[0].n).toBe(1);
   } finally { await database.end(); await f.close(); }
 });

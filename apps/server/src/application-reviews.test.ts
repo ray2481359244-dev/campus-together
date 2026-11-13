@@ -25,6 +25,7 @@ const review = (id: string, revision = 1, decision = 'APPROVE', reason = '欢迎
 const list = (teamId: string) => a.get('/api/v1/teams/' + teamId + '/applications');
 beforeAll(async () => {
   if (!new URL(config.databaseUrl!).pathname.endsWith('_test')) throw new Error('Not a test database');
+  await db.conversation.deleteMany(); await db.chatImage.deleteMany();
   await db.recruitment.deleteMany(); await db.session.deleteMany(); await db.post.deleteMany(); await db.profile.deleteMany(); await db.user.deleteMany(); await db.topic.deleteMany(); await db.school.deleteMany();
   await db.school.createMany({ data: [{ id: school, name: '审核甲校', city: '测试' }, { id: otherSchool, name: '审核乙校', city: '测试' }] });
   topicId = (await db.topic.create({ data: { category: 'COMPETITION', name: '应用开发', normalizedName: '应用开发' } })).id;

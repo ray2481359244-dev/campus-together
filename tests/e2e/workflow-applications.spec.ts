@@ -57,7 +57,7 @@ test('applicants check evidence, recover uncertain submissions, find saved inten
     await b.getByRole('link', { name: '补充我的真实资料 →', exact: true }).click();
     await b.getByLabel('自述技能', { exact: true }).fill(r.team.slots[1].requiredSkills.join('，'));
     await b.getByRole('button', { name: '保存资料', exact: true }).click();
-    await expect(b.getByRole('status')).toContainText('资料已保存');
+    await expect(b.getByRole('status').filter({ hasText: '资料已保存' })).toBeVisible();
     await b.goto(path);
     await b.getByLabel('申请岗位', { exact: true }).selectOption(r.team.slots[1].id);
     await b.getByLabel('本次时间确认', { exact: true }).selectOption('yes');
