@@ -50,7 +50,7 @@ test('captain transfer survives lost responses, new captain starts and completes
     const detailA = a.getByRole('region', { name: '队伍详情', exact: true }), detailB = b.getByRole('region', { name: '队伍详情', exact: true });
     const formA = a.getByRole('form', { name: '确认队伍操作', exact: true }), formB = b.getByRole('form', { name: '确认队伍操作', exact: true });
     await detailA.getByRole('article', { name: '队伍成员：' + mb.user.nickname, exact: true }).getByRole('button', { name: '转交队长', exact: true }).click();
-    await expect(formA).toContainText('双方岗位不变'); await formA.getByLabel('操作说明', { exact: true }).fill('交由协作成员接任本轮负责人。');
+    await expect(formA).toContainText('双方原有安排保持不变'); await formA.getByLabel('操作说明', { exact: true }).fill('交由协作成员接任本轮负责人。');
     const bodies: unknown[] = [];
     await a.route('**/api/v1/teams/' + r.team.id + '/actions', async route => {
       bodies.push(route.request().postDataJSON());
@@ -60,11 +60,11 @@ test('captain transfer survives lost responses, new captain starts and completes
     });
     await formA.getByRole('button', { name: '确认转交队长', exact: true }).click(); await expect(formA.getByRole('alert')).toContainText('验证用转交响应丢失'); await expect(formA.getByLabel('操作说明', { exact: true })).toBeDisabled();
     await formA.getByRole('button', { name: '核对并重试操作', exact: true }).click(); await expect(formA.getByRole('alert')).toContainText('服务暂时不可用');
-    await formA.getByRole('button', { name: '核对并重试操作', exact: true }).click(); await expect(detailA).toContainText('我的身份：成员 · 岗位：统筹');
+    await formA.getByRole('button', { name: '核对并重试操作', exact: true }).click(); await expect(detailA).toContainText('我的身份：成员 · 分工：统筹');
     expect(bodies).toHaveLength(3); expect(bodies[0]).toEqual(bodies[1]); expect(bodies[1]).toEqual(bodies[2]);
     await expect(detailA.getByRole('button', { name: '开始活动', exact: true })).toHaveCount(0);
     expect((await a.request.get('/api/v1/teams/' + r.team.id + '/applications')).status()).toBe(404);
-    await detailB.getByRole('button', { name: '刷新并核对队伍', exact: true }).click(); await expect(detailB).toContainText('我的身份：队长 · 岗位：协作');
+    await detailB.getByRole('button', { name: '刷新并核对队伍', exact: true }).click(); await expect(detailB).toContainText('我的身份：队长 · 分工：协作');
     expect((await b.request.get('/api/v1/teams/' + r.team.id + '/applications')).status()).toBe(200);
     await detailB.getByRole('button', { name: '开始活动', exact: true }).click(); await expect(formB.getByRole('button', { name: '确认开始活动', exact: true })).toBeDisabled();
     await formB.getByLabel('操作说明', { exact: true }).fill('两名成员确认开始本次活动。'); await formB.getByRole('button', { name: '确认开始活动', exact: true }).click();

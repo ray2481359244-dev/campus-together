@@ -8,9 +8,17 @@ test('real post workspaces preserve drafts, reflect URL state and fit every scre
   const nav=page.getByRole('navigation',{name:'帖子内容导航'});
   await nav.getByRole('link',{name:'02 评论互动',exact:true}).click();
   await page.getByLabel('写一条评论',{exact:true}).fill('切换工作区后，这份未提交的输入仍应保留。');
-  await nav.getByRole('link',{name:'03 相关招募',exact:true}).click();
+  const recruitmentCard = page.locator('.wb-act .wb-compact-link');
+  await expect(recruitmentCard).toBeInViewport();
+  await recruitmentCard.click();
   await expect(page.locator('.post-workbench')).toHaveAttribute('data-view','act');
-  await expect(page.locator('.wb-talk')).toBeHidden();
+  const commentCard = page.locator('.wb-talk .wb-compact-link');
+  await expect(commentCard).toBeInViewport();
+  await expect(page.locator('.wb-talk .community-comments')).toBeHidden();
+  await commentCard.focus();
+  await page.keyboard.press('Enter');
+  await expect(page).toHaveURL(/#conversation$/);
+  await expect(page.getByLabel('写一条评论',{exact:true})).toHaveValue('切换工作区后，这份未提交的输入仍应保留。');
   await nav.getByRole('link',{name:'01 帖子正文',exact:true}).click();
   await expect(page.locator('.wb-source-body')).toBeVisible();
   await nav.getByRole('link',{name:'02 评论互动',exact:true}).click();
@@ -28,6 +36,7 @@ test('real post workspaces preserve drafts, reflect URL state and fit every scre
         await expect(page.locator(target)).toBeInViewport();
         await expect.poll(()=>page.locator(target).evaluate(node=>node.getBoundingClientRect().top-(document.querySelector('.wb-nav')?.getBoundingClientRect().bottom||0))).toBeGreaterThanOrEqual(0);
       }
+      if (!label.startsWith('01')) await expect(page.locator('.wb-compact-link')).toBeInViewport();
       if([390,1440].includes(width)){
         await page.screenshot({path:`.local/screenshots/workbench-${width}-${label.slice(0,2)}.png`});
       }

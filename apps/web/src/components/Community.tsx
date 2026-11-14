@@ -12,12 +12,13 @@ import { useAuth } from '../lib/auth';
 import { api, ApiError, messageOf } from '../lib/api';
 import { Loading, ErrorState, FormError, SectionLink } from './UI';
 import { ContactAction } from './ContactAction';
+import { ProfileAuthorLink } from './ProfileAuthorLink';
 export function SaveRecruitment({id}:{id:string}) {
   const {user}=useAuth();const [notice,setNotice]=useState(''),[busy,setBusy]=useState(false);
   if(!user)return null;
   return <div><button className="button secondary" disabled={busy} onClick={async()=>{setBusy(true);try{await api('/favorites',{method:'PUT',body:{type:'RECRUITMENT',id,active:true}});setNotice('已收藏，可在我的收藏中取消。');}catch(e){setNotice(messageOf(e));}finally{setBusy(false);}}}>收藏招募</button>{notice && <p role="status">{notice}</p>}</div>;
 }
-export type CommunityParts={feedback:ReactNode;discussion:ReactNode;commentCount:number};
+export type CommunityParts={feedback:ReactNode;discussion:ReactNode;commentCount:number|null};
 export function Community({postId,render,group}:{postId:string;render?:(parts:CommunityParts)=>ReactNode;group?: ReactNode}) {
   const {user}=useAuth(),client=useQueryClient(),[params,setParams]=useSearchParams(),target=params.get('comment');
   const [body,setBody]=useState(''),[replyId,setReplyId]=useState<string|null>(null),[busy,setBusy]=useState(false),[error,setError]=useState(''),[status,setStatus]=useState(''),[burst,setBurst]=useState(0),[savedBurst,setSavedBurst]=useState(0);
@@ -30,7 +31,7 @@ export function Community({postId,render,group}:{postId:string;render?:(parts:Co
   useEffect(()=>{
     if(!target||!result.data||located.current===target)return;
     const node=document.getElementById('comment-'+target);
-    if(node){node.scrollIntoView({block:'center',behavior:'instant'});node.focus({preventScroll:true});located.current=target;}
+    if(node?.getClientRects().length){node.scrollIntoView({block:'center',behavior:'instant'});node.focus({preventScroll:true});located.current=target;}
   },[target,result.data]);
   async function refresh() {
     await Promise.all([client.invalidateQueries({queryKey:['community',postId]}),client.invalidateQueries({queryKey:['posts']}),client.invalidateQueries({queryKey:['notifications']}),client.invalidateQueries({queryKey:['notification-summary']})]);
@@ -45,8 +46,8 @@ export function Community({postId,render,group}:{postId:string;render?:(parts:Co
       done?.();await refresh();
     }catch(e){setError(messageOf(e));}finally{writing.current=false;setBusy(false);}
   }
-  if(result.isPending){const state=<Loading label="正在读取讨论互动……"/>;return render?render({feedback:state,discussion:state,commentCount:0}):state;}
-  if(result.isError&&!result.data){const state=<ErrorState message={messageOf(result.error)} retry={()=>void result.refetch()}/>;return render?render({feedback:state,discussion:state,commentCount:0}):state;}
+  if(result.isPending){const state=<Loading label="正在读取讨论互动……"/>;return render?render({feedback:state,discussion:state,commentCount:null}):state;}
+  if(result.isError&&!result.data){const state=<ErrorState message={messageOf(result.error)} retry={()=>void result.refetch()}/>;return render?render({feedback:state,discussion:state,commentCount:null}):state;}
   const first=result.data!.pages[0].data,reply=comments.find(c=>c.id===replyId);
   const feedback=<>
     <div className="community-actions"><div className="button-row">
@@ -63,7 +64,7 @@ export function Community({postId,render,group}:{postId:string;render?:(parts:Co
     {first.notificationsMuted&&<p className="muted-notice"><BellOff size={15} aria-hidden="true" />本帖已免打扰，新的评论、回复和点赞将不再提醒。</p>}
     {target&&<p className="form-note">正在查看消息对应的评论。<button className="text-button" onClick={()=>{located.current='';setParams(next=>{next.delete('comment');return next;},{replace:true});}}>查看全部评论</button></p>}
     {!user&&<p><Link to={'/login?next=/posts/'+postId}>登录后参与评论</Link></p>}
-    {comments.map(c=><article data-cloud-id={c.id} id={'comment-'+c.id} tabIndex={-1} key={c.id} className={'community-comment'+(target===c.id?' targeted-comment':'')}><div className="comment-byline"><ContactAction userId={c.authorId} nickname={c.nickname} source={{ kind: "POST", postId, commentId: c.id }} sourceLabel="附上这条评论" className="comment-person" label={"查看 " + c.nickname + " 的资料"}><StudentAvatar seed={c.authorId}/><strong>{c.nickname}</strong></ContactAction><time className="metadata">{new Date(c.createdAt).toLocaleString('zh-CN',{timeZone:'Asia/Shanghai'})}</time></div>{c.replyId&&<blockquote className="comment-quote">{c.reply?`回复 ${c.reply.nickname}：${c.reply.body}`:'原评论已不可用'}</blockquote>}<p>{c.body}</p><div className="comment-actions">{user&&<button className="text-button" disabled={busy||!!pending.current} onClick={()=>{setReplyId(c.id);document.getElementById('comment-body')?.focus();}}>回复此评论</button>}{c.authorId && <ContactAction userId={c.authorId} nickname={c.nickname} source={{ kind: "POST", postId, commentId: c.id }} sourceLabel="附上这条评论" />}{c.canDelete&&<button className="text-button danger" disabled={busy} onClick={()=>void act('/comments/'+c.id,'DELETE')}>删除我的评论</button>}<ReportButton type="COMMENT" id={c.id} /></div></article>)}
+    {comments.map(c=><article data-cloud-id={c.id} id={'comment-'+c.id} tabIndex={-1} key={c.id} className={'community-comment'+(target===c.id?' targeted-comment':'')}><div className="comment-byline"><ProfileAuthorLink userId={c.authorId} nickname={c.nickname} postId={postId} commentId={c.id}><StudentAvatar seed={c.authorId}/><strong>{c.nickname}</strong></ProfileAuthorLink><time className="metadata">{new Date(c.createdAt).toLocaleString('zh-CN',{timeZone:'Asia/Shanghai'})}</time></div>{c.replyId&&<blockquote className="comment-quote">{c.reply?`回复 ${c.reply.nickname}：${c.reply.body}`:'原评论已不可用'}</blockquote>}<p>{c.body}</p><div className="comment-actions">{user&&<button className="text-button" disabled={busy||!!pending.current} onClick={()=>{setReplyId(c.id);document.getElementById('comment-body')?.focus();}}>回复此评论</button>}{c.authorId && <ContactAction userId={c.authorId} nickname={c.nickname} source={{ kind: "POST", postId, commentId: c.id }} sourceLabel="附上这条评论" />}{c.canDelete&&<button className="text-button danger" disabled={busy} onClick={()=>void act('/comments/'+c.id,'DELETE')}>删除我的评论</button>}<ReportButton type="COMMENT" id={c.id} /></div></article>)}
     {!first.comments.length&&<p className="comment-empty">还没有评论，来聊聊你的想法。</p>}
     {result.hasNextPage&&<button className="text-button" disabled={result.isFetchingNextPage} onClick={()=>void result.fetchNextPage()}>更多评论</button>}
     {user&&<form className="form-stack comment-composer" id="write-comment" onSubmit={async e=>{
@@ -74,5 +75,5 @@ export function Community({postId,render,group}:{postId:string;render?:(parts:Co
     }}>{replyId&&<p className="reply-selection">正在回复 {reply?.nickname||'这条评论'} <button type="button" className="text-button" disabled={!!pending.current} onClick={()=>setReplyId(null)}>取消回复</button></p>}<label htmlFor="comment-body">写一条评论<textarea id="comment-body" aria-label="写一条评论" placeholder="说说你的想法，让话题继续。" value={body} maxLength={1000} rows={3} disabled={busy||!!pending.current} onChange={e=>setBody(e.target.value)} /></label><div className="comment-submit"><span className="field-note">{body.length}/1000</span><button className="button" disabled={busy||!body.trim()}>{pending.current?'核对并重试原评论':'发布评论'}</button></div></form>}
     {result.isError&&<ErrorState message={messageOf(result.error)} retry={()=>void result.refetch()} />}
   </section>;
-  return render?render({feedback,discussion,commentCount:comments.length}):<>{feedback}{discussion}</>;
+  return render?render({feedback,discussion,commentCount:first.commentCount ?? comments.length}):<>{feedback}{discussion}</>;
 }

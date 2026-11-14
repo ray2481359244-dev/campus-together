@@ -44,15 +44,17 @@ test('members safely leave and are removed, then a captain closes recruitment wi
       return (await published.json()).data;
     }
     async function apply(page: Page, r: Awaited<ReturnType<typeof createTeam>>) {
-      await page.goto('/recruitments/' + r.id); await page.getByLabel('申请岗位', { exact: true }).selectOption(r.team.slots[1].id);
+      await page.goto('/recruitments/' + r.id);
+      await expect(page.getByText(/^协作 · 余 [12] 位$/)).toBeVisible();
+      await expect(page.getByRole('combobox', { name: '选择分工', exact: true })).toHaveCount(0);
       await page.getByLabel('本次时间确认', { exact: true }).selectOption('yes'); await page.getByLabel('申请说明', { exact: true }).fill('这是本次成员管理验收的真实申请。');
       await page.getByRole('button', { name: '核对申请条件', exact: true }).click(); await expect(page.getByRole('heading', { name: '核对结果：通过', exact: true })).toBeVisible();
-      await page.getByRole('button', { name: '提交岗位申请', exact: true }).click(); await expect(page.getByLabel('已保存申请', { exact: true })).toContainText('申请状态：待审核');
+      await page.getByRole('button', { name: '提交申请', exact: true }).click(); await expect(page.getByLabel('已保存申请', { exact: true })).toContainText('申请状态：待审核');
       return (await (await page.request.get('/api/v1/me/applications?teamId=' + r.team.id)).json()).data[0];
     }
     const r = await createTeam('成员退出与移除浏览器验收');
     for (const page of [b, c]) { const row = await apply(page, r); expect((await page.request.get('/api/v1/teams/' + r.team.id)).status()).toBe(404); expect((await a.request.post('/api/v1/applications/' + row.id + '/review', { headers: headers(ma), data: { revision: row.revision, decision: 'APPROVE', reason: '欢迎参与成员管理验收。' } })).status()).toBe(200); }
-    await b.goto('/me'); await b.getByRole('link', { name: '我的队伍 →', exact: true }).click();
+    await b.goto('/me'); await b.getByRole('link', { name: '我的队伍', exact: true }).click();
     const mine = b.getByRole('region', { name: '消息', exact: true });
     await mine.getByRole('link').filter({ hasText: r.title }).click();
     await b.getByRole('button', { name: '群资料', exact: true }).click();
@@ -99,7 +101,7 @@ test('members safely leave and are removed, then a captain closes recruitment wi
     await confirmA.getByRole('button', { name: '核对并重试操作', exact: true }).click(); await expect(a.getByRole('region', { name: '队伍详情', exact: true })).toContainText('现有队伍和成员继续保留');
     expect(closeBodies).toHaveLength(2); expect(closeBodies[0]).toEqual(closeBodies[1]); await expect(a.getByRole('button', { name: '关闭招募', exact: true })).toHaveCount(0);
     await a.reload(); await expect(a.getByRole('region', { name: '队伍详情', exact: true })).toContainText('招募已关闭');
-    for (const page of [b, c]) { await page.getByRole('button', { name: '刷新并核对申请', exact: true }).click(); await expect(page.getByLabel('已保存申请', { exact: true })).toContainText('申请状态：已失效'); await expect(page.getByRole('button', { name: '提交岗位申请', exact: true })).toBeDisabled(); expect((await page.request.get('/api/v1/teams/' + next.team.id)).status()).toBe(404); await page.goto('/messages?view=notifications&tab=activity'); await expect(page.locator('.notification-card').filter({ hasText: next.title })).toContainText('招募已关闭，本次待审申请已失效。'); }
+    for (const page of [b, c]) { await page.getByRole('button', { name: '刷新并核对申请', exact: true }).click(); await expect(page.getByLabel('已保存申请', { exact: true })).toContainText('申请状态：已失效'); await expect(page.getByRole('button', { name: '提交申请', exact: true })).toBeDisabled(); expect((await page.request.get('/api/v1/teams/' + next.team.id)).status()).toBe(404); await page.goto('/messages?view=notifications&tab=activity'); await expect(page.locator('.notification-card').filter({ hasText: next.title })).toContainText('招募已关闭，本次待审申请已失效。'); }
     await b.goto('/recruitments/' + r.id); await expect(b.getByLabel('已保存申请', { exact: true })).toContainText('当前已退出队伍'); await expect(b.getByRole('link', { name: '进入我的队伍 →', exact: true })).toHaveCount(0);
     expect(errors).toEqual([]);
   } catch (error) { primaryFailure = error; throw error; }

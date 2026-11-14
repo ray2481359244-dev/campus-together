@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import type { RecruitmentDraft } from './recruitments.js';
 
 export const SceneAnswersSchema = z.object({ server: z.string().trim().max(80).optional(), platform: z.enum(['PC','CONSOLE','MOBILE','ANY']).optional(), studyMethod: z.enum(['SELF','DISCUSS','TEACH']).optional(), experienceConfirmed: z.boolean().optional(), equipmentConfirmed: z.boolean().optional() }).strict();
 export const EligibilityInputSchema = z.object({ slotId: z.uuid().nullable().default(null), timeConfirmed: z.boolean().nullable().default(null), answers: SceneAnswersSchema.optional() }).strict();
@@ -19,6 +20,7 @@ export interface EligibilityDTO {
 }
 export interface ApplicationDTO {
   id: string; teamId: string; recruitmentId: string; recruitmentTitle: string; slotId: string; slotName: string;
+  category: RecruitmentDraft['category'];
   status: 'PENDING' | 'APPROVED' | 'REJECTED' | 'WITHDRAWN' | 'EXPIRED';
   message: string; timeConfirmed: boolean; revision: number; submission: number;
   submittedAt: string; resolvedAt: string | null; canWithdraw: boolean; reapplyAt: string | null;

@@ -5,6 +5,7 @@ import { PublishedRecruitmentEdit } from '../components/PublishedRecruitmentEdit
 import { Link, useLocation, useNavigate, useParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import type { RecruitmentDTO } from '@campus/contracts';
+import { gameRequirements, hasNamedSeats, isTabletop, recruitmentCopy } from '@campus/contracts';
 import { Users, ArrowUpRight } from 'lucide-react';
 import { api, messageOf } from '../lib/api';
 import { beijingTime, budgetLabel, scheduleLabel } from '../lib/recruitments';
@@ -23,18 +24,36 @@ export function RecruitmentDetail() {
   if (result.isError) return <><Link className="text-button" to="/recruitments">返回招募大厅</Link><ErrorState message={messageOf(result.error)} retry={() => void result.refetch()} /></>;
   const r = result.data.data, d = r.draft, team = r.team;
   const fromNotice = location.state?.fromNotice, fromChat = location.state?.fromChat;
-  const subtitle = d.competitionName || d.game?.playMode || d.study?.subject || d.outdoor?.activity;
+  const copy = recruitmentCopy(r.category), tabletop = isTabletop(d);
+  const competition = r.category === 'COMPETITION';
+  const named = !!team && hasNamedSeats(team.slots);
+  const subtitle = { COMPETITION: d.competitionName, GAME: d.game?.playMode, STUDY: d.study?.subject, OUTDOOR: d.outdoor?.activity }[r.category];
   const close = r.joinClosesAt || d.joinDeadline || d.startAt;
-  const schedule = d.plan ? scheduleLabel(d) : beijingTime(d.startAt) + ' 至 ' + beijingTime(d.endAt);
-  const workload = [d.weeklyHours ? '每周约 ' + d.weeklyHours + ' 小时' : '', d.collaboration].filter(Boolean).join(' · ');
-  const facts = [
-    ['协作形式', d.mode === 'ONLINE' ? '线上' : '线下 · ' + d.locationPublic],
-    ['协作时间', schedule + (d.startAt ? '（北京时间）' : '')],
-    ['招募截止', close ? beijingTime(close) + '（北京时间）' : '发布后 7 天内'],
-    ['比赛截止', d.competitionDeadline && beijingTime(d.competitionDeadline) + '（北京时间）'],
-    ['投入与时段', workload],
-    ['目标', d.goal],
-    ['已有技能', d.existingSkills.length ? d.existingSkills.join('、') + '（自述）' : ''],
+  const time = (value: string | null) => value && beijingTime(value) + '（北京时间）';
+  const onlineGame = r.category === 'GAME' && !tabletop && d.game;
+  const requiredGame = gameRequirements(d);
+  const study = r.category === 'STUDY' && d.study;
+  const outdoor = r.category === 'OUTDOOR' && d.outdoor;
+  const locationLabel = outdoor || d.mode === 'OFFLINE' || tabletop ? copy.place : '参加方式';
+  const place = outdoor ? outdoor.region || d.locationPublic : tabletop ? d.locationPublic : d.mode === 'OFFLINE' ? d.locationPublic : '线上';
+  const facts: [string, string | false | null | undefined][] = [
+    [tabletop && !place ? '参加方式' : locationLabel, place || (tabletop ? '线下桌游' : '')],
+    [copy.start, time(d.startAt) || scheduleLabel(d)],
+    [copy.end, time(d.endAt)],
+    ['报名截止', time(close)],
+    ['赛事截止', competition && time(d.competitionDeadline)],
+    [competition ? '协作安排' : '补充安排', [competition && d.weeklyHours ? '每周约 ' + d.weeklyHours + ' 小时' : '', d.collaboration].filter(Boolean).join(' · ')],
+    [competition ? '项目目标' : '想一起做', d.goal],
+    ['已有技能', competition && d.existingSkills.length > 0 && d.existingSkills.join('、') + '（本人填写）'],
+    ['区服', (onlineGame || requiredGame.server) && d.game?.server !== '不限' && d.game?.server],
+    ['平台', (onlineGame || requiredGame.platform) && d.game && { PC: '电脑', MOBILE: '手机', CONSOLE: '主机', ANY: '' }[d.game.platform]],
+    ['语音', onlineGame && onlineGame.voice],
+    ['学习方式', study && ({ SELF: '安静自习', DISCUSS: '讨论', TEACH: '互相讲题' }[study.method] + (study.methodRequired ? '（需要方式一致）' : ''))],
+    ['学习频次', study && study.frequency],
+    ['基础偏好', study && study.level],
+    ['费用', outdoor && budgetLabel(d)],
+    ['强度与路程', outdoor && [outdoor.intensity === 'LOW' ? '低强度' : '中等强度', outdoor.distance].filter(Boolean).join(' · ')],
+    ['注意事项', outdoor && [outdoor.experience, outdoor.equipment].filter(Boolean).join(' · ')],
     ['学校范围', (d.allowCrossSchool ? '接受跨校意向' : '仅限同校意向') + ' · 学校未核验'],
     ['加入方式', d.joinMode === 'AUTO' ? '直接加入' : '发起人确认'],
   ];
@@ -50,27 +69,21 @@ export function RecruitmentDetail() {
     <article className="recruitment-detail layered-detail">
       <section className="surface-story">
         <div className="post-card-top"><span className={'topic-badge cat-' + r.category}>{r.topic?.name || '主题待选'}</span><span>{r.author.nickname} · {r.school.name}</span></div>
-        {subtitle && <h2>{subtitle}</h2>}{d.direction && <p className="recruitment-direction">{d.direction}</p>}
+        {subtitle && <h2>{subtitle}</h2>}{competition && d.direction && <p className="recruitment-direction">{d.direction}</p>}
         {r.description && <div className="post-body">{r.description}</div>}
       </section>
-      <section className="surface-reference"><h2>时间、条件与协作安排</h2>
+      <section className="surface-reference"><h2>{copy.details}</h2>
         <dl className="recruitment-facts">
-          {facts.map(([label, value]) => value ? <div key={label}><dt>{label}</dt><dd>{value}</dd></div> : null)}
-          {d.game && <div><dt>服务器 / 平台 / 语音</dt><dd>{[d.game.server || '不限服务器', { PC: '电脑', MOBILE: '手机', CONSOLE: '主机', ANY: '不限平台' }[d.game.platform], d.game.voice].filter(Boolean).join(' · ')}</dd></div>}
-          {d.study && <div><dt>学习安排</dt><dd>{[{ SELF: '安静自习', DISCUSS: '讨论', TEACH: '互相讲题' }[d.study.method], d.study.frequency, d.study.level].filter(Boolean).join(' · ')}{d.study.methodRequired ? '（须选择相同学习方式）' : ''}</dd></div>}
-          {d.outdoor && <>
-            <div><dt>预算与强度</dt><dd>{[budgetLabel(d), d.outdoor.intensity === 'LOW' ? '低强度' : '中等强度', d.outdoor.distance].filter(Boolean).join(' · ')}</dd></div>
-            {(d.outdoor.experience || d.outdoor.equipment) && <div><dt>经验与装备</dt><dd>{[d.outdoor.experience, d.outdoor.equipment].filter(Boolean).join(' · ')}</dd></div>}
-          </>}
+          {facts.map(([label, value]) => value && <div key={label}><dt>{label}</dt><dd>{value}</dd></div>)}
         </dl>
       </section>
-      {d.officialUrl && <a className="text-button" href={d.officialUrl} target="_blank" rel="noopener noreferrer">查看发布者提供的比赛链接<ArrowUpRight size={16} /></a>}
+      {competition && d.officialUrl && <a className="text-button" href={d.officialUrl} target="_blank" rel="noopener noreferrer">查看发布者提供的比赛链接<ArrowUpRight size={16} /></a>}
       {team && <>
-        <section className="surface-action"><h2 className="recruit-section-title"><Users size={22} />岗位与名额</h2>
-          <p className="form-note">当前 {team.memberCount} / {team.capacity} 人，总人数包含队长。每位成员只占一个岗位。</p>
-          <div className="slot-list">{team.slots.map(slot => <div className="slot-summary" key={slot.id}><div><strong>{slot.name}</strong>
+        <section className="surface-action"><h2 className="recruit-section-title"><Users size={22} aria-hidden="true" />{competition && named ? '分工与名额' : copy.capacity}</h2>
+          <p className="form-note">当前 {team.memberCount} / {team.capacity} 人，含发起人 · {team.acceptingStatus === 'FULL' ? '已满员' : team.acceptingStatus === 'CLOSED' ? '报名已结束' : `还差 ${team.capacity - team.memberCount} 位`}</p>
+          {named && <div className="slot-list">{team.slots.map(slot => <div className="slot-summary" key={slot.id}><div><strong>{slot.name}</strong>
             {slot.requiredSkills.length > 0 && <p>{d.plan && !d.plan.skillsRequired ? '技能偏好' : '所需自述技能'}：{slot.requiredSkills.join('、')}</p>}</div>
-            <span>{slot.occupied} / {slot.capacity} 已占 · 余 {slot.capacity - slot.occupied}</span></div>)}</div>
+            <span>{slot.occupied} / {slot.capacity} 已占 · 余 {slot.capacity - slot.occupied}</span></div>)}</div>}
         </section>
         <section className="surface-talk">
           <ApplicationPanel key={r.id} recruitment={r} />

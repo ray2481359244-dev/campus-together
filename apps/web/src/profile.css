@@ -1,0 +1,192 @@
+.campus-profile {
+  width: min(100%, 940px);
+  margin-inline: auto;
+  display: grid;
+  gap: 18px;
+  color: var(--ink, #332c3b);
+}
+.profile-hero {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 14px 24px;
+  padding: clamp(21px, 4vw, 38px);
+  background: linear-gradient(125deg, #f3eaf8, #f6f5e8);
+  border: 1px solid #c6aed7;
+  border-radius: 11px 30px 22px 25px;
+  box-shadow: 4px 5px 0 #a589bd22;
+}
+.profile-identity {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  min-width: 0;
+}
+.profile-identity > .student-avatar {
+  width: clamp(60px, 9vw, 86px);
+  aspect-ratio: 1;
+  height: auto;
+  flex: none;
+  border-radius: 23px;
+  box-shadow: 2px 4px 0 #ac93be44;
+}
+.profile-hero h1 {
+  margin: 0 0 2px;
+  font-size: clamp(25px, 4vw, 39px);
+  line-height: 1.25;
+  overflow-wrap: anywhere;
+}
+.profile-school, .profile-bio {
+  margin: 0;
+  color: #594b61;
+  overflow-wrap: anywhere;
+}
+.profile-school { font-size: 13px; }
+.profile-bio { grid-column: 1 / -1; line-height: 1.7; white-space: pre-wrap; }
+.profile-actions, .profile-shortcuts {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+.profile-actions .button { min-height: 44px; }
+.profile-tags {
+  grid-column: 1 / -1;
+  display: grid;
+  gap: 11px;
+}
+.profile-tags > div { display: flex; align-items: baseline; flex-wrap: wrap; gap: 8px 12px; }
+.profile-tags h2 { margin: 0; font-size: 14px; }
+.profile-tags ul, .profile-activity, .album-grid {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.profile-tags ul { display: flex; gap: 6px; flex-wrap: wrap; min-width: 0; }
+.profile-tags li {
+  padding: 5px 10px;
+  border: 1px solid #d0bddc;
+  border-radius: 999px;
+  background: var(--cat-tint, #fffdf8);
+  font-size: 13px;
+  overflow-wrap: anywhere;
+}
+.profile-shortcuts a {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 9px 14px;
+  min-height: 44px;
+  border: 1px solid #d6c9df;
+  border-radius: 12px;
+  background: #fffdf8;
+  color: #43334e;
+  text-decoration: none;
+}
+.profile-shortcuts a:hover, .profile-activity a:hover { background: #efe5f6; }
+.profile-main {
+  display: grid;
+  grid-template-columns: minmax(0, 1.35fr) minmax(0, 1fr);
+  align-items: start;
+  gap: 14px;
+}
+.profile-panel { padding: clamp(14px, 3vw, 22px); min-width: 0; }
+.profile-panel h2, .profile-settings-content h2 { margin: 0; font-size: 19px; }
+.profile-panel-head, .profile-panel-head h2 { display: flex; align-items: center; gap: 8px; }
+.profile-panel-head { justify-content: space-between; flex-wrap: wrap; margin-bottom: 12px; }
+.profile-panel-head .text-button { min-height: 44px; }
+.profile-activity { margin-top: 12px; display: grid; gap: 4px; }
+.profile-activity a {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 20px;
+  gap: 1px 6px;
+  align-items: center;
+  padding: 9px 9px 9px 11px;
+  border-radius: 8px;
+  text-decoration: none;
+  min-height: 48px;
+}
+.profile-activity small { grid-column: 1 / -1; color: #654d78; }
+.profile-activity strong { overflow-wrap: anywhere; font-size: 14px; }
+.profile-settings-content { display: grid; gap: 14px; padding: 12px 0; overflow-wrap: anywhere; }
+.profile-settings-content > .button, .profile-editor > .button { justify-self: start; }
+.profile-settings-content h2 + p { margin-block: 4px; }
+.cloud-platform .profile-overlay { position: absolute; inset: 0; z-index: 4; overflow: auto; background: var(--campus-paper, #faf7ef); padding: 20px clamp(12px, 3vw, 28px) 36px; }
+.route-overlay[inert] { position: absolute; inset: 0; visibility: hidden; }
+.album-empty {
+  display: grid;
+  justify-items: center;
+  align-content: center;
+  gap: 8px;
+  min-height: 135px;
+  padding: 14px;
+  text-align: center;
+  border: 1px dashed #bba6c9;
+  border-radius: 16px;
+  background: #f5eff8;
+  color: #5c4969;
+}
+.album-empty p { margin: 0; }
+.album-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+.album-tile { min-width: 0; }
+.album-thumbnail {
+  display: block;
+  position: relative;
+  width: 100%;
+  aspect-ratio: 1;
+  padding: 0;
+  overflow: hidden;
+  border: 1px solid #cbb8d6;
+  border-radius: 11px;
+  background: #efe5f5;
+  cursor: pointer;
+}
+.album-thumbnail img { width: 100%; height: 100%; object-fit: cover; vertical-align: middle; }
+.album-thumbnail span {
+  position: absolute;
+  bottom: 4px;
+  left: 4px;
+  max-width: calc(100% - 8px);
+  padding: 1px 5px;
+  border-radius: 6px;
+  background: #fffdf8;
+  color: #382c40;
+  font-size: 11px;
+  line-height: 1.4;
+}
+.album-controls select { width: 100%; min-height: 44px; font-size: 13px; padding-inline: 6px; }
+.album-control-row { display: flex; justify-content: space-between; flex-wrap: wrap; }
+.album-control-row button { min-width: 44px; min-height: 44px; }
+.profile-photo-upload { margin-top: 16px; padding-top: 14px; border-top: 1px solid #d9c9e1; }
+.profile-photo-upload input { width: 100%; min-width: 0; }
+.album-upload-preview { display: flex; flex-wrap: wrap; align-items: center; gap: 13px; }
+.album-upload-preview img { width: 85px; height: 85px; object-fit: cover; border-radius: 10px; }
+.album-progress { display: flex; align-items: center; gap: 9px; flex-wrap: wrap; }
+.album-progress progress { width: min(130px, 100%); accent-color: #77558c; }
+.album-viewer {
+  width: min(620px, calc(100vw - 24px));
+  max-height: calc(100dvh - 24px);
+  margin: auto;
+  padding: 18px;
+  border: 1px solid #b99acc;
+  border-radius: 22px;
+  background: #fffdf8;
+  color: #332c3b;
+}
+.album-viewer::backdrop { background: #332741b8; }
+.album-viewer header { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.album-viewer h2 { margin: 0; font-size: 19px; }
+.album-viewer > img { display: block; margin: 10px auto; max-width: 100%; max-height: min(65dvh, 520px); object-fit: contain; }
+.album-viewer .report-control { margin-top: 12px; }
+@media (max-width: 767px) {
+  .profile-hero, .profile-main { grid-template-columns: minmax(0, 1fr); }
+  .profile-actions { grid-row: 2; }
+  .profile-hero { gap: 10px; }
+  .profile-bio { margin-top: 2px; }
+}
+@media (max-width: 460px) {
+  .album-grid:has(.album-controls) { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media (prefers-reduced-motion: no-preference) {
+  .profile-shortcuts a, .profile-activity a { transition: background-color 160ms ease; }
+}

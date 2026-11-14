@@ -3,6 +3,7 @@ import { useRef, useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import type { ApplicationDTO, ApplicationInput, EligibilityDTO, EligibilityInput, RecruitmentDTO } from '@campus/contracts';
+import { gameRequirements, hasNamedSeats, isTabletop, recruitmentCopy } from '@campus/contracts';
 import { api, ApiError, messageOf } from '../lib/api';
 import { useAuth } from '../lib/auth';
 import { beijingTime, scheduleLabel, recruitmentError } from '../lib/recruitments';
@@ -17,8 +18,8 @@ export function MyApplications() {
   const { user } = useAuth();
   const result = useQuery({ queryKey: ['my-applications', user?.id], queryFn: ({ signal }) => api<ApplicationDTO[]>('/me/applications', { signal }), enabled: !!user, retry: false });
   if (!user) return null;
-  return <section className="my-drafts" aria-label="我的岗位申请列表"><SoftDisclosure title={<>我的岗位申请{result.data?.data.length ? ` (${result.data.data.length})` : ''}</>}>
-    {result.isPending ? <Loading label="正在读取我的申请……" /> : result.isError ? <ErrorState message={messageOf(result.error)} retry={() => void result.refetch()} /> : !result.data.data.length ? <p className="form-note">还没有岗位申请。打开招募详情，先核对条件再申请。</p> : <div className="draft-list">{result.data.data.map(row => <Link className="draft-row" key={row.id} to={'/recruitments/' + row.recruitmentId}><span><strong>{row.recruitmentTitle}</strong><span>{row.slotName} · {labels[row.status]}</span></span><span>查看申请 →</span></Link>)}</div>}
+  return <section className="my-drafts" aria-label="我的加入申请列表"><SoftDisclosure title={<>我的加入申请{result.data?.data.length ? ` (${result.data.data.length})` : ''}</>}>
+    {result.isPending ? <Loading label="正在读取我的申请……" /> : result.isError ? <ErrorState message={messageOf(result.error)} retry={() => void result.refetch()} /> : !result.data.data.length ? <p className="form-note">还没有加入申请。可以从感兴趣的招募开始。</p> : <div className="draft-list">{result.data.data.map(row => <Link className="draft-row" key={row.id} to={'/recruitments/' + row.recruitmentId}><span><strong>{row.recruitmentTitle}</strong><span>{row.slotName !== '成员' && row.slotName + ' · '}{labels[row.status]}</span></span><span>查看申请 →</span></Link>)}</div>}
     <p className="field-note">显示最近 50 份本人申请。待审核不占名额；队长批准后正式入队，结果也会保存在消息页。</p>
   </SoftDisclosure></section>;
 }
@@ -31,8 +32,13 @@ export function ApplicationPanel({ recruitment: r }: { recruitment: RecruitmentD
   const [answers, setAnswers] = useState<NonNullable<EligibilityInput['answers']>>({});
   const [showQuick, setShowQuick] = useState(false);
   const draft = r.draft, plan = draft.plan, direct = draft.joinMode === 'AUTO';
+  const copy = recruitmentCopy(r.category), named = hasNamedSeats(team.slots), game = gameRequirements(draft);
   const openSlots = team.slots.filter(s => s.capacity > s.occupied);
-  const selectedSlot = plan && openSlots.length === 1 ? openSlots[0].id : slotId;
+  const selectedSlot = openSlots.length === 1 ? openSlots[0].id : openSlots.some(slot => slot.id === slotId) ? slotId : '';
+  const selected = openSlots.find(slot => slot.id === selectedSlot);
+  const summary = openSlots.length === 1 && selected ? (named ? selected.name : copy.capacity) + ' · 余 ' + (selected.capacity - selected.occupied) + ' 位' : null;
+  const slotLabel = '选择' + copy.slot;
+  const applicationAction = !direct && r.category === 'COMPETITION' && named ? '申请这个分工' : direct ? copy.join : copy.apply;
   const pending = useRef<ApplicationInput | null>(null), withdrawal = useRef<{ id: string; revision: number } | null>(null);
   const ownKey = ['my-applications', user?.id, team.id];
   const own = useQuery({ queryKey: ownKey, queryFn: ({ signal }) => api<ApplicationDTO[]>('/me/applications?teamId=' + team.id, { signal }), enabled: !!user && user.id !== team.captainUserId, retry: false });
@@ -49,12 +55,12 @@ export function ApplicationPanel({ recruitment: r }: { recruitment: RecruitmentD
   async function assess() {
     if (busy || pending.current || withdrawal.current) return;
     setBusy('check'); setError(''); setNotice(null);
-    try { setAssessment((await api<EligibilityDTO>('/recruitments/' + r.id + '/eligibility', { method: 'POST', body: { slotId: slotId || null, answers, timeConfirmed: time === '' ? null : time === 'yes' } })).data); }
+    try { setAssessment((await api<EligibilityDTO>('/recruitments/' + r.id + '/eligibility', { method: 'POST', body: { slotId: selectedSlot || null, answers, timeConfirmed: time === '' ? null : time === 'yes' } })).data); }
     catch (e) { setError(messageOf(e)); setAssessment(null); }
     finally { setBusy(null); }
   }
   async function submit() {
-    if (busy || blocked || (!pending.current && (plan ? !selectedSlot || team.acceptingStatus !== 'OPEN' : assessment?.status !== 'PASS'))) return;
+    if (busy || blocked || (!pending.current && (!selectedSlot || team.acceptingStatus !== 'OPEN' || !plan && assessment?.status !== 'PASS'))) return;
     pending.current ??= { requestKey: crypto.randomUUID(), slotId: selectedSlot, answers, timeConfirmed: !!plan || time === 'yes', message: message.trim() };
     setBusy('submit'); setError(''); setNotice(null);
     try {
@@ -110,40 +116,41 @@ export function ApplicationPanel({ recruitment: r }: { recruitment: RecruitmentD
     const membership = current?.membership?.status;
     const active = membership === 'ACTIVE';
     const waiting = current?.status === 'PENDING';
-    const available = team.acceptingStatus === 'OPEN' && !active && !waiting && membership !== 'REMOVED' && membership !== 'LEFT' && !cooldown;
-    const action = direct ? '加入队伍' : '申请加入';
-    const ready = selectedSlot && (!plan.serverRequired || !!answers.server?.trim()) && (!plan.platformRequired || !!answers.platform)
+    const available = team.acceptingStatus === 'OPEN' && openSlots.length > 0 && !active && !waiting && membership !== 'REMOVED' && !cooldown;
+    const action = applicationAction;
+    const ready = selectedSlot && (!game.server || !!answers.server?.trim()) && (!game.platform || !!answers.platform)
       && (!draft.study?.methodRequired || !!answers.studyMethod) && (!plan.experienceRequired || !!answers.experienceConfirmed)
       && (!plan.equipmentRequired || !!answers.equipmentConfirmed);
     return <section className="application-panel quick-join" aria-label="加入队伍">
       {active ? <>
-        <p className="success-notice" role="status">已入队 · 当前有效成员 · {current?.membership?.slotName}</p>
+        <p className="success-notice" role="status">已入队 · 当前有效成员{named && ' · ' + current?.membership?.slotName}</p>
         <div className="button-row"><Link className="button" to={groupLink()} state={returnState} onClick={rememberPosition}>打开队伍群</Link><Link className="text-button" to={groupLink(true)} state={returnState} onClick={rememberPosition}>查看队伍</Link></div>
       </> : waiting ? <>
-        <h2>等待发起人确认</h2><p>申请已提交，确认前不占名额。</p>
+        <h2>等待发起人确认</h2><p>申请已提交，确认前不占名额。结果会发到「消息」。</p>
         {current.message && <p className="post-body">{current.message}</p>}
         <button type="button" className="button secondary" disabled={!!busy || blocked} onClick={() => void withdraw()}>{withdrawal.current ? '核对撤回结果' : '撤回申请'}</button>
       </> : <>
-        {current?.status === 'REJECTED' && <p>申请未通过。{current.review?.reason}</p>}
+        {current?.status === 'REJECTED' && <p>申请未通过。{current.review?.reason} <Link className="text-button" to="/messages?view=notifications&tab=activity">查看结果通知</Link></p>}
         {membership === 'REMOVED' && <p>你已被移出队伍。</p>}
         {membership === 'LEFT' && <p>你已退出这支队伍。</p>}
         {cooldown && <p>可在 {beijingTime(current!.reapplyAt)} 后再次申请。</p>}
-        {team.acceptingStatus !== 'OPEN' && <h2>{team.acceptingStatus === 'FULL' ? '队伍已满员' : '招募已截止'}</h2>}
+        {team.acceptingStatus !== 'OPEN' && <h2>{team.acceptingStatus === 'FULL' ? '名额已满' : '报名已结束'}</h2>}
         {available && !showQuick && !uncertain && <button className="button" disabled={!!busy || blocked || own.isError} onClick={() => { setShowQuick(true); setError(''); }}>{action}</button>}
       </>}
       {notice && notice.status === 'WITHDRAWN' && <p className="success-notice" role="status">{notice.text}</p>}
       {own.isError && <ErrorState message={messageOf(own.error)} retry={() => void refresh()} />}
       {((available && showQuick) || uncertain) && <form className="form-stack join-confirm" onSubmit={e => { e.preventDefault(); void submit(); }}>
         <h2>{action}</h2>
-        <p>{scheduleLabel(draft)} · {draft.mode === 'ONLINE' ? '线上' : draft.locationPublic}</p>
+        <p>{[scheduleLabel(draft), isTabletop(draft) ? draft.locationPublic || '线下桌游' : draft.mode === 'ONLINE' ? '线上' : draft.locationPublic].filter(Boolean).join(' · ')}</p>
         <p className="form-note">{draft.startAt ? '确认可以参加上面的安排。' : '确认愿意和队友商量具体时间。'}{direct ? '加入成功后会占用一个名额。' : '发起人确认后才占位。'}</p>
         <fieldset className="application-fields" disabled={!!busy || !!pending.current || blocked}>
-          {openSlots.length > 1 && <label>申请岗位<select value={slotId} onChange={e => setSlotId(e.target.value)}>
+          {summary && <p className="form-note">{summary}</p>}
+          {openSlots.length > 1 && <label>{slotLabel}<select value={selectedSlot} onChange={e => setSlotId(e.target.value)}>
             <option value="">请选择</option>{openSlots.map(s => <option key={s.id} value={s.id}>{s.name}（余 {s.capacity - s.occupied} 位）</option>)}
           </select></label>}
           {team.slots.find(s => s.id === selectedSlot)?.requiredSkills.length ? <p className="form-note">{plan.skillsRequired ? '必要技能' : '技能偏好'}：{team.slots.find(s => s.id === selectedSlot)!.requiredSkills.join('、')}</p> : null}
-          {plan.serverRequired && <label>我的游戏服务器<input value={answers.server || ''} maxLength={80} onChange={e => setAnswers(a => ({ ...a, server: e.target.value }))} /></label>}
-          {plan.platformRequired && <label>我的游戏平台<select value={answers.platform || ''} onChange={e => setAnswers(a => ({ ...a, platform: (e.target.value || undefined) as typeof a.platform }))}>
+          {game.server && <label>我的游戏区服<input value={answers.server || ''} maxLength={80} onChange={e => setAnswers(a => ({ ...a, server: e.target.value }))} /></label>}
+          {game.platform && <label>我的游戏平台<select value={answers.platform || ''} onChange={e => setAnswers(a => ({ ...a, platform: (e.target.value || undefined) as typeof a.platform }))}>
             <option value="">请选择</option><option value="PC">电脑</option><option value="CONSOLE">主机</option><option value="MOBILE">手机</option>
           </select></label>}
           {draft.study?.methodRequired && <label>我的学习方式<select value={answers.studyMethod || ''} onChange={e => setAnswers(a => ({ ...a, studyMethod: (e.target.value || undefined) as typeof a.studyMethod }))}>
@@ -159,16 +166,16 @@ export function ApplicationPanel({ recruitment: r }: { recruitment: RecruitmentD
         </div>
       </form>}
       <FormError>{error}</FormError>
-      {error && plan.skillsRequired && <Link className="text-button" to="/me">补充个人资料</Link>}
+      {error && plan.skillsRequired && <Link className="text-button" to="/me?edit">补充个人资料</Link>}
       {uncertain && <p className="form-note" role="status">这次提交结果待确认，重试会核对同一个请求。</p>}
     </section>;
   }
-  return <section className="application-panel" aria-label="我的岗位申请"><h2>{direct ? '确认条件并加入。' : '申请这个岗位。'}</h2>
+  return <section className="application-panel" aria-label="我的加入申请"><h2>{applicationAction}</h2>
     <p className="form-note">{direct ? '这是直接加入的队伍。条件通过后提交即正式占位并获得群聊权限。' : '待审核不占名额。队长批准后正式入队，审核结果会保存在消息页。'}</p>
     {own.isError && <ErrorState message={messageOf(own.error)} retry={() => void own.refetch()} />}
-    {current && <div className="application-current" aria-label="已保存申请"><strong>申请状态：{labels[current.status]}</strong><p>{current.slotName} · 提交于 {beijingTime(current.submittedAt)}（北京时间）</p><p className="post-body">{current.message || '未填写申请说明'}</p>
+    {current && <div className="application-current" aria-label="已保存申请"><strong>申请状态：{labels[current.status]}</strong><p>{named && current.slotName + ' · '}提交于 {beijingTime(current.submittedAt)}（北京时间）</p><p className="post-body">{current.message || '未填写申请说明'}</p>
       {current.status === 'PENDING' && <p>等待队长审核，当前不占名额。</p>}
-      {current.membership?.status === 'ACTIVE' && <p className="success-notice" role="status">已入队 · 当前有效成员 · {current.membership.slotName} · 加入于 {beijingTime(current.membership.joinedAt)}（北京时间）</p>}
+      {current.membership?.status === 'ACTIVE' && <p className="success-notice" role="status">已入队 · 当前有效成员{named && ' · ' + current.membership.slotName} · 加入于 {beijingTime(current.membership.joinedAt)}（北京时间）</p>}
       {current.membership?.status === 'ACTIVE' && <div className="button-row"><Link className="button" to={groupLink()} state={returnState} onClick={rememberPosition}>打开队伍群</Link><Link className="button secondary" to={groupLink(true)} state={returnState} onClick={rememberPosition}>进入我的队伍 →</Link></div>}
       {current.membership?.status === 'LEFT' && <p className="stage-explanation">当前已退出队伍，队内查看权限已收回。本版本不能重新加入同一队伍。</p>}
       {current.membership?.status === 'REMOVED' && <p className="stage-explanation">当前已被移除，队内查看权限已收回。本版本不能再次加入同一队伍。</p>}
@@ -183,17 +190,22 @@ export function ApplicationPanel({ recruitment: r }: { recruitment: RecruitmentD
     {withdrawal.current && error && <p className="form-note">撤回结果尚未确认，重试仍操作原版本，不会撤回后续的新申请。</p>}
     {(!existing || uncertain) && <form className="form-stack" onSubmit={e => { e.preventDefault(); void submit(); }}>
       <fieldset className="application-fields" disabled={locked}>
-        <label>申请岗位<select aria-label="申请岗位" value={slotId} onChange={e => { setSlotId(e.target.value); setAssessment(null); }}><option value="">请选择岗位</option>{team.slots.map(s => <option value={s.id} key={s.id}>{s.name}（余 {Math.max(0, s.capacity - s.occupied)} 人）</option>)}</select></label>
-        <label>本次时间确认<select aria-label="本次时间确认" value={time} onChange={e => { setTime(e.target.value); setAssessment(null); }}><option value="">阅读上方起止、每周投入和时段后选择</option><option value="yes">我本次可以安排所列时间与投入</option><option value="no">我本次无法安排所列时间</option></select></label>
-        {r.category === 'GAME' && <><label>我的游戏服务器<input aria-label="我的游戏服务器" value={answers.server || ''} maxLength={80} onChange={e => { setAnswers(a => ({ ...a, server: e.target.value })); setAssessment(null); }} /></label><label>我的游戏平台<select aria-label="我的游戏平台" value={answers.platform || ''} onChange={e => { setAnswers(a => ({ ...a, platform: (e.target.value || undefined) as typeof a.platform })); setAssessment(null); }}><option value="">请选择</option><option value="PC">PC</option><option value="CONSOLE">主机</option><option value="MOBILE">手机</option><option value="ANY">不限</option></select></label></>}
+        {summary && <p className="form-note">{summary}</p>}
+        {openSlots.length > 1 && <label>{slotLabel}<select value={selectedSlot} onChange={e => { setSlotId(e.target.value); setAssessment(null); }}><option value="">请选择</option>{openSlots.map(s => <option value={s.id} key={s.id}>{s.name}（余 {s.capacity - s.occupied} 位）</option>)}</select></label>}
+        <label>本次时间确认<select aria-label="本次时间确认" value={time} onChange={e => { setTime(e.target.value); setAssessment(null); }}><option value="">请核对上方时间和安排</option><option value="yes">我可以参加</option><option value="no">这次时间不合适</option></select></label>
+        {game.server && <label>我的游戏区服<input value={answers.server || ''} maxLength={80} onChange={e => { setAnswers(a => ({ ...a, server: e.target.value })); setAssessment(null); }} /></label>}
+        {game.platform && <label>我的游戏平台<select value={answers.platform || ''} onChange={e => { setAnswers(a => ({ ...a, platform: (e.target.value || undefined) as typeof a.platform })); setAssessment(null); }}><option value="">请选择</option><option value="PC">电脑</option><option value="CONSOLE">主机</option><option value="MOBILE">手机</option></select></label>}
         {r.category === 'STUDY' && r.draft.study?.methodRequired && <label>我的学习方式<select aria-label="我的学习方式" value={answers.studyMethod || ''} onChange={e => { setAnswers(a => ({ ...a, studyMethod: (e.target.value || undefined) as typeof a.studyMethod })); setAssessment(null); }}><option value="">请选择</option><option value="SELF">安静自习</option><option value="DISCUSS">讨论</option><option value="TEACH">互相讲题</option></select></label>}
-        {r.category === 'OUTDOOR' && (['experienceConfirmed','equipmentConfirmed'] as const).map((k, i) => <label className="checkbox-field" key={k}><input type="checkbox" checked={!!answers[k]} onChange={e => { setAnswers(a => ({ ...a, [k]: e.target.checked })); setAssessment(null); }} />我已核对并满足{ i ? '装备' : '经验'}要求：{i ? r.draft.outdoor?.equipment || '不限' : r.draft.outdoor?.experience || '不限'}</label>)}
-        <label>申请说明<textarea aria-label="申请说明" value={message} maxLength={1000} rows={4} onChange={e => setMessage(e.target.value)} placeholder="说明你希望承担的工作，可选，最多 1000 字。" /></label>
+        {r.category === 'OUTDOOR' && (['experienceConfirmed','equipmentConfirmed'] as const).map((k, i) => {
+          const requirement = i ? draft.outdoor?.equipment : draft.outdoor?.experience;
+          return requirement && <label className="checkbox-field" key={k}><input type="checkbox" checked={!!answers[k]} onChange={e => { setAnswers(a => ({ ...a, [k]: e.target.checked })); setAssessment(null); }} />我能满足{ i ? '装备' : '经验'}要求：{requirement}</label>;
+        })}
+        <label>申请说明<textarea aria-label="申请说明" value={message} maxLength={1000} rows={3} onChange={e => setMessage(e.target.value)} placeholder="聊聊你为什么想一起参加（可选）" /></label>
         <button className="button secondary" type="button" onClick={() => void assess()}>核对申请条件</button>
       </fieldset>
-      {assessment && <div className="condition-report" aria-label="申请条件对照"><h3>核对结果：{conditionLabels[assessment.status]}</h3><ul>{assessment.checks.map(c => <li key={c.code} data-status={c.status}><strong>{conditionLabels[c.status]} · {c.label}</strong><p>{c.reason}</p></li>)}</ul><p className="field-note">这是当前规则与自述资料的对照，提交时服务端会再次检查，不显示总匹配分数。</p><Link className="text-button" to="/me">补充我的真实资料 →</Link></div>}
-      {team.acceptingStatus !== 'OPEN' && <p className="form-note">当前招募已满或已停止，不能提交新申请。</p>}
-      <button className="button" type="submit" disabled={!!busy || blocked || own.isError || (!uncertain && (locked || assessment?.status !== 'PASS'))}>{uncertain ? '核对并重试申请' : busy === 'submit' ? '正在提交……' : direct ? '确认直接加入' : '提交岗位申请'}</button>
+      {assessment && <div className="condition-report" aria-label="申请条件对照"><h3>核对结果：{conditionLabels[assessment.status]}</h3><ul>{assessment.checks.map(c => <li key={c.code} data-status={c.status}><strong>{conditionLabels[c.status]} · {c.label}</strong><p>{c.reason}</p></li>)}</ul><p className="field-note">根据你填写的资料核对条件，提交时会再次检查。</p><Link className="text-button" to="/me?edit">补充我的真实资料 →</Link></div>}
+      {team.acceptingStatus !== 'OPEN' && <p className="form-note">{team.acceptingStatus === 'FULL' ? '名额已满。' : '报名已结束。'}</p>}
+      <button className="button" type="submit" disabled={!!busy || blocked || own.isError || (!uncertain && (locked || !selectedSlot || assessment?.status !== 'PASS'))}>{uncertain ? '核对并重试申请' : busy === 'submit' ? '正在提交……' : direct ? copy.join : '提交申请'}</button>
     </form>}
   </section>;
 }

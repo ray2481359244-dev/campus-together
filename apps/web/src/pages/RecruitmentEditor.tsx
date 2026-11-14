@@ -53,7 +53,11 @@ export function RecruitmentEditor() {
     setDraft(d => ({ ...d, ...values }));
     setFields({});
   }
-  function materialize() { return { ...draft, existingSkills: splitSkills(skills), slots: draft.category === 'COMPETITION' ? draft.slots.map(s => ({ ...s, requiredSkills: splitSkills(slotSkills[s.key] || '') })) : draft.slots.map(s => ({ ...s, capacity: draft.capacity, requiredSkills: [] })) }; }
+  function materialize() {
+    return { ...draft, existingSkills: splitSkills(skills), slots: draft.slots.map(slot => ({
+      ...slot, requiredSkills: draft.category === 'COMPETITION' ? splitSkills(slotSkills[slot.key] || '') : [],
+    })) };
+  }
   async function persist(values: RecruitmentDraft) {
     if (!saved.current) {
       const attempt = createAttempt.current ?? { key: crypto.randomUUID(), draft: structuredClone(values) };

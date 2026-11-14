@@ -4,7 +4,7 @@ import type { MeDTO } from '@campus/contracts';
 import { useQueryClient } from '@tanstack/react-query';
 import { api, setCsrfToken, setSessionUserId } from './api';
 
-type AuthValue = { user: MeDTO | null; loading: boolean; error: Error | null; reload: () => Promise<void>; accept: (user: MeDTO, token?: string) => void; logout: () => Promise<void> };
+type AuthValue = { user: MeDTO | null; loading: boolean; error: Error | null; reload: () => Promise<void>; accept: (user: MeDTO, token?: string, scope?: 'nickname' | 'details') => void; logout: () => Promise<void> };
 const AuthContext = createContext<AuthValue | null>(null);
 export function AuthProvider({ children }: { children: ReactNode }) {
   const client = useQueryClient(), [user, setUser] = useState<MeDTO | null>(null), [loading, setLoading] = useState(true), [error, setError] = useState<Error | null>(null);
@@ -45,9 +45,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       channel.current?.close(); channel.current = null;
     };
   }, []);
-  function accept(next: MeDTO, token?: string) {
+  function accept(next: MeDTO, token?: string, scope?: 'nickname' | 'details') {
+    if (!token) {
+      // Profile mutations reuse the current session. Leave other same-account requests alive.
+      setUser(current => {
+        if (next.id !== current?.id) return current;
+        if (scope === 'nickname') return { ...current, nickname: next.nickname };
+        return scope === 'details' ? { ...next, nickname: current.nickname } : next;
+      });
+      for (const key of ['posts', 'post', 'community', 'recruitments', 'recruitment', 'my-recruitments', 'profile', 'chat-inbox', 'contact']) {
+        void client.invalidateQueries({ queryKey: [key] });
+      }
+      return;
+    }
     revision.current++; client.clear(); setUser(next); setSessionUserId(next.id);
-    if (token) { setCsrfToken(token); notify(); }
+    setCsrfToken(token); notify();
     setError(null); setLoading(false);
   }
   async function logout() {

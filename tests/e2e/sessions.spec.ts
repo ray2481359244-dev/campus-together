@@ -46,11 +46,12 @@ test('without cross-tab notifications a stale write is still stopped by server i
 test('logout invalidates another tab immediately while an independent context remains signed in', async ({ browser, context, page }) => {
   await register(page, 'logout-owner');
   const other = await context.newPage(); await other.goto('/me');
-  await expect(other.getByRole('heading', { name: '你好，同频的你。' })).toBeVisible();
+  await expect(other.getByRole('heading', { name: 'logout-owner' })).toBeVisible();
   const independent = await browser.newContext({ baseURL: 'http://127.0.0.1:3101' });
   try {
     const separate = await independent.newPage(); await register(separate, 'logout-independent');
-    await page.goto('/me'); await page.getByRole('button', { name: '退出登录', exact: true }).click();
+    await page.goto('/me'); await page.getByText('账号与消息设置', { exact: true }).click();
+    await page.getByRole('button', { name: '退出登录', exact: true }).click();
     await expect(other.getByRole('heading', { name: '登录状态已变化' })).toBeVisible();
     await expect(other.getByLabel('一句话介绍自己')).toHaveCount(0);
     await separate.reload(); await expect(separate.locator('.account-link')).toContainText('logout-independent');
@@ -61,7 +62,7 @@ test('logout invalidates another tab immediately while an independent context re
 });
 
 test('profile failure preserves input and same-account CSRF renewal retries safely', async ({ page }) => {
-  await register(page, 'profile-retry'); await page.goto('/me');
+  await register(page, 'profile-retry'); await page.goto('/me?edit');
   await page.getByLabel('一句话介绍自己').fill('保存失败后继续保留这段输入，再按同一账号安全重试。');
   let writes = 0;
   const identities: string[] = [];
@@ -91,7 +92,7 @@ test('an unavailable login-state request is recoverable and is not presented as 
 });
 
 test('a lost session stops a pending profile write and keeps saved server data separate', async ({ page, context }) => {
-  await register(page, 'expiry-browser'); await page.goto('/me');
+  await register(page, 'expiry-browser'); await page.goto('/me?edit');
   await page.getByLabel('一句话介绍自己').fill('会话失效后不应保存这段内容。');
   await page.route('**/api/v1/me/profile', async route => {
     const headers = route.request().headers();
@@ -111,7 +112,7 @@ test('a lost session stops a pending profile write and keeps saved server data s
 });
 
 test('an earlier failed request cannot overwrite the state after a deliberate logout', async ({ page }) => {
-  await register(page, 'late-response'); await page.goto('/me');
+  await register(page, 'late-response'); await page.goto('/me?edit');
   await page.getByLabel('一句话介绍自己').fill('等待中的旧资料请求。');
   let release!: () => void, entered!: () => void;
   const held = new Promise<void>(resolve => { release = resolve; });
@@ -123,6 +124,7 @@ test('an earlier failed request cannot overwrite the state after a deliberate lo
   });
   try {
     await page.getByRole('button', { name: '保存资料', exact: true }).click(); await started;
+    await page.getByText('账号与消息设置', { exact: true }).click();
     await page.getByRole('button', { name: '退出登录', exact: true }).click();
     await expect(page.getByRole('heading', { name: '欢迎回来，继续一起做。' })).toBeVisible();
     const finished = page.waitForResponse(r => r.url().endsWith('/api/v1/me/profile') && r.status() === 401);
@@ -133,7 +135,7 @@ test('an earlier failed request cannot overwrite the state after a deliberate lo
 });
 
 test('a successful earlier profile response cannot restore the user after logout', async ({ page }) => {
-  await register(page, 'late-success'); await page.goto('/me');
+  await register(page, 'late-success'); await page.goto('/me?edit');
   await page.getByLabel('一句话介绍自己').fill('服务端已保存，但成功响应尚未交付。');
   let release!: () => void, entered!: () => void;
   const held = new Promise<void>(resolve => { release = resolve; });
@@ -145,6 +147,7 @@ test('a successful earlier profile response cannot restore the user after logout
   });
   try {
     await page.getByRole('button', { name: '保存资料', exact: true }).click(); await committed;
+    await page.getByText('账号与消息设置', { exact: true }).click();
     await page.getByRole('button', { name: '退出登录', exact: true }).click();
     await expect(page.getByRole('heading', { name: '欢迎回来，继续一起做。' })).toBeVisible();
     const delivered = page.waitForResponse(r => r.url().endsWith('/api/v1/me/profile') && r.status() === 200);

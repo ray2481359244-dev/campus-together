@@ -107,13 +107,14 @@ export function Messages() {
   }
   function back() {
     if (panel) { setPanel(); return; }
-    if (typeof initialState?.returnTo === 'string' && /^\/(posts|recruitments)\//.test(initialState.returnTo)) { navigate(-1); return; }
+    if (typeof initialState?.returnTo === 'string' && /^\/(posts|recruitments|profiles)\//.test(initialState.returnTo)) { navigate(-1); return; }
     if (initialState?.returnNotice) { navigate(-1); return; }
     roomReturn.current = true;
     change({ team: undefined, chat: undefined, panel: undefined }, true, null);
   }
   const returnLabel = initialState?.returnNotice ? '返回通知'
-    : initialState?.returnTo?.startsWith('/posts/') ? '返回讨论' : initialState?.returnTo?.startsWith('/recruitments/') ? '返回招募' : undefined;
+    : initialState?.returnTo?.startsWith('/posts/') ? '返回讨论' : initialState?.returnTo?.startsWith('/recruitments/') ? '返回招募'
+      : initialState?.returnTo?.startsWith('/profiles/') ? '返回个人主页' : undefined;
   function select(event: React.MouseEvent<HTMLAnchorElement>, item: ChatListItem) {
     if (event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
     trigger.current = event.currentTarget;

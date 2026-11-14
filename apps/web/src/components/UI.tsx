@@ -26,14 +26,13 @@ export function SectionLink({target,children,className,active}:{target:string;ch
     pendingScroll.current=false;
     // The target may have been hidden before this navigation committed.
     const anchor=document.getElementById(target);
-    const surface=target==='conversation'?anchor?.closest('.wb-talk'):target==='linked-recruitments'?anchor?.closest('.wb-act'):null;
-    (surface||anchor)?.scrollIntoView({block:'start',behavior:reduce?'instant':'smooth'});
+    anchor?.scrollIntoView({block:'start',behavior:reduce?'instant':'smooth'});
   },[location.key,target,reduce]);
   return <a className={className} aria-current={active?'location':undefined} href={'#'+target} onClick={event=>{
     if(event.button!==0||event.metaKey||event.ctrlKey||event.shiftKey||event.altKey)return;
     event.preventDefault();
-    capture?.();
-    pendingScroll.current=true;
+    if(capture) capture(target);
+    else pendingScroll.current=true;
     // Replace only the fragment so Back still returns to the original discussion card.
     navigate({pathname:location.pathname,search:location.search,hash:'#'+target},{replace:true,state:location.state});
   }}>{children}</a>;

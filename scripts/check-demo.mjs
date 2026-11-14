@@ -64,11 +64,11 @@ try {
   const recruitment = (await (await captain.request.get('/api/v1/recruitments/' + competition.id)).json()).data;
   for (const row of original.recruitments) assert.equal((await captain.request.get('/api/v1/recruitments/' + row.id)).status(), 200);
   await participant.goto('/recruitments/' + competition.id);
-  await participant.getByLabel('申请岗位', { exact: true }).selectOption(recruitment.team.slots.find(s => s.name === '前端开发').id);
+  await participant.getByRole('combobox', { name: '选择分工', exact: true }).selectOption(recruitment.team.slots.find(s => s.name === '前端开发').id);
   await participant.getByLabel('本次时间确认', { exact: true }).selectOption('yes');
   await participant.getByRole('button', { name: '核对申请条件', exact: true }).click();
   await expect(participant.getByRole('heading', { name: '核对结果：通过', exact: true })).toBeVisible();
-  await participant.getByRole('button', { name: '提交岗位申请', exact: true }).click();
+  await participant.getByRole('button', { name: '提交申请', exact: true }).click();
   await expect(participant.getByLabel('已保存申请', { exact: true })).toContainText('待审核');
   await captain.goto('/messages?view=notifications&tab=pending');
   await captain.getByRole('link', { name: new RegExp(competition.title + '.*加入申请') }).click();
@@ -89,11 +89,10 @@ try {
   await participant.getByRole('button', { name: '发送消息', exact: true }).click();
   await expect(captain.getByLabel('已保存消息', { exact: true })).toContainText(message);
   await participant.goto('/recruitments/' + study.id);
-  const studyDTO = (await (await participant.request.get('/api/v1/recruitments/' + study.id)).json()).data;
-  await participant.getByLabel('申请岗位', { exact: true }).selectOption(studyDTO.team.slots[0].id);
+  await expect(participant.getByText('搭子名额 · 余 2 位', { exact: true })).toBeVisible();
   await participant.getByLabel('本次时间确认', { exact: true }).selectOption('yes');
   await participant.getByRole('button', { name: '核对申请条件', exact: true }).click();
-  await participant.getByRole('button', { name: '确认直接加入', exact: true }).click();
+  await participant.getByRole('button', { name: '一起学', exact: true }).click();
   await expect(participant.getByText(/已入队 · 当前有效成员/)).toBeVisible();
   await captain.goto('/teams/' + competition.teamId);
   for (const action of ['开始', '结束']) {

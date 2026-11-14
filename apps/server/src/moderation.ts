@@ -14,6 +14,7 @@ import { databaseNow } from './time.js';
 import { signalChats, signalTeamChat } from './chat-events.js';
 import { socialAccess, lockRoom } from './social-access.js';
 import { redactSocialMessage } from './social-chat.js';
+import { removeProfilePhoto, visibleProfilePhoto } from './profile-album.js';
 const digest=(value:unknown)=>createHash('sha256').update(JSON.stringify(value)).digest('hex');
 const normalize=(name:string)=>name.normalize('NFKC').trim().toLowerCase().replace(/\s+/g,' ');
 const reason=z.string().trim().min(5).max(500), key=z.uuid(), version=z.number().int().positive();
@@ -50,7 +51,7 @@ async function lockContent(tx:Prisma.TransactionClient,type:string,id:string) {
 export const moderationRouter=Router();
 moderationRouter.use((_req,res,next)=>{res.setHeader('Cache-Control','no-store');next();});
 moderationRouter.post('/reports',writeLimit,csrfGuard,async(req,res)=>{
-  const user=requireUser(res),input=parse(mutation.extend({targetType:z.enum(['POST','COMMENT','RECRUITMENT','CHAT_MESSAGE','SOCIAL_MESSAGE','USER']),targetId:z.uuid()}).strict(),req.body),requestHash=digest(input);
+  const user=requireUser(res),input=parse(mutation.extend({targetType:z.enum(['POST','COMMENT','RECRUITMENT','CHAT_MESSAGE','SOCIAL_MESSAGE','PROFILE_PHOTO','USER']),targetId:z.uuid()}).strict(),req.body),requestHash=digest(input);
   const result=await db.$transaction(async tx=>{
     await activeUser(tx,user.id);const where={reporterId_requestKey:{reporterId:user.id,requestKey:input.requestKey}},known=await tx.report.findUnique({where,select:{id:true,requestHash:true}});
     if(known){if(known.requestHash!==requestHash)throw new ApiError(409,'REQUEST_KEY_CONFLICT','举报请求内容不同。');return {id:known.id};}
@@ -78,6 +79,10 @@ moderationRouter.post('/reports',writeLimit,csrfGuard,async(req,res)=>{
         const visible = await tx.conversationMessage.findFirst({ where: { id: m.id, deletedAt: null, seq: { gt: access.member.joinedAfterSeq } } });
         if (visible) evidence = { body: visible.body || (visible.imageId ? '[图片]' : '[内容卡片]'), nickname: visible.nickname, seq: visible.seq, createdAt: visible.createdAt.toISOString() };
       }
+    }
+    if (input.targetType === 'PROFILE_PHOTO') {
+      const photo = await visibleProfilePhoto(tx, input.targetId, user.id);
+      if (photo && photo.ownerId !== user.id) evidence = { nickname: photo.owner.profile?.nickname ?? '校园用户', revision: photo.revision };
     }
     if(!evidence)throw new ApiError(404,'NOT_FOUND','目标不存在或当前无权提交此内容的证据。');
     return tx.report.create({data:{reporterId:user.id,...input,requestHash,evidence},select:{id:true}});
@@ -134,6 +139,8 @@ moderationRouter.post('/admin/reports/:id/resolve',writeLimit,csrfGuard,async(re
           const message = await tx.conversationMessage.findFirst({ where: { id: row.targetId, deletedAt: null, redactsMessageId: null } });
           if (message) await redactSocialMessage(tx, message);
         }
+      } else if (row.targetType === 'PROFILE_PHOTO') {
+        await removeProfilePhoto(tx, row.targetId);
       } else throw new ApiError(422,'INVALID_ACTION','账号举报请在账号管理中处理。');
     }
     const status=input.outcome==='DISMISSED'?'DISMISSED':'RESOLVED';await tx.report.update({where:{id},data:{status,resolution:input.reason,handledAt:new Date(),revision:{increment:1}}});await notify(tx,{recipientId:row.reporterId,sourceKey:'report:'+id,kind:'REPORT_RESOLVED',title:'举报处理结果',reason:input.reason});return {id,status};

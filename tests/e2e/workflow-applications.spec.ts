@@ -44,22 +44,24 @@ test('applicants check evidence, recover uncertain submissions, find saved inten
     await b.route('**/api/v1/me/applications?teamId=' + r.team.id, route => route.fulfill({ status: 503, contentType: 'application/json', body: JSON.stringify({ error: { code: 'TEST_READ_FAILURE', message: '验证用申请读取失败' } }) }), { times: 1 });
     await b.goto(path);
     await expect(b.getByRole('alert')).toContainText('验证用申请读取失败');
-    await expect(b.getByLabel('申请岗位', { exact: true })).toHaveCount(0);
+    await expect(b.getByLabel('选择分工', { exact: true })).toHaveCount(0);
     await b.getByRole('button', { name: '重新加载', exact: true }).click();
-    const panel = b.getByRole('region', { name: '我的岗位申请', exact: true });
-    await b.getByLabel('申请岗位', { exact: true }).selectOption(r.team.slots[1].id);
+    const panel = b.getByRole('region', { name: '我的加入申请', exact: true });
+    await expect(b.getByLabel('选择分工', { exact: true })).toHaveCount(0);
+    await expect(panel.getByText('界面开发 · 余 2 位', { exact: true })).toBeVisible();
     await b.getByLabel('本次时间确认', { exact: true }).selectOption('yes');
     await b.getByLabel('申请说明', { exact: true }).fill('我希望负责界面实现，这段本次意向需要保留。');
     await b.getByRole('button', { name: '核对申请条件', exact: true }).click();
     await expect(panel.getByRole('heading', { name: '核对结果：待补充', exact: true })).toBeVisible();
     await expect(panel).toContainText('资料尚未声明：React');
-    await expect(b.getByRole('button', { name: '提交岗位申请', exact: true })).toBeDisabled();
+    await expect(b.getByRole('button', { name: '提交申请', exact: true })).toBeDisabled();
     await b.getByRole('link', { name: '补充我的真实资料 →', exact: true }).click();
-    await b.getByLabel('自述技能', { exact: true }).fill(r.team.slots[1].requiredSkills.join('，'));
+    await b.getByLabel('擅长的事', { exact: true }).fill(r.team.slots[1].requiredSkills.join('，'));
     await b.getByRole('button', { name: '保存资料', exact: true }).click();
     await expect(b.getByRole('status').filter({ hasText: '资料已保存' })).toBeVisible();
     await b.goto(path);
-    await b.getByLabel('申请岗位', { exact: true }).selectOption(r.team.slots[1].id);
+    await expect(b.getByLabel('选择分工', { exact: true })).toHaveCount(0);
+    await expect(panel.getByText('界面开发 · 余 2 位', { exact: true })).toBeVisible();
     await b.getByLabel('本次时间确认', { exact: true }).selectOption('yes');
     const originalMessage = '我希望负责界面实现，这段本次意向需要保留。';
     await b.getByLabel('申请说明', { exact: true }).fill(originalMessage);
@@ -76,7 +78,7 @@ test('applicants check evidence, recover uncertain submissions, find saved inten
         await new Promise(resolve => setTimeout(resolve, (Number(reset![1]) + 1) * 1000));
       }
     } else await checked;
-    await panel.getByRole('heading', { name: '申请这个岗位。', exact: true }).click();
+    await panel.getByRole('heading', { name: '申请这个分工', exact: true }).click();
     for (const width of [320, 390, 1440]) {
       await b.setViewportSize({ width, height: 1000 });
       expect(await b.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(width + 1);
@@ -91,7 +93,7 @@ test('applicants check evidence, recover uncertain submissions, find saved inten
       } else if (bodies.length === 2) await route.fulfill({ status: 400, contentType: 'text/html', body: 'Gateway unavailable' });
       else await route.continue();
     });
-    await b.getByRole('button', { name: '提交岗位申请', exact: true }).click();
+    await b.getByRole('button', { name: '提交申请', exact: true }).click();
     await expect(panel.getByRole('alert')).toContainText('验证用提交响应丢失');
     await expect(b.getByLabel('申请说明', { exact: true })).toHaveValue(originalMessage);
     await expect(b.getByLabel('申请说明', { exact: true })).toBeDisabled();
@@ -102,9 +104,9 @@ test('applicants check evidence, recover uncertain submissions, find saved inten
     expect(bodies).toHaveLength(3); expect(bodies[0]).toEqual(bodies[1]); expect(bodies[1]).toEqual(bodies[2]);
     await b.unrouteAll({ behavior: 'wait' });
     await b.reload(); await expect(panel.getByLabel('已保存申请', { exact: true })).toContainText(originalMessage);
-    await expect(b.getByText('当前 1 / 3 人，总人数包含队长。每位成员只占一个岗位。', { exact: true })).toBeVisible();
+    await expect(b.getByText('当前 1 / 3 人，含发起人 · 还差 2 位', { exact: true })).toBeVisible();
     await b.goto('/recruitments');
-    const mine = b.getByRole('region', { name: '我的岗位申请列表', exact: true });
+    const mine = b.getByRole('region', { name: '我的加入申请列表', exact: true });
     await mine.locator('summary').click(); await expect(mine).toContainText(r.title); await expect(mine).toContainText('待审核');
     await mine.getByRole('link').filter({ hasText: r.title }).click();
     await b.route('**/api/v1/applications/*/withdraw', async route => {
@@ -116,7 +118,7 @@ test('applicants check evidence, recover uncertain submissions, find saved inten
     await b.getByRole('button', { name: '重试撤回申请', exact: true }).click();
     await expect(panel.getByLabel('已保存申请', { exact: true })).toContainText('申请状态：已撤回');
     await expect(panel).toContainText('撤回 / 拒绝后需等待 10 分钟');
-    await expect(b.getByRole('button', { name: '提交岗位申请', exact: true })).toBeDisabled();
+    await expect(b.getByRole('button', { name: '提交申请', exact: true })).toBeDisabled();
     await b.reload(); await expect(panel.getByLabel('已保存申请', { exact: true })).toContainText('申请状态：已撤回');
     expect(runtimeErrors).toEqual([]);
   } finally { await owner.close(); await participant.close(); }

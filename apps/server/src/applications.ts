@@ -2,7 +2,7 @@ import { activeUser } from './community.js';
 import { notify } from './notices.js';
 import { Router, type RequestHandler } from 'express';
 import { createHash } from 'node:crypto';
-import { CreateApplicationSchema, EligibilityInputSchema, IdSchema, MyApplicationsQuerySchema, WithdrawApplicationSchema, ReviewApplicationSchema, CaptainApplicationsQuerySchema, RecruitmentDraftSchema } from '@campus/contracts';
+import { CreateApplicationSchema, EligibilityInputSchema, IdSchema, MyApplicationsQuerySchema, WithdrawApplicationSchema, ReviewApplicationSchema, CaptainApplicationsQuerySchema, RecruitmentDraftSchema, gameRequirements, hasNamedSeats, recruitmentCopy } from '@campus/contracts';
 import type { ApplicationDTO, EligibilityDTO, EligibilityInput, CaptainApplicationDTO } from '@campus/contracts';
 import { db } from './db.js';
 import { requireUser, csrfGuard, writeLimit } from './auth.js';
@@ -46,24 +46,28 @@ export async function eligibility(tx: Prisma.TransactionClient, team: Team, user
   add('SCHOOL', '学校范围（自述）', !profile?.school.active ? 'UNKNOWN' : team.recruitment.allowCrossSchool || profile.schoolId === team.recruitment.schoolId ? 'PASS' : 'FAIL', !profile?.school.active ? '请先补充有效的学校资料。' : team.recruitment.allowCrossSchool ? '发布者接受跨校意向；学校资料未核验。' : profile.schoolId === team.recruitment.schoolId ? '你的自述学校符合仅同校范围，未做认证。' : '你的身份资料学校不符合同校范围，浏览学校筛选不能替代身份资料。');
   const slot = team.slots.find(s => s.id === input.slotId);
   const occupied = members.filter(m => m.slotId === slot?.id).length;
-  add('SLOT', '申请岗位', !input.slotId ? 'UNKNOWN' : !slot || occupied >= slot.capacity ? 'FAIL' : 'PASS', !input.slotId ? '请选择要申请的岗位。' : !slot ? '该岗位不属于这支队伍。' : occupied >= slot.capacity ? '这个岗位已满，请选择其他岗位。' : `岗位「${slot.name}」还有 ${slot.capacity - occupied} 个名额，审核通过才占位。`);
+  const copy = recruitmentCopy(draft.category), named = hasNamedSeats(team.slots);
+  add('SLOT', named ? copy.slot : copy.capacity, !input.slotId ? 'UNKNOWN' : !slot || occupied >= slot.capacity ? 'FAIL' : 'PASS',
+    !input.slotId ? `请确认${named ? copy.slot : '报名名额'}。` : !slot ? '该名额不属于这条招募。' : occupied >= slot.capacity ? '这类名额已满。'
+      : `${named ? '「' + slot.name + '」' : ''}还可加入 ${slot.capacity - occupied} 位。${draft.joinMode === 'APPROVAL' ? '确认前不占名额。' : ''}`);
   const normalized = new Set((profile?.skills || []).map(s => s.normalize('NFKC').trim().toLowerCase()));
   const missing = slot?.requiredSkills.filter(s => !normalized.has(s.normalize('NFKC').trim().toLowerCase())) || [];
   const hardSkills = !plan || plan.skillsRequired;
-  add('SKILLS', hardSkills ? '岗位技能（自述）' : '岗位技能偏好', !slot || missing.length ? 'UNKNOWN' : 'PASS',
-    !slot ? '请先选定岗位。' : missing.length ? `资料尚未声明：${missing.join('、')}。${hardSkills ? '请补充真实技能后重查。' : '仍可申请，可在介绍中说明你的经验。'}`
-      : slot.requiredSkills.length ? '自述技能覆盖该岗位标签。' : '该岗位没有额外技能标签要求。', hardSkills);
+  if (draft.category === 'COMPETITION' && named) add('SKILLS', hardSkills ? '分工技能（本人填写）' : '分工技能偏好', !slot || missing.length ? 'UNKNOWN' : 'PASS',
+    !slot ? '请先选定分工。' : missing.length ? `资料尚未声明：${missing.join('、')}。${hardSkills ? '请补充真实技能后重查。' : '仍可申请，可在介绍中说明你的经验。'}`
+      : slot.requiredSkills.length ? '你填写的技能符合分工要求。' : '这个分工没有额外技能要求。', hardSkills);
   const agreed = input.timeConfirmed === null ? 'UNKNOWN' : input.timeConfirmed ? 'PASS' : 'FAIL';
   if (plan && plan.schedule !== 'FIXED') {
     add('TIME', '协商安排', agreed, input.timeConfirmed ? '你同意和队友继续商量时间。' : '请确认愿意和队友商量具体时间。');
   } else {
-    add('TIME', '本次时间确认', agreed, input.timeConfirmed === null ? '请阅读协作时间与安排，确认本次能否参加。' : input.timeConfirmed ? '你已确认本次可以安排所列时间。' : '你本次无法安排所列时间。');
+    add('TIME', '本次时间确认', agreed, input.timeConfirmed === null ? '请核对上方时间，确认这次能否参加。' : input.timeConfirmed ? '你已确认这次可以参加。' : '这次时间不合适。');
   }
   const same = (a: string | undefined, b: string) => a?.normalize('NFKC').trim().toLowerCase() === b.normalize('NFKC').trim().toLowerCase();
   if (draft.category === 'GAME' && draft.game) {
     const g = draft.game;
-    if (!plan || plan.serverRequired) add('SERVER', '游戏服务器（自述）', g.server === '不限' ? 'PASS' : !answers?.server ? 'UNKNOWN' : same(answers.server, g.server) ? 'PASS' : 'FAIL', `所需服务器：${g.server}，本次填写：${answers?.server || '未填写'}。`);
-    if (!plan || plan.platformRequired) add('PLATFORM', '游戏平台（自述）', g.platform === 'ANY' ? 'PASS' : !answers?.platform ? 'UNKNOWN' : answers.platform === g.platform ? 'PASS' : 'FAIL', `所需平台：${g.platform}，本次填写：${answers?.platform || '未填写'}。`);
+    const required = gameRequirements(draft);
+    if (required.server) add('SERVER', '游戏区服', !answers?.server ? 'UNKNOWN' : same(answers.server, g.server) ? 'PASS' : 'FAIL', `所需区服：${g.server}，本次填写：${answers?.server || '未填写'}。`);
+    if (required.platform) add('PLATFORM', '游戏平台', !answers?.platform ? 'UNKNOWN' : answers.platform === g.platform ? 'PASS' : 'FAIL', `所需平台：${g.platform}，本次填写：${answers?.platform || '未填写'}。`);
   }
   if (draft.category === 'STUDY' && draft.study?.methodRequired) add('STUDY_METHOD', '学习方式', !answers?.studyMethod ? 'UNKNOWN' : answers.studyMethod === draft.study.method ? 'PASS' : 'FAIL', `要求方式：${draft.study.method}；本次选择：${answers?.studyMethod || '未选择'}。`);
   for (const [field, label, requirement] of [['experienceConfirmed','经验要求',draft.outdoor?.experience],['equipmentConfirmed','装备要求',draft.outdoor?.equipment]] as const) {
@@ -76,7 +80,7 @@ export async function eligibility(tx: Prisma.TransactionClient, team: Team, user
 function dto(row: Application, now = new Date()): ApplicationDTO {
   const status = row.status === 'PENDING' && !recruitingWindow(row.team.status, row.team.recruitment.joinDeadline, now, row.team.recruitmentClosedAt) ? 'EXPIRED' : row.status;
   const review = row.reviews.find(r => r.submission === row.submission), member = row.team.members.find(m => m.userId === row.applicantId);
-  return { id: row.id, teamId: row.teamId, recruitmentId: row.team.recruitmentId, recruitmentTitle: row.team.recruitment.title,
+  return { id: row.id, teamId: row.teamId, recruitmentId: row.team.recruitmentId, recruitmentTitle: row.team.recruitment.title, category: row.team.recruitment.category,
     slotId: row.slotId, slotName: row.slot.name, status, message: row.message, timeConfirmed: row.timeConfirmed,
     revision: row.revision, submission: row.submission, submittedAt: row.submittedAt.toISOString(), resolvedAt: row.resolvedAt?.toISOString() ?? null,
     canWithdraw: status === 'PENDING', reapplyAt: (row.status === 'REJECTED' || row.status === 'WITHDRAWN' && !RecruitmentDraftSchema.parse(row.team.recruitment.payload).plan) && row.resolvedAt ? new Date(row.resolvedAt.getTime() + cooldownMs).toISOString() : null,

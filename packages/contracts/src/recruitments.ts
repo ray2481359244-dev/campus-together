@@ -44,6 +44,7 @@ export const PublishableRecruitmentSchema = RecruitmentDraftSchema.superRefine((
     if (v.endAt && !v.startAt) issue('startAt', '请先选择开始时间');
     if (v.category === 'GAME') {
       if (!v.game) issue('game', '请选择游戏主题');
+      if (v.mode === 'OFFLINE' && (v.plan.serverRequired || v.plan.platformRequired)) issue('game', '线下桌游按地点报名，请取消线上区服与平台限制');
       if (v.plan.serverRequired && (!v.game?.server || v.game.server === '不限')) issue('server', '请填写必须匹配的大区');
       if (v.plan.platformRequired && (!v.game?.platform || v.game.platform === 'ANY')) issue('platform', '请选择必须匹配的平台');
     }
@@ -62,20 +63,22 @@ export const PublishableRecruitmentSchema = RecruitmentDraftSchema.superRefine((
     if (!v.startAt || !v.endAt) issue('startAt', '请填写协作开始和结束时间');
     if (v.category === 'COMPETITION' && !v.competitionDeadline) issue('competitionDeadline', '请填写比赛截止时间');
     if (v.category === 'COMPETITION' && (!v.competitionName || !v.direction)) issue('competitionName', '请填写比赛名称和项目方向');
-    if (v.category === 'GAME' && (!v.game?.server || !v.game.playMode)) issue('game', '请填写游戏服务器、平台和玩法');
+    if (v.category === 'GAME' && (!v.game?.playMode || v.mode === 'ONLINE' && !v.game.server)) issue('game', '请填写游戏玩法和适用的线上安排');
     if (v.category === 'STUDY' && (!v.study?.subject || !v.study.frequency)) issue('study', '请填写学习目标与方式');
     if (v.category === 'OUTDOOR' && (!v.outdoor?.activity || !v.outdoor.region)) issue('outdoor', '请填写活动区域、预算和强度');
   }
-  if (v.mode === 'OFFLINE' && !v.locationPublic) issue('locationPublic', '线下协作请填写粗粒度地点');
+  if (v.mode === 'OFFLINE' && !v.locationPublic) issue('locationPublic', '请填写活动区域或地点');
   if (v.startAt && v.endAt && Date.parse(v.endAt) <= Date.parse(v.startAt)) issue('endAt', '结束时间须晚于开始');
   if (v.joinDeadline && v.startAt && Date.parse(v.joinDeadline) > Date.parse(v.startAt)) issue('joinDeadline', '招募截止不能晚于开始');
   if (v.category === 'COMPETITION' && v.competitionDeadline && v.startAt && Date.parse(v.competitionDeadline) < Date.parse(v.startAt)) issue('competitionDeadline', '比赛截止不能早于协作开始');
   if (v.category === 'COMPETITION' && v.competitionDeadline && v.joinDeadline && Date.parse(v.joinDeadline) > Date.parse(v.competitionDeadline)) issue('joinDeadline', '招募截止不能晚于比赛截止');
-  if (v.category !== 'COMPETITION' && (v.slots.length !== 1 || v.slots[0]?.name !== '成员' || v.slots[0]?.requiredSkills.length)) issue('slots', '此场景使用一个无技能门槛的成员岗位');
-  if (v.slots.some(s => !s.name)) issue('slots', '每个岗位都需要名称');
-  if (v.slots.reduce((sum, s) => sum + s.capacity, 0) !== v.capacity) issue('slots', '岗位人数之和必须等于总人数（含队长）');
-  if (new Set(v.slots.map(s => s.key)).size !== v.slots.length || new Set(v.slots.map(s => s.name.normalize('NFKC').toLowerCase())).size !== v.slots.length) issue('slots', '岗位编号和名称不能重复');
-  if (!v.slots.some(s => s.key === v.captainSlotKey)) issue('captainSlotKey', '请明确自己占据的岗位');
+  const namedSeats = v.category === 'COMPETITION' || v.category === 'GAME' && !!v.plan;
+  if (v.category !== 'COMPETITION' && v.slots.some(s => s.requiredSkills.length)) issue('slots', '此场景使用无技能门槛的名额');
+  if (!namedSeats && (v.slots.length !== 1 || v.slots[0]?.name !== '成员')) issue('slots', '此场景使用一类通用名额');
+  if (v.slots.some(s => !s.name)) issue('slots', '请为每类名额填写名称');
+  if (v.slots.reduce((sum, s) => sum + s.capacity, 0) !== v.capacity) issue('slots', '各类名额须加起来等于总人数（含发起人）');
+  if (new Set(v.slots.map(s => s.key)).size !== v.slots.length || new Set(v.slots.map(s => s.name.normalize('NFKC').toLowerCase())).size !== v.slots.length) issue('slots', '各类名额的编号和名称须唯一');
+  if (!v.slots.some(s => s.key === v.captainSlotKey)) issue('captainSlotKey', '请选择自己的名额类型');
 });
 export const CreateRecruitmentSchema = z.object({ requestKey: Id, draft: RecruitmentDraftSchema }).strict();
 export const UpdateRecruitmentSchema = z.object({ revision: z.number().int().positive(), draft: RecruitmentDraftSchema }).strict();

@@ -5,7 +5,7 @@
 .cloud-platform .page-title .content-title{font-family:var(--campus-font);font-weight:750}
 .cloud-platform .my-drafts{--fold-surface:#eee4f8;--fold-line:#b9a1ca;background:var(--fold-surface);border:1px solid var(--fold-line);border-radius:21px;margin:19px 0;padding:16px 21px;box-shadow:3px 4px 0 #a58bb51a}
 .cloud-platform .my-drafts[aria-label="我发起的招募"]{--fold-surface:#e6efd9;--fold-line:#adc398}
-.cloud-platform .my-drafts[aria-label="我的岗位申请列表"]{--fold-surface:#e7eff8;--fold-line:#b1c3d7}
+.cloud-platform .my-drafts[aria-label="我的加入申请列表"]{--fold-surface:#e7eff8;--fold-line:#b1c3d7}
 .cloud-platform .my-drafts summary{border:0;padding:0;min-height:44px;font-size:15px;font-weight:650;list-style:none}
 .cloud-platform .my-drafts summary::after{content:'';width:8px;height:8px;border:solid #80698d;border-width:0 1.5px 1.5px 0;rotate:45deg;margin:0 5px 5px auto;transition:rotate .22s cubic-bezier(.2,.8,.2,1)}
 .cloud-platform .my-drafts details[open] summary::after{rotate:225deg;margin-top:6px}
@@ -44,3 +44,42 @@
 @media(prefers-reduced-motion:reduce){.interaction-layer{display:none}}
 @media(pointer:coarse){.pointer-companion{display:none}}
 .wb-source .detail-author{border:0;padding-bottom:0}.wb-source h1:focus-visible{outline:2px dotted #9675ad;outline-offset:7px;border-radius:9px}.wb-talk .comment-byline>.student-avatar{position:absolute;left:0;top:0;width:32px;height:35px;border-radius:11px}.wb-source .detail-author>.student-avatar{width:42px;height:45px;border-radius:14px}.cloud-platform [aria-label="队伍详情"] .page-title h1,.cloud-platform .team-chat .page-title h1{font-family:var(--campus-font);font-weight:750}
+.wb-responses > [data-compact="true"] {
+  padding: 0;
+}
+.wb-compact-link {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 64px;
+  padding: 10px 18px;
+  border-radius: inherit;
+  color: inherit;
+  text-decoration: none;
+}
+.wb-compact-link > span { flex: 1; min-width: 0; }
+.wb-compact-link strong, .wb-compact-link small { display: block; }
+.wb-compact-link small { margin-top: 3px; color: var(--muted, #594961); }
+.wb-compact-link:hover { background: #fffaf940; }
+.wb-compact-link:focus-visible { outline-offset: -4px; }
+.wb-responses, .wb-responses .surface-heading h2, .wb-source h1 { scroll-margin-top: 108px; }
+.wb-responses:has(> [data-compact="true"]) { gap: 12px; }
+.profile-author-link {
+  display: inline-flex;
+  gap: 10px;
+  align-items: center;
+  color: var(--campus-text);
+  padding-block: 3px;
+  min-height: 44px;
+  overflow-wrap: anywhere;
+}
+.detail-author .profile-author-link > .student-avatar { width: 42px; height: 45px; flex: none; }
+.detail-author .profile-author-link small { display: block; font-size: 12px; }
+.wb-talk .comment-byline > .profile-author-link > .student-avatar {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 32px;
+  height: 35px;
+  border-radius: 11px;
+}

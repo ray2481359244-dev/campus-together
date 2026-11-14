@@ -74,6 +74,7 @@ model User {
   allowMessageRequests Boolean @default(true)
   aiRequests AiRequest[]
   postImages PostImage[]
+  profilePhotos ProfilePhoto[]
   comments Comment[]
   reactions PostReaction[]
   postMutes PostMute[]
@@ -99,6 +100,32 @@ model Profile {
   interests Category[] @default([])
   createdAt DateTime @default(now()) @db.Timestamptz(3)
   updatedAt DateTime @updatedAt @db.Timestamptz(3)
+}
+
+enum PhotoVisibility {
+  PRIVATE
+  CAMPUS
+}
+
+model ProfilePhoto {
+  id          String          @id @default(uuid()) @db.Uuid
+  ownerId     String          @db.Uuid
+  owner       User            @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  requestKey  String          @db.Uuid
+  requestHash String          @db.Char(64)
+  visibility  PhotoVisibility @default(PRIVATE)
+  position    Int
+  revision    Int             @default(1)
+  width       Int
+  height      Int
+  bytes       Bytes?
+  thumbnail   Bytes?
+  createdAt   DateTime        @default(now()) @db.Timestamptz(3)
+  removedAt   DateTime?       @db.Timestamptz(3)
+
+  @@unique([ownerId, requestKey])
+  @@index([ownerId, removedAt, position])
+  @@index([ownerId, createdAt])
 }
 
 model AiRequest {

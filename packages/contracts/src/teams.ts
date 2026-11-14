@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import type { RecruitmentDraft } from './recruitments.js';
 
 export const MyTeamsQuerySchema = z.object({ cursor: z.uuid().optional() }).strict();
 export const LeaveTeamSchema = z.object({ revision: z.number().int().positive() }).strict();
@@ -18,6 +19,8 @@ export interface TeamSummaryDTO {
   myMembership: { id: string; role: 'CAPTAIN' | 'MEMBER'; revision: number; slotName: string; joinedAt: string };
 }
 export interface TeamDetailDTO extends TeamSummaryDTO {
+  category: RecruitmentDraft['category'];
+  namedSeats: boolean;
   canLeave: boolean; canClose: boolean; canStart: boolean; canComplete: boolean; canCancel: boolean;
   members: { id: string; userId: string; nickname: string; schoolName: string; skills: string[]; role: 'CAPTAIN' | 'MEMBER'; revision: number; slotName: string; joinedAt: string; canRemove: boolean; canTransfer: boolean }[];
 }

@@ -1,5 +1,5 @@
 import express, { Router } from 'express';
-import sharp from 'sharp';
+import { normalizePhoto } from './image-processing.js';
 import { createHash } from 'node:crypto';
 import { z } from 'zod';
 import { IdSchema } from '@campus/contracts';
@@ -36,19 +36,16 @@ communityRouter.post('/media', (_req,res,next) => { requireUser(res); next(); },
   const requestHash=hash(bytes);
   const known=await db.postImage.findUnique({ where: { authorId_requestKey: { authorId:user.id,requestKey:input.requestKey } }, select:{id:true,width:true,height:true,requestHash:true} });
   if(known) { if(known.requestHash!==requestHash) throw new ApiError(409,'REQUEST_KEY_CONFLICT','同一上传请求内容不同。'); res.json({data:{id:known.id,width:known.width,height:known.height}}); return; }
-  let output: Awaited<ReturnType<ReturnType<typeof sharp>['metadata']>>, encoded: Buffer;
+  let output: Awaited<ReturnType<typeof normalizePhoto>>;
   try {
-    const image=sharp(bytes,{limitInputPixels:16000000,failOn:'warning'}), meta=await image.metadata();
-    if(!['jpeg','png','webp'].includes(meta.format || '') || !meta.width || !meta.height || meta.width>8000 || meta.height>8000 || (meta.pages || 1)>1) throw new Error('format');
-    encoded=await image.rotate().resize({width:2048,height:2048,fit:'inside',withoutEnlargement:true}).webp({quality:82}).toBuffer();
-    output=await sharp(encoded).metadata();
+    output=await normalizePhoto(bytes,2048,82);
   } catch { throw new ApiError(422,'INVALID_IMAGE','仅支持静态 JPEG、PNG、WebP，最多 1600 万像素，长宽各不超过 8000。'); }
   const result=await db.$transaction(async tx => {
     await activeUser(tx,user.id);
     const prior=await tx.postImage.findUnique({where:{authorId_requestKey:{authorId:user.id,requestKey:input.requestKey}},select:{id:true,width:true,height:true,requestHash:true}});
     if(prior) { if(prior.requestHash!==requestHash) throw new ApiError(409,'REQUEST_KEY_CONFLICT','同一上传请求内容不同。'); return {id:prior.id,width:prior.width,height:prior.height}; }
     if(await tx.postImage.count({where:{authorId:user.id,createdAt:{gte:new Date(Date.now()-86400000)}}})>=30) throw new ApiError(429,'UPLOAD_LIMIT','每人每天最多上传 30 张图片。');
-    return tx.postImage.create({data:{authorId:user.id,requestKey:input.requestKey,requestHash,bytes:new Uint8Array(encoded),width:output.width!,height:output.height!},select:{id:true,width:true,height:true}});
+    return tx.postImage.create({data:{authorId:user.id,requestKey:input.requestKey,requestHash,bytes:new Uint8Array(output.data),width:output.info.width,height:output.info.height},select:{id:true,width:true,height:true}});
   });
   res.status(201).json({data:result});
 });
@@ -66,7 +63,7 @@ communityRouter.get('/community/:id',async(req,res)=>{
     const target = !cursor && query.commentId ? await tx.comment.findFirst({where:{id:query.commentId,postId,status:'PUBLISHED'}}) : null;
     const rows=await tx.comment.findMany({where:{postId,status:'PUBLISHED',...(cursor?{OR:[{createdAt:{gt:cursor.createdAt}},{createdAt:cursor.createdAt,id:{gt:cursor.id}}]}:target?{OR:[{createdAt:{gt:target.createdAt}},{createdAt:target.createdAt,id:{gte:target.id}}]}:{})},include:{author:{select:{profile:{select:{nickname:true}}}}},orderBy:[{createdAt:'asc'},{id:'asc'}],take:21});
     const replies=await tx.comment.findMany({where:{id:{in:rows.map(c=>c.replyId).filter((id):id is string=>!!id)},postId,status:'PUBLISHED'},select:{id:true,body:true,author:{select:{profile:{select:{nickname:true}}}}}});
-    return {notificationsMuted:!!userId&&!!await tx.postMute.findUnique({where:{userId_postId:{userId,postId}}}),likes:await tx.postReaction.count({where:{postId}}),liked:!!userId&&!!await tx.postReaction.findUnique({where:{userId_postId:{userId,postId}}}),saved:!!userId&&!!await tx.favorite.findUnique({where:{userId_postId:{userId,postId}}}),comments:rows.slice(0,20).map(c=>({id:c.id,authorId:c.authorId,body:c.body,replyId:c.replyId,reply:c.replyId ? (()=>{const original=replies.find(r=>r.id===c.replyId);return original ? { body: original.body.slice(0,120), nickname: original.author.profile?.nickname || '校园用户' } : null;})() : null,nickname:c.author.profile?.nickname || '校园用户',canDelete:c.authorId===userId,createdAt:c.createdAt.toISOString()})),nextCursor:rows.length>20?rows[19].id:null};
+    return {commentCount:await tx.comment.count({where:{postId,status:'PUBLISHED'}}),notificationsMuted:!!userId&&!!await tx.postMute.findUnique({where:{userId_postId:{userId,postId}}}),likes:await tx.postReaction.count({where:{postId}}),liked:!!userId&&!!await tx.postReaction.findUnique({where:{userId_postId:{userId,postId}}}),saved:!!userId&&!!await tx.favorite.findUnique({where:{userId_postId:{userId,postId}}}),comments:rows.slice(0,20).map(c=>({id:c.id,authorId:c.authorId,body:c.body,replyId:c.replyId,reply:c.replyId ? (()=>{const original=replies.find(r=>r.id===c.replyId);return original ? { body: original.body.slice(0,120), nickname: original.author.profile?.nickname || '校园用户' } : null;})() : null,nickname:c.author.profile?.nickname || '校园用户',canDelete:c.authorId===userId,createdAt:c.createdAt.toISOString()})),nextCursor:rows.length>20?rows[19].id:null};
   }); res.json({data:result});
 });
 communityRouter.post('/community/:id/comments',writeLimit,csrfGuard,async(req,res)=>{

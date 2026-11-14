@@ -14,6 +14,7 @@ import type {ReactNode} from 'react';
 import {InteractionLayer} from './components/visual/InteractionLayer';
 import {RouteArrival} from './components/visual/RouteArrival';
 import { messageLink } from './lib/messaging';
+import { activePostLocation } from './lib/profile-link';
 const Landing=lazy(()=>import('./pages/Landing').then(module=>({default:module.Landing})));
 const Admin = lazy(() => import('./pages/Admin').then(m => ({ default: m.Admin })));
 const TopicRequests = lazy(() => import('./pages/TopicRequests').then(m => ({ default: m.TopicRequests })));
@@ -23,6 +24,7 @@ const AuthPage = lazy(() => import('./pages/Auth').then(m => ({ default: m.AuthP
 const Publish = lazy(() => import('./pages/Publish').then(m => ({ default: m.Publish })));
 const PostDetail = lazy(() => import('./pages/PostDetail').then(m => ({ default: m.PostDetail })));
 const Profile = lazy(() => import('./pages/Profile').then(m => ({ default: m.Profile })));
+const VisitorProfile = lazy(() => import('./pages/Profile').then(m => ({ default: m.VisitorProfile })));
 const Messages = lazy(() => import('./pages/Messages').then(m => ({ default: m.Messages })));
 const Recruitments = lazy(() => import('./pages/Recruitments').then(m => ({ default: m.Recruitments })));
 const RecruitmentEditor = lazy(() => import('./pages/RecruitmentEditor').then(m => ({ default: m.RecruitmentEditor })));
@@ -36,10 +38,11 @@ function LegacyTeamLink({ details = false }: { details?: boolean }) {
 }
 
 function CommunityRoutes() {
-  const location = useLocation(), background = location.state?.backgroundLocation as Location | undefined;
-  const overlay = !!background && /^\/posts\/[^/]+$/.test(location.pathname);
-  return <Suspense fallback={<Loading label="正在展开页面……" />}><RouteArrival path={location.pathname} skip={overlay||location.pathname.startsWith('/posts/')}><div className={'route-stage' + (overlay ? ' with-overlay' : '')}><ScrollRestoration /><div className="route-base" inert={overlay} aria-hidden={overlay || undefined}>
-    <Routes location={overlay ? background : location}>
+  const location = useLocation(), profileOrigin = activePostLocation(location), postLocation = profileOrigin || location;
+  const background = postLocation.state?.backgroundLocation as Location | undefined;
+  const overlay = !!background && /^\/posts\/[^/]+$/.test(postLocation.pathname);
+  return <Suspense fallback={<Loading label="正在展开页面……" />}><RouteArrival path={postLocation.pathname} skip={overlay||postLocation.pathname.startsWith('/posts/')}><div className={'route-stage' + (overlay || profileOrigin ? ' with-overlay' : '')}><ScrollRestoration /><div className="route-base" inert={overlay || !!profileOrigin} aria-hidden={overlay || !!profileOrigin || undefined}>
+    <Routes location={overlay ? background : postLocation}>
       <Route index element={<Navigate to="/discover" replace />} />
       <Route path="discover" element={<Discover />} />
       <Route path="login" element={<AuthPage key="login" />} />
@@ -51,6 +54,7 @@ function CommunityRoutes() {
       <Route path="topic-requests" element={<TopicRequests />} />
       <Route path="saved" element={<Saved />} />
       <Route path="me" element={<Profile />} />
+      <Route path="profiles/:userId" element={<VisitorProfile />} />
       <Route path="recruitments" element={<Recruitments />} />
       <Route path="matching" element={<Matching />} />
       <Route path="recruitments/new" element={<RecruitmentEditor key="new" />} />
@@ -62,7 +66,10 @@ function CommunityRoutes() {
       <Route path="messages" element={<Messages />} />
       <Route path="*" element={<EmptyState title="这条路还没铺好"><Link className="button" to="/discover">回到首页</Link></EmptyState>} />
     </Routes>
-  </div>{overlay && <div className="route-overlay"><Routes location={location}><Route path="posts/:id" element={<PostDetail key={location.pathname} />} /></Routes></div>}</div></RouteArrival></Suspense>;
+  </div>{overlay && <div className="route-overlay" inert={!!profileOrigin} aria-hidden={!!profileOrigin || undefined}><Routes location={postLocation}><Route path="posts/:id" element={<PostDetail key={postLocation.pathname} />} /></Routes></div>}
+  {profileOrigin && <div className="route-overlay profile-overlay"><Routes location={location}>
+    <Route path="profiles/:userId" element={<VisitorProfile />} /><Route path="me" element={<Profile />} />
+  </Routes></div>}</div></RouteArrival></Suspense>;
 }
 function RequireSession({children}:{children:ReactNode}){
   const auth=useAuth(),location=useLocation();

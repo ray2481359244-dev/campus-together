@@ -2,7 +2,8 @@ import type { Request, RequestHandler, Response } from 'express';
 import { Router } from 'express';
 import { createHash, createHmac, randomBytes, timingSafeEqual } from 'node:crypto';
 import { rateLimit } from 'express-rate-limit';
-import { RegisterSchema, LoginSchema, ProfileSchema, IdSchema } from '@campus/contracts';
+import { LoginSchema, ProfileDetailsSchema, ProfileSchema, RenameProfileSchema, IdSchema, passwordLimits, registrationSchema } from '@campus/contracts';
+import type { ProfileActivityDTO } from '@campus/contracts';
 import { db } from './db.js';
 import { config } from './config.js';
 import { ApiError, parse } from './http.js';
@@ -22,6 +23,9 @@ export const authLimit = limit(20, 15 * 60_000);
 const anonymousLimit = limit(90, 15 * 60_000);
 export const writeLimit = limit(40, 60_000);
 const dummyHash = hashPassword('dummy-password-never-a-user');
+export const registrationMinimum = config.demo && !config.production && /^http:\/\/(127\.0\.0\.1|localhost)(:\d+)?$/.test(config.origin)
+  ? passwordLimits.demo : passwordLimits.standard;
+const signupSchema = registrationSchema(registrationMinimum);
 
 export const loadSession: RequestHandler = async (req, res, next) => {
   const token = req.cookies?.[COOKIE];
@@ -80,7 +84,7 @@ authRouter.get('/csrf', anonymousLimit, async (req, res) => {
 });
 authRouter.get('/me', (_req, res) => res.json({ data: { user: res.locals.session?.user ? privateProfile(res.locals.session.user) : null, csrfToken: res.locals.session ? csrfFor(res.locals.session.rawToken) : null } }));
 authRouter.post('/register', authLimit, csrfGuard, async (req, res) => {
-  const input = parse(RegisterSchema, req.body);
+  const input = parse(signupSchema, req.body);
   const passwordHash = await hashPassword(input.password);
   const result = await db.$transaction(async tx => {
     if (!await tx.school.findFirst({ where: { id: input.schoolId, active: true } })) throw new ApiError(400, 'INVALID_SCHOOL', '请选择可用的学校。');
@@ -108,20 +112,50 @@ authRouter.post('/logout', csrfGuard, async (_req, res) => {
 });
 export const profileRouter = Router();
 profileRouter.get('/me/profile', (_req, res) => { res.setHeader('Cache-Control', 'no-store'); res.json({ data: privateProfile(requireUser(res)) }); });
-profileRouter.patch('/me/profile', writeLimit, csrfGuard, async (req, res) => {
-  const user = requireUser(res), input = parse(ProfileSchema, req.body);
+async function editProfile(userId: string, input: Prisma.ProfileUpdateInput | Prisma.ProfileUncheckedUpdateInput) {
   const updated = await db.$transaction(async tx => {
-    await tx.$queryRaw`SELECT "id" FROM "User" WHERE "id" = ${user.id}::uuid FOR NO KEY UPDATE`;
-    if (!await tx.user.findFirst({ where: { id: user.id, status: 'ACTIVE' } })) throw new ApiError(401, 'AUTH_REQUIRED', '当前账号不可修改资料，请重新登录。');
-    if (!await tx.school.findFirst({ where: { id: input.schoolId, active: true } })) throw new ApiError(400, 'INVALID_SCHOOL', '请选择可用的学校。');
-    await tx.profile.update({ where: { userId: user.id }, data: input });
-    return tx.user.findUniqueOrThrow({ where: { id: user.id }, include: userInclude });
+    await tx.$queryRaw`SELECT "id" FROM "User" WHERE "id" = ${userId}::uuid FOR NO KEY UPDATE`;
+    if (!await tx.user.findFirst({ where: { id: userId, status: 'ACTIVE' } })) throw new ApiError(401, 'AUTH_REQUIRED', '当前账号不可修改资料，请重新登录。');
+    if ('schoolId' in input && typeof input.schoolId === 'string' && !await tx.school.findFirst({ where: { id: input.schoolId, active: true } })) {
+      throw new ApiError(400, 'INVALID_SCHOOL', '请选择可用的学校。');
+    }
+    await tx.profile.update({ where: { userId }, data: input });
+    return tx.user.findUniqueOrThrow({ where: { id: userId }, include: userInclude });
   });
-  res.json({ data: privateProfile(updated) });
+  return privateProfile(updated);
+}
+profileRouter.patch('/me/profile', writeLimit, csrfGuard, async (req, res) => {
+  const user = requireUser(res);
+  // Keep the full profile contract for existing clients while the new form edits only its own fields.
+  const input = (req.body && Object.hasOwn(req.body, 'nickname') ? parse(ProfileSchema, req.body) : parse(ProfileDetailsSchema, req.body));
+  res.setHeader('Cache-Control', 'no-store').json({ data: await editProfile(user.id, input) });
+});
+profileRouter.patch('/me/profile/nickname', writeLimit, csrfGuard, async (req, res) => {
+  const user = requireUser(res), input = parse(RenameProfileSchema, req.body);
+  res.setHeader('Cache-Control', 'no-store').json({ data: await editProfile(user.id, input) });
 });
 profileRouter.get('/profiles/:userId', async (req, res) => {
   const id = parse(IdSchema, req.params.userId);
   const user = await db.user.findFirst({ where: { id, status: 'ACTIVE' }, include: userInclude });
   if (!user) throw new ApiError(404, 'NOT_FOUND', '该用户不存在。');
-  res.json({ data: publicProfile(user) });
+  res.setHeader('Cache-Control', 'no-store').json({ data: publicProfile(user) });
+});
+profileRouter.get('/profiles/:userId/activity', async (req, res) => {
+  requireUser(res);
+  const authorId = parse(IdSchema, req.params.userId);
+  const select = { id: true, title: true, createdAt: true } as const;
+  const activity = await db.$transaction(async tx => {
+    if (!await tx.user.findFirst({ where: { id: authorId, status: 'ACTIVE' }, select: { id: true } })) {
+      throw new ApiError(404, 'NOT_FOUND', '该用户不存在。');
+    }
+    const posts = await tx.post.findMany({ where: { authorId, status: 'PUBLISHED' }, select, orderBy: [{ createdAt: 'desc' }, { id: 'desc' }], take: 5 });
+    const recruitments = await tx.recruitment.findMany({ where: { authorId, publicationStatus: 'PUBLISHED', hiddenAt: null, publishedAt: { not: null } },
+      select: { id: true, title: true, publishedAt: true }, orderBy: [{ publishedAt: 'desc' }, { id: 'desc' }], take: 5 });
+    const entries: ProfileActivityDTO[] = [
+      ...posts.map(post => ({ ...post, type: 'POST' as const, createdAt: post.createdAt.toISOString() })),
+      ...recruitments.filter(row => row.publishedAt).map(row => ({ id: row.id, title: row.title, type: 'RECRUITMENT' as const, createdAt: row.publishedAt!.toISOString() })),
+    ];
+    return entries.sort((a, b) => b.createdAt.localeCompare(a.createdAt) || b.id.localeCompare(a.id)).slice(0, 5);
+  }, { isolationLevel: 'RepeatableRead' });
+  res.setHeader('Cache-Control', 'no-store').json({ data: activity });
 });

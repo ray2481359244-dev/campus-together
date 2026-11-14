@@ -1,12 +1,12 @@
 import { useLayoutEffect, useRef } from 'react';
 import { useLocation, useNavigationType } from 'react-router-dom';
-const positions = new Map<string, number>();
+const positions = new Map<string, { top: number; main: boolean }>();
 const cards = new Map<string, string>();
 function scrollHost() {
   return document.querySelector<HTMLElement>('[data-page-scroll]') || document.getElementById('main-content');
 }
-export function rememberScroll(key: string, postId?: string) {
-  positions.set(key, scrollHost()?.scrollTop ?? window.scrollY);
+export function rememberScroll(key: string, postId?: string, main?: HTMLElement | null) {
+  positions.set(key, { top: main?.scrollTop ?? scrollHost()?.scrollTop ?? window.scrollY, main: !!main });
   if (postId) cards.set(key, postId);
   if (positions.size > 100) { const oldest = positions.keys().next().value!; positions.delete(oldest); cards.delete(oldest); }
 }
@@ -15,12 +15,12 @@ export function ScrollRestoration() {
   useLayoutEffect(() => {
     const pathnameChanged = previous.current !== location.pathname;
     previous.current = location.pathname;
-    const top = positions.get(location.key);
-    if (kind === 'POP' && top !== undefined) {
+    const position = positions.get(location.key);
+    if (kind === 'POP' && position) {
       const frame = requestAnimationFrame(() => {
-        const host = scrollHost();
-        if (host) host.scrollTo({ top, behavior: 'instant' });
-        else window.scrollTo({ top, behavior: 'instant' });
+        const host = position.main ? document.getElementById('main-content') : scrollHost();
+        if (host) host.scrollTo({ top: position.top, behavior: 'instant' });
+        else window.scrollTo({ top: position.top, behavior: 'instant' });
         const id = cards.get(location.key);
         if (id) document.querySelector<HTMLElement>(`.post-card[data-post-id="${CSS.escape(id)}"]`)?.focus({ preventScroll: true });
       });

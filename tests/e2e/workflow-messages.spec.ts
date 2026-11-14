@@ -15,7 +15,7 @@ test('统一消息页连接队伍审批、评论私聊与讨论群', async ({ br
     await captain.locator('.message-task').filter({ hasText: r.title }).click();
     await captain.getByRole('button', { name: '批准入队', exact: true }).click();
     await captain.getByRole('button', { name: '确认批准入队', exact: true }).click();
-    await expect(captain.getByText('已批准入队，成员与岗位人数已更新，结果通知已保存。', { exact: true })).toBeVisible();
+    await expect(captain.getByText('已批准入队，名额已更新，结果通知已保存。', { exact: true })).toBeVisible();
     await captain.getByRole('button', { name: '关闭资料面板', exact: true }).click();
     await captain.getByRole('button', { name: '返回通知', exact: true }).click();
     await expect(captain.getByText('暂无待处理事项。', { exact: true })).toBeVisible();

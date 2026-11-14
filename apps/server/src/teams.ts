@@ -1,5 +1,5 @@
 import { Router, type RequestHandler } from 'express';
-import { CloseRecruitmentSchema, IdSchema, LeaveTeamSchema, MyTeamsQuerySchema, RemoveMemberSchema, TeamActionSchema } from '@campus/contracts';
+import { CloseRecruitmentSchema, IdSchema, LeaveTeamSchema, MyTeamsQuerySchema, RemoveMemberSchema, TeamActionSchema, hasNamedSeats } from '@campus/contracts';
 import type { MembershipChangeDTO, TeamActionDTO, TeamActionInput, TeamDetailDTO, TeamSummaryDTO } from '@campus/contracts';
 import type { Prisma } from './generated/prisma/client.js';
 import { db } from './db.js';
@@ -28,7 +28,8 @@ function summary(team: Team, userId: string): TeamSummaryDTO {
 }
 function detail(team: Team, userId: string): TeamDetailDTO {
   const base = summary(team, userId), isCaptain = base.myMembership.role === 'CAPTAIN' && team.captainUserId === userId;
-  return { ...base, canLeave: !isCaptain && editable(team), canClose: isCaptain && !team.recruitmentClosedAt && ['OPEN', 'FULL'].includes(base.status),
+  return { ...base, category: team.recruitment.category, namedSeats: hasNamedSeats(team.slots),
+    canLeave: !isCaptain && editable(team), canClose: isCaptain && !team.recruitmentClosedAt && ['OPEN', 'FULL'].includes(base.status),
     canStart: isCaptain && ['OPEN', 'FULL'].includes(base.status) && base.memberCount >= 2, canComplete: isCaptain && base.status === 'IN_PROGRESS', canCancel: isCaptain && editable(team),
     members: team.members.filter(m => m.status === 'ACTIVE').sort((a, b) => Number(b.role === 'CAPTAIN') - Number(a.role === 'CAPTAIN') || a.joinedAt.getTime() - b.joinedAt.getTime() || a.id.localeCompare(b.id)).map(m => ({
       id: m.id, userId: m.userId, nickname: m.user.profile?.nickname || '校园用户', schoolName: m.user.profile?.school.name || '未填写', skills: m.user.profile?.skills || [], role: m.role,

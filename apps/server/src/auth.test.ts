@@ -3,6 +3,7 @@ import request from 'supertest';
 import { app } from './app.js';
 import { db } from './db.js';
 import { config } from './config.js';
+import { passwordLimits, registrationSchema } from '@campus/contracts';
 
 const schoolId = '90000000-0000-4000-8000-000000000001';
 const a = request.agent(app), b = request.agent(app);
@@ -16,6 +17,19 @@ beforeAll(async () => {
 afterAll(() => db.$disconnect());
 
 describe('real PostgreSQL authentication and profile privacy', () => {
+  it('enforces the published registration password policy at both boundaries', async () => {
+    const { body } = await request(app).get('/api/v1/health').expect(200);
+    const minimum = body.data.registrationMinimum;
+    expect(minimum).toBe(config.demo ? passwordLimits.demo : passwordLimits.standard);
+    const agent = request.agent(app);
+    const { csrfToken } = (await agent.get('/api/v1/auth/csrf').expect(200)).body.data;
+    const signUp = (password: string, index: number) => agent.post('/api/v1/auth/register').set('Origin', config.origin).set('X-CSRF-Token', csrfToken)
+      .send({ email: `length-${index}@campus.invalid`, password, nickname: '密码验证', schoolId });
+    await signUp('a'.repeat(minimum - 1), 1).expect(400);
+    await signUp('a'.repeat(129), 2).expect(400);
+    await signUp('a'.repeat(128), 3).expect(201);
+    expect(registrationSchema(passwordLimits.standard).safeParse({ email: 'standard@campus.invalid', password: 'six123', nickname: '密码验证', schoolId }).success).toBe(false);
+  });
   it('rejects cross-origin and missing-CSRF registration', async () => {
     await request(app).post('/api/v1/auth/register').set('Origin', config.origin).send({}).expect(403);
     const r = await a.get('/api/v1/auth/csrf').expect(200); csrfA = r.body.data.csrfToken;
@@ -65,6 +79,19 @@ describe('real PostgreSQL authentication and profile privacy', () => {
     await a.post('/api/v1/auth/logout').set('Origin', config.origin).set('X-CSRF-Token', csrfA).send({}).expect(200);
     expect((await request(app).get('/api/v1/auth/me').set('Cookie', oldCookie)).body.data.user).toBeNull();
     await a.get('/api/v1/me/profile').expect(401);
+  });
+  it('edits nickname and details independently across concurrent writes', async () => {
+    csrfA = (await a.get('/api/v1/auth/csrf')).body.data.csrfToken;
+    const login = await a.post('/api/v1/auth/login').set('Origin', config.origin).set('X-CSRF-Token', csrfA)
+      .send({ email: 'testera@campus.invalid', password: 'TestingPassword123!' }).expect(200);
+    csrfA = login.body.data.csrfToken;
+    const patch = (path: string, body: object) => a.patch('/api/v1/me/profile' + path).set('Origin', config.origin).set('X-CSRF-Token', csrfA).send(body);
+    await Promise.all([
+      patch('', { schoolId, bio: '一起拍相册照片', grade: '大二', skills: ['拍照'], interests: ['OUTDOOR'] }).expect(200),
+      patch('/nickname', { nickname: '喜欢拍照的甲' }).expect(200),
+    ]);
+    expect((await b.get('/api/v1/profiles/' + userA).expect(200)).body.data)
+      .toMatchObject({ nickname: '喜欢拍照的甲', bio: '一起拍相册照片', skills: ['拍照'] });
   });
   it('fails wrong credentials and allows a fresh login', async () => {
     csrfA = (await a.get('/api/v1/auth/csrf')).body.data.csrfToken;

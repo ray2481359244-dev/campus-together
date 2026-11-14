@@ -2,7 +2,7 @@ import { useRef, useState } from 'react';
 import { api, ApiError, messageOf } from '../lib/api';
 import { useAuth } from '../lib/auth';
 import { FormError } from './UI';
-export function ReportButton({type,id,evidence}:{type:'POST'|'COMMENT'|'RECRUITMENT'|'CHAT_MESSAGE'|'SOCIAL_MESSAGE'|'USER';id:string;evidence?:string}) {
+export function ReportButton({type,id,evidence}:{type:'POST'|'COMMENT'|'RECRUITMENT'|'CHAT_MESSAGE'|'SOCIAL_MESSAGE'|'PROFILE_PHOTO'|'USER';id:string;evidence?:string}) {
   const {user}=useAuth(),[reason,setReason]=useState(''),[consent,setConsent]=useState(false),[busy,setBusy]=useState(false),[error,setError]=useState(''),[done,setDone]=useState(false);
   const attempt=useRef<object|null>(null);
   const privateMessage = type === 'CHAT_MESSAGE' || type === 'SOCIAL_MESSAGE';
