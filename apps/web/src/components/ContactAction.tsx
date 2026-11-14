@@ -67,7 +67,7 @@ function ContactDialog({ userId, nickname, source, sourceLabel, onClose }: Props
   }
   return <dialog className="contact-dialog message-dialog" ref={dialog} onKeyDown={e => { if (e.key === 'Escape') e.stopPropagation(); }}
     onCancel={e => { e.preventDefault(); if (!busy) onClose(); }} aria-labelledby="contact-name">
-    <header className="message-dialog-head"><StudentAvatar seed={userId} /><h2 id="contact-name">{row?.person.nickname || nickname}</h2>
+    <header className="message-dialog-head"><StudentAvatar seed={userId} version={row?.person.avatarVersion} /><h2 id="contact-name">{row?.person.nickname || nickname}</h2>
       <button type="button" className="message-icon" aria-label="关闭私聊窗口" disabled={busy} onClick={onClose}><X size={20} /></button></header>
     {contact.isPending && <Loading label="正在读取联系人…" />}
     {contact.isError && <ErrorState message={messageOf(contact.error)} retry={() => void contact.refetch()} />}

@@ -9,8 +9,10 @@ const files=readdirSync('tests/e2e').filter(name=>name.endsWith('.spec.ts')).sor
 // Each invocation owns a fresh isolated test server/database. Separate account
 // recovery from community journeys so the suite respects the real auth limiter.
 const account=new Set(['sessions.spec.ts','ui-quality.spec.ts']);
+const draftRecovery='recruitments.spec.ts';
 const groups=[
-  files.filter(name=>!account.has(name)&&!name.startsWith('workflow-')),
+  files.filter(name=>!account.has(name)&&!name.startsWith('workflow-')&&name!==draftRecovery),
+  [draftRecovery],
   files.filter(name=>account.has(name)),
   files.filter(name=>name.startsWith('workflow-')),
 ];

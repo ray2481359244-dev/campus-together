@@ -1,10 +1,10 @@
 import { createContext, useContext, useEffect, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
-import type { MeDTO } from '@campus/contracts';
+import type { AvatarStateDTO, MeDTO } from '@campus/contracts';
 import { useQueryClient } from '@tanstack/react-query';
 import { api, setCsrfToken, setSessionUserId } from './api';
 
-type AuthValue = { user: MeDTO | null; loading: boolean; error: Error | null; reload: () => Promise<void>; accept: (user: MeDTO, token?: string, scope?: 'nickname' | 'details') => void; logout: () => Promise<void> };
+type AuthValue = { user: MeDTO | null; loading: boolean; error: Error | null; reload: () => Promise<void>; accept: (user: MeDTO, token?: string, scope?: 'nickname' | 'details') => void; updateAvatar: (id: string, avatar: AvatarStateDTO) => void; logout: () => Promise<void> };
 const AuthContext = createContext<AuthValue | null>(null);
 export function AuthProvider({ children }: { children: ReactNode }) {
   const client = useQueryClient(), [user, setUser] = useState<MeDTO | null>(null), [loading, setLoading] = useState(true), [error, setError] = useState<Error | null>(null);
@@ -51,7 +51,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setUser(current => {
         if (next.id !== current?.id) return current;
         if (scope === 'nickname') return { ...current, nickname: next.nickname };
-        return scope === 'details' ? { ...next, nickname: current.nickname } : next;
+        return scope === 'details' ? { ...next, nickname: current.nickname, avatarVersion: current.avatarVersion, avatarRevision: current.avatarRevision } : next;
       });
       for (const key of ['posts', 'post', 'community', 'recruitments', 'recruitment', 'my-recruitments', 'profile', 'chat-inbox', 'contact']) {
         void client.invalidateQueries({ queryKey: [key] });
@@ -62,11 +62,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setCsrfToken(token); notify();
     setError(null); setLoading(false);
   }
+  function updateAvatar(id: string, { avatarRevision, avatarVersion }: AvatarStateDTO) {
+    setUser(current => current?.id === id && avatarRevision >= current.avatarRevision ? { ...current, avatarRevision, avatarVersion } : current);
+    for (const key of ['posts', 'post', 'community', 'profile', 'chat-inbox', 'chat-pending', 'contact', 'discussion-people']) {
+      void client.invalidateQueries({ queryKey: [key] });
+    }
+  }
   async function logout() {
     await api('/auth/logout', { method: 'POST', body: {} });
     revision.current++; setCsrfToken(null); setSessionUserId(null); setUser(null); client.clear(); notify();
   }
-  return <AuthContext value={{ user, loading, error, reload, accept, logout }}>{gate
+  return <AuthContext value={{ user, loading, error, reload, accept, updateAvatar, logout }}>{gate
     ? <main className="session-gate"><section className="paper form-stack" aria-label="登录状态恢复"><p className="eyebrow">PLEASE CONFIRM YOUR ACCOUNT.</p><h1>{gate === 'changed' ? '登录状态已变化' : '登录已过期'}</h1><p>{gate === 'changed' ? '另一个标签页可能已退出或切换账号。本页已停止操作，请先确认当前账号。' : '会话已失效，本页已停止操作。请重新加载并登录后继续。'}</p><p className="form-note">原账号的缓存与未提交表单已清除，不会自动转移到另一个账号。已保存的草稿和已发布内容仍在原账号中。</p><button className="button" onClick={() => window.location.reload()}>重新加载并确认账号</button></section></main>
     : children}</AuthContext>;
 }

@@ -9,12 +9,12 @@ export const ContactSchema = z.object({
 export const ChatPreferencesSchema = z.object({ pinned: z.boolean().optional(), muted: z.boolean().optional() }).strict()
   .refine(v => v.pinned !== undefined || v.muted !== undefined, '请选择要更新的会话设置');
 
-export interface PersonDTO { id: string; nickname: string; school: string; bio: string }
+export interface PersonDTO { id: string; nickname: string; avatarVersion: number | null; school: string; bio: string }
 export interface ContactDTO { person: PersonDTO; conversationId: string | null; canContact: boolean; blockedByMe: boolean }
 export interface ChatListItem {
   id: string; kind: 'TEAM' | 'DIRECT' | 'DISCUSSION'; title: string; preview: string; activityAt: string;
   unreadCount: number; pinned: boolean; muted: boolean; archived: boolean; request: 'INCOMING' | 'OUTGOING' | null;
-  peerId?: string; status?: string; captain?: boolean; archiveExpired?: boolean; pendingCount?: number; mentioned?: boolean;
+  peerId?: string; peerAvatarVersion?: number | null; status?: string; captain?: boolean; archiveExpired?: boolean; pendingCount?: number; mentioned?: boolean;
 }
 export interface InboxDTO { items: ChatListItem[]; nextCursor: string | null }
 export interface ChatBadgeDTO { unreadCount: number; requests: number }

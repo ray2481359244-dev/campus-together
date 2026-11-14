@@ -3,14 +3,15 @@ import { z } from 'zod';
 import type { ChatMessageDTO, ConversationSource } from '@campus/contracts';
 import type { Prisma } from './generated/prisma/client.js';
 import { ApiError } from './http.js';
+import { avatarSelect, avatarVersion } from './dto.js';
 
 type Tx = Prisma.TransactionClient;
 type Context = NonNullable<ChatMessageDTO['context']>;
 export const messageHash = (input: object) => createHash('sha256').update(JSON.stringify(input)).digest('hex');
 export const chatSearch = z.object({ q: z.string().trim().min(1).max(100), before: z.coerce.number().int().positive().optional() }).strict();
-export const chatProfile = { profile: { select: { nickname: true, bio: true, school: { select: { name: true } } } } } as const;
+export const chatProfile = { profile: { select: { nickname: true, ...avatarSelect, bio: true, school: { select: { name: true } } } } } as const;
 export const person = (user: Prisma.UserGetPayload<{ include: typeof chatProfile }>) => ({
-  id: user.id, nickname: user.profile?.nickname || '校园用户',
+  id: user.id, nickname: user.profile?.nickname || '校园用户', avatarVersion: avatarVersion(user.profile),
   bio: user.profile?.bio || '', school: user.profile?.school.name || '',
 });
 
@@ -84,6 +85,14 @@ export async function mentionNames(tx: Tx, ids: string[]) {
   if (!ids.length) return new Map<string, string>();
   const rows = await tx.profile.findMany({ where: { userId: { in: ids }, user: { status: 'ACTIVE' } }, select: { userId: true, nickname: true } });
   return new Map(rows.map(row => [row.userId, row.nickname]));
+}
+
+export async function senderAvatarVersions(tx: Tx, rows: { senderId: string | null }[]) {
+  const ids = [...new Set(rows.flatMap(row => row.senderId ?? []))];
+  const profiles = ids.length ? await tx.profile.findMany({ where: {
+    userId: { in: ids }, hasCustomAvatar: true, user: { status: 'ACTIVE' },
+  }, select: { userId: true, avatarRevision: true } }) : [];
+  return new Map(profiles.map(profile => [profile.userId, profile.avatarRevision]));
 }
 
 export async function verifyImage(tx: Tx, id: string, user: string, scope: 'TEAM' | 'SOCIAL', roomId: string) {

@@ -28,6 +28,7 @@ test('two independent accounts publish, read, edit, save profiles and revoke ses
     await register(a, 'e2e-a@campus.invalid', '浏览器甲');
     await register(b, 'e2e-b@campus.invalid', '浏览器乙');
     await a.goto('/publish?category=COMPETITION');
+    await a.getByLabel('讨论主题', { exact: true }).fill('校园生活观察');
     await a.getByLabel('标题', { exact: true }).fill('两个账号共同验证的校园讨论');
     await a.getByLabel('正文', { exact: true }).fill('这条内容由浏览器甲真实发布，浏览器乙应该可以读取，但不能修改。');
     await a.getByRole('button', { name: '发布讨论', exact: true }).click();

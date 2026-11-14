@@ -18,7 +18,7 @@ export type Draft = {
   body: string;
   reply?: ChatMessageDTO;
   image?: { id: string; name: string };
-  mentions?: PersonDTO[];
+  mentions?: Pick<PersonDTO, 'id' | 'nickname'>[];
   attachment?: Attachment;
   outbox?: { input: MessageInput; status: 'sending' | 'unknown'; createdAt: string };
 };

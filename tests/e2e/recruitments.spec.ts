@@ -25,6 +25,7 @@ test('an author converts a discussion, resumes a draft and safely retries a comm
     await register(a, 'recruitment-owner@campus.invalid', '招募队长');
     await register(b, 'recruitment-viewer@campus.invalid', '招募旁观');
     await a.goto('/publish?category=COMPETITION');
+    await a.getByLabel('讨论主题', { exact: true }).fill('旧楼地图共创');
     await a.getByLabel('标题', { exact: true }).fill(title);
     await a.getByLabel('正文', { exact: true }).fill('希望一起完成真实可用的校园应用，尊重各自时间，明确岗位分工并定期沟通。');
     await a.getByRole('button', { name: '发布讨论', exact: true }).click();
@@ -33,6 +34,7 @@ test('an author converts a discussion, resumes a draft and safely retries a comm
     await a.getByRole('link',{name:'03 相关招募',exact:true}).click();
     await a.getByRole('link', { name: '从讨论发起招募', exact: true }).click();
     await expect(a.getByLabel('招募标题', { exact: true })).toHaveValue(title);
+    await expect(a.getByLabel('招募主题', { exact: true })).toHaveValue('旧楼地图共创');
     let releaseSource!: () => void;
     const sourceGate = new Promise<void>(resolve => { releaseSource = resolve; });
     await a.route('**/api/v1/posts/' + new URL(sourceUrl).pathname.split('/').at(-1), async route => {
@@ -46,10 +48,12 @@ test('an author converts a discussion, resumes a draft and safely retries a comm
     await a.unrouteAll({ behavior: 'wait' });
     await a.getByRole('button', { name: '重新加载', exact: true }).click();
     await expect(a.getByLabel('招募标题', { exact: true })).toHaveValue(title);
+    await a.getByLabel('招募主题', { exact: true }).fill('旧楼手绘地图');
     await a.getByRole('button', { name: '保存私有草稿', exact: true }).click();
     await expect(a).toHaveURL(/\/recruitments\/[a-f0-9-]+\/edit$/);
     const editUrl = a.url(), id = editUrl.split('/').at(-2)!;
     await a.reload(); await expect(a.getByLabel('招募标题', { exact: true })).toHaveValue(title);
+    await expect(a.getByLabel('招募主题', { exact: true })).toHaveValue('旧楼手绘地图');
     await b.goto('/recruitments/' + id);
     await expect(b.getByRole('alert')).toContainText('尚未公开');
     await b.goto('/recruitments/' + id + '/edit');
@@ -83,6 +87,7 @@ test('an author converts a discussion, resumes a draft and safely retries a comm
     await a.setViewportSize({ width: 390, height: 1000 });
     await a.getByRole('button', { name: '预览并发布', exact: true }).click();
     await expect(a.getByRole('heading', { name: '确认这份招募。' })).toBeVisible();
+    await expect(a.getByText('旧楼手绘地图', { exact: true })).toBeVisible();
     const staleEditor = await owner.newPage();
     await staleEditor.goto(editUrl);
     await staleEditor.getByLabel('招募标题', { exact: true }).fill('另一标签页发布后仍保留的未提交草稿');
@@ -108,6 +113,7 @@ test('an author converts a discussion, resumes a draft and safely retries a comm
     await expect(staleEditor.getByRole('link', { name: '查看已发布招募', exact: true })).toHaveAttribute('href', '/recruitments/' + id);
     await staleEditor.close(); await a.bringToFront();
     await expect(a.getByRole('heading', { name: title, exact: true })).toBeVisible();
+    await expect(a.getByText('旧楼手绘地图', { exact: true })).toBeVisible();
     await expect(a.getByText('当前 1 / 3 人，含发起人 · 还差 2 位', { exact: true })).toBeVisible();
     await expect(a.locator('.slot-summary').first()).toContainText('1 / 1 已占');
     await expect(a.getByRole('link', { name: '查看来源讨论', exact: true })).toHaveAttribute('href', new URL(sourceUrl).pathname);

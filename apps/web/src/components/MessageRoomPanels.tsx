@@ -116,7 +116,7 @@ function PeerDetails({ social, onUpdate }: { social: SocialChatDTO; onUpdate: ()
   const [busy, setBusy] = useState(false), [error, setError] = useState('');
   const peer = social.peer!;
   return <section className="message-panel-section">
-    <div className="message-person"><StudentAvatar seed={peer.id} /><div><h3>{peer.nickname}</h3>{peer.school && <p>{peer.school}</p>}</div></div>
+    <div className="message-person"><StudentAvatar seed={peer.id} version={peer.avatarVersion} /><div><h3>{peer.nickname}</h3>{peer.school && <p>{peer.school}</p>}</div></div>
     {peer.bio && <p className="post-body">{peer.bio}</p>}
     <button className="message-setting" type="button" aria-pressed={social.blockedByMe} disabled={busy} onClick={async () => {
       setBusy(true); setError('');
@@ -159,7 +159,7 @@ function DiscussionDetails({ social, userId, pendingOnly, onUpdate, onLeave }: {
         </div>)}
       </section>}
       {!pendingOnly && <><h3>群成员</h3>{people.data.data.members.map(member => <div className="message-setting group-person" key={member.id}>
-        <ContactAction userId={member.id} nickname={member.nickname} className="message-person"><StudentAvatar seed={member.id} />{member.nickname}</ContactAction>
+        <ContactAction userId={member.id} nickname={member.nickname} className="message-person"><StudentAvatar seed={member.id} version={member.avatarVersion} />{member.nickname}</ContactAction>
         {group.canManage && !group.closed && member.id !== userId && <button className="text-button danger" disabled={!!busy} onClick={() => void action('/people/' + member.id, { action: 'REMOVE' })}>移除</button>}
       </div>)}</>}
     </>}

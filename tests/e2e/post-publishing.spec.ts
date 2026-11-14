@@ -10,9 +10,10 @@ test('a committed discussion with a lost response can be retried without creatin
   await expect(page).toHaveURL(/\/discover/);
   await page.goto('/publish');
   const title = '响应丢失后只应保存一次的讨论', body = '服务器真实保存这段内容后，测试主动丢弃成功响应，再通过页面核对同一次发布。';
+  await page.getByLabel('讨论主题', { exact: true }).fill('自定义发布主题');
   await page.getByLabel('标题', { exact: true }).fill(title);
   await page.getByLabel('正文', { exact: true }).fill(body);
-  const attempts: { requestKey?: string; topicId: string; title: string; body: string }[] = [];
+  const attempts: { requestKey?: string; customTopic: string; title: string; body: string }[] = [];
   let savedId = '';
   await page.route('**/api/v1/posts', async route => {
     if (route.request().method() !== 'POST') return route.continue();
@@ -32,6 +33,7 @@ test('a committed discussion with a lost response can be retried without creatin
   await expect(page.getByLabel('正文', { exact: true })).toHaveValue(body);
   await expect(page.getByLabel('标题', { exact: true })).toBeDisabled();
   await expect(page.getByLabel('兴趣区域', { exact: true })).toBeDisabled();
+  await expect(page.getByLabel('讨论主题', { exact: true })).toHaveValue('自定义发布主题');
   for (const width of [320, 390, 1440]) {
     await page.setViewportSize({ width, height: 1000 });
     await page.evaluate(() => window.scrollTo({ top: 0, behavior: 'instant' }));
@@ -46,8 +48,9 @@ test('a committed discussion with a lost response can be retried without creatin
   const listed = await page.evaluate(async q => {
     const me = (await (await fetch('/api/v1/auth/me')).json()).data;
     return (await (await fetch('/api/v1/posts?' + new URLSearchParams({ schoolId: me.user.school.id, q }))).json()).data;
-  }, title);
+  }, '自定义发布主题');
   expect(listed).toHaveLength(1);
+  expect(listed[0].topic).toMatchObject({ id: null, name: '自定义发布主题', category: 'COMPETITION' });
   await expect(page).toHaveURL(new RegExp('/posts/' + savedId + '$'));
   expect(attempts).toHaveLength(3);
   for (const attempt of attempts.slice(1)) expect(attempt).toEqual(attempts[0]);
@@ -56,6 +59,7 @@ test('a committed discussion with a lost response can be retried without creatin
 
   await test.step('a failure before saving retries the same frozen content', async () => {
     await page.goto('/publish');
+    await page.getByRole('button', { name: '应用开发', exact: true }).click();
     const title = '请求尚未落库也能安全重试的讨论';
     await page.getByLabel('标题', { exact: true }).fill(title);
     await page.getByLabel('正文', { exact: true }).fill('本次先模拟服务在保存前不可用，再核对同一次提交并完成真实发布。');
@@ -77,6 +81,7 @@ test('a committed discussion with a lost response can be retried without creatin
 
   await test.step('a definitive topic rejection allows correcting unsaved input', async () => {
     await page.goto('/publish');
+    await page.getByRole('button', { name: '应用开发', exact: true }).click();
     await page.getByLabel('标题', { exact: true }).fill('主题校验失败后应允许修改输入');
     await page.getByLabel('正文', { exact: true }).fill('这次由真实服务端校验不存在的主题，明确未保存后继续修正并发布。');
     await page.route('**/api/v1/posts', async route => {
@@ -84,8 +89,9 @@ test('a committed discussion with a lost response can be retried without creatin
       else await route.continue();
   });
   await page.getByRole('button', { name: '发布讨论', exact: true }).click();
-  await expect(page.getByRole('alert')).toContainText('主题已停用或不存在');
+  await expect(page.getByRole('alert')).toContainText('常用主题已停用或与兴趣区域不符');
   await expect(page.getByLabel('标题', { exact: true })).toBeEnabled();
+  await page.getByLabel('讨论主题', { exact: true }).fill('自定义纠正主题');
   await page.getByLabel('标题', { exact: true }).fill('修正主题后可以正常发布的讨论');
   await page.unrouteAll({ behavior: 'wait' });
   await page.getByRole('button', { name: '发布讨论', exact: true }).click();

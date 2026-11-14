@@ -21,10 +21,10 @@ export function MessageComposer({ room, userId, group, draft, setDraft, onSend, 
   const locked = !!draft.outbox;
   const mentionList = useQuery({
     queryKey: ['mention-people', room.kind, room.id, userId], enabled: mention && group, staleTime: 0, retry: false,
-    queryFn: async ({ signal }): Promise<PersonDTO[]> => {
+    queryFn: async ({ signal }): Promise<Pick<PersonDTO, 'id' | 'nickname'>[]> => {
       if (room.kind === 'TEAM') {
         const { data } = await api<TeamDetailDTO>('/teams/' + room.id, { signal });
-        return data.members.map(member => ({ id: member.userId, nickname: member.nickname, school: member.schoolName, bio: '' }));
+        return data.members.map(member => ({ id: member.userId, nickname: member.nickname }));
       }
       return (await api<DiscussionPeopleDTO>('/discussion-groups/' + room.id + '/people', { signal })).data.members;
     },

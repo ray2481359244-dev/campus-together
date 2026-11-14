@@ -152,7 +152,7 @@ export function Messages() {
     return <div className={'message-row' + (current ? ' selected' : '')} key={key}>
       <Link to={messageLink(listRoom(item), undefined, params)} className="message-row-link" aria-current={current ? 'page' : undefined}
         onClick={e => select(e, item)} replace={current && !panel}>
-        {item.kind === 'DIRECT' ? <StudentAvatar seed={item.peerId || item.id} /> : <span className={'message-group-avatar ' + (item.kind === 'DISCUSSION' ? 'discussion' : '')}><Users size={21} aria-hidden="true" /></span>}
+        {item.kind === 'DIRECT' ? <StudentAvatar seed={item.peerId || item.id} version={item.peerAvatarVersion} /> : <span className={'message-group-avatar ' + (item.kind === 'DISCUSSION' ? 'discussion' : '')}><Users size={21} aria-hidden="true" /></span>}
         <div className="message-row-text"><div className="message-row-name"><strong>{item.title}</strong>
           {item.kind !== 'DIRECT' && <span className="message-row-tag">{item.kind === 'TEAM' ? '队伍' : '讨论群'}</span>}
           {item.pinned && <Pin size={13} aria-label="已置顶" />}{item.muted && <BellOff size={13} aria-label="免打扰" />}</div>
@@ -255,7 +255,7 @@ function MessageNotices({ userId, selectedTab, onTab, onBack, pending }: {
         {data && !result.isError && <>
           {!data.contacts.length && !data.teams.length && !data.discussions.length && <p className="message-list-empty">暂无待处理事项。</p>}
           {data.contacts.map(item => <Link className="message-task" key={item.id} to={messageLink(listRoom(item))} state={{ returnNotice: true }} onClick={remember}>
-            <StudentAvatar seed={item.peerId || item.id} /><div><strong>{item.title}</strong><p>{item.preview || '发来一条联系请求'}</p></div><span>查看请求</span></Link>)}
+            <StudentAvatar seed={item.peerId || item.id} version={item.peerAvatarVersion} /><div><strong>{item.title}</strong><p>{item.preview || '发来一条联系请求'}</p></div><span>查看请求</span></Link>)}
           {data.teams.map(item => <Link className="message-task" key={item.id} to={messageLink({ kind: 'TEAM', id: item.id }, 'applications')} state={{ returnNotice: true }} onClick={remember}>
             <span className="message-group-avatar"><Users size={18} /></span><div><strong>{item.title}</strong><p>{item.pendingCount} 份加入申请</p></div><span>处理</span></Link>)}
           {data.discussions.map(item => <Link className="message-task" key={item.id} to={messageLink({ kind: 'SOCIAL', id: item.id }, 'applications')} state={{ returnNotice: true }} onClick={remember}>

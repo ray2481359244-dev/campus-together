@@ -31,6 +31,7 @@ test('without cross-tab notifications a stale write is still stopped by server i
   await context.addInitScript(() => { Object.defineProperty(window, 'BroadcastChannel', { value: undefined, configurable: true }); });
   await register(page, 'fallback-first');
   await page.goto('/publish');
+  await page.getByLabel('讨论主题', { exact: true }).fill('登录状态验证');
   await page.getByLabel('标题', { exact: true }).fill('旧标签页的内容不能由另一个账号发布');
   await page.getByLabel('正文', { exact: true }).fill('关闭跨页通知后也需要服务端拒绝旧的账号身份，不能自动换成新账号提交。');
   const other = await context.newPage();

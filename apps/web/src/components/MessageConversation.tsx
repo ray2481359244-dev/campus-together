@@ -238,7 +238,7 @@ export function MessageConversation({ room, userId, panel, onPanel, onBack, onLe
         <button className="message-icon message-room-back" type="button" aria-label={panel ? '返回聊天' : returnLabel} onClick={onBack}><ArrowLeft size={21} /></button>
         <button className="message-room-title" type="button" aria-label={(group ? '群资料 ' : '联系人资料 ') + heading}
           disabled={inaccessible} onClick={e => openPanel('details', e.currentTarget)}>
-          {group ? <span className="message-group-avatar"><Users size={20} aria-hidden="true" /></span> : <StudentAvatar seed={social?.peer?.id || room.id} />}
+          {group ? <span className="message-group-avatar"><Users size={20} aria-hidden="true" /></span> : <StudentAvatar seed={social?.peer?.id || room.id} version={social?.peer?.avatarVersion} />}
           <span><strong>{heading}</strong>{subtitle && <small>{subtitle}</small>}</span>
         </button>
         {meta && <button className="message-icon" type="button" aria-label="查找聊天记录" onClick={e => openPanel('search', e.currentTarget)}><Search size={19} /></button>}
@@ -266,7 +266,7 @@ export function MessageConversation({ room, userId, panel, onPanel, onBack, onLe
               {(firstUnread.current ?? page.meta.firstUnreadSeq) === item.seq && <div className="message-unread-line">以下为新消息</div>}
               {item.kind === 'SYSTEM' ? <p className="message-system">{item.body}</p> :
                 <article className={'message-bubble-row' + (own ? ' own' : '') + (selection === item.seq ? ' located' : '')}>
-                  {!own && <StudentAvatar seed={item.senderId || item.id} />}
+                  {!own && <StudentAvatar seed={item.senderId || item.id} version={item.senderId && item.senderId === social?.peer?.id ? social.peer.avatarVersion : item.senderAvatarVersion} />}
                   <div className="message-bubble-wrap">
                     <div className="message-byline"><strong>{own ? '我' : item.nickname}</strong><time dateTime={item.createdAt}>{clock.format(new Date(item.createdAt))}</time></div>
                     <div data-cloud-id={item.id} className={'message-bubble ' + (own ? 'chat-own' : 'chat-peer')}>

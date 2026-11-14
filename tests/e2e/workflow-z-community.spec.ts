@@ -5,6 +5,7 @@ test('图片讨论、手机评论点赞收藏和删除评论持久化',async({br
   try {
     await f.create('社区互动验收准备窗口');const owner=f.pages[0], reader=f.pages[1];
     await owner.goto('/publish');await owner.getByLabel('标题',{exact:true}).fill('图片讨论与社区互动浏览器验收');await owner.getByLabel('正文',{exact:true}).fill('这是一条真实持久化的图片讨论，用于验证评论、点赞和收藏的完整操作流程。');
+    await owner.getByLabel('讨论主题',{exact:true}).fill('照片交流');
     const bytes=await owner.evaluate(()=>{const c=document.createElement('canvas');c.width=120;c.height=80;const ctx=c.getContext('2d')!;ctx.fillStyle='#e5ff55';ctx.fillRect(0,0,120,80);return c.toDataURL('image/png').split(',')[1];});
     const uploadGate=new Promise<void>(resolve=>{releaseUpload=resolve;});await owner.route('**/api/v1/media',async route=>{await uploadGate;await route.continue();});
     await owner.getByLabel('添加讨论图片',{exact:true}).setInputFiles({name:'discussion.png',mimeType:'image/png',buffer:Buffer.from(bytes,'base64')});await expect(owner.getByRole('button',{name:'发布讨论',exact:true})).toBeDisabled();releaseUpload();await expect(owner.getByAltText('待发布配图')).toBeVisible();await owner.getByRole('button',{name:'发布讨论',exact:true}).click();await expect(owner).toHaveURL(/\/posts\/[0-9a-f-]{36}$/);await expect(owner.getByAltText('讨论配图')).toBeVisible();

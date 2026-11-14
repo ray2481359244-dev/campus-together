@@ -105,3 +105,55 @@ test('a post author opens a social profile without losing the draft, and album v
     await expect(guest.getByLabel('写一条评论')).toHaveValue('切换个人主页后也要保留。');
   } finally { await visitor.close(); }
 });
+
+test('uploads a square avatar, shows it to a signed-in visitor and restores the illustration', async ({ page, browser }) => {
+  const guestContext = await browser.newContext({ baseURL: 'http://127.0.0.1:3101', viewport: { width: 320, height: 870 } });
+  try {
+    await register(page, 'avatar-owner@campus.invalid', '换头像的同学', 'CampusAvatar99');
+    await page.getByRole('button', { name: '创建账号，开始碰个头' }).click();
+    await expect(page).toHaveURL(/\/discover/);
+    const { user } = (await (await page.request.get('/api/v1/auth/me')).json()).data;
+    const guest = await guestContext.newPage();
+    await signInReader(guest);
+    await page.goto('/me');
+    const edit = page.getByRole('button', { name: '更换头像' });
+    await expect(edit.locator('.student-avatar svg')).toBeVisible();
+    await page.screenshot({ path: '.local/screenshots/profile-default-avatar.png' });
+    await edit.click();
+    const file = page.getByLabel('头像照片文件');
+    await expect(page.getByRole('button', { name: '选择头像照片' })).toBeFocused();
+    await file.setInputFiles({ name: 'invalid.txt', mimeType: 'text/plain', buffer: Buffer.from('invalid') });
+    await expect(page.getByRole('alert')).toContainText('3 MB');
+    const pixels = await page.evaluate(() => {
+      const canvas = document.createElement('canvas');
+      canvas.width = 480; canvas.height = 320;
+      const ctx = canvas.getContext('2d')!;
+      ctx.fillStyle = '#a583bf'; ctx.fillRect(0, 0, 480, 320);
+      ctx.fillStyle = '#dde8a5'; ctx.fillRect(120, 70, 240, 180);
+      return canvas.toDataURL('image/png').split(',')[1];
+    });
+    await page.setViewportSize({ width: 320, height: 870 });
+    await file.setInputFiles({ name: '新头像.png', mimeType: 'image/png', buffer: Buffer.from(pixels, 'base64') });
+    await expect(page.getByAltText('新头像预览')).toBeVisible();
+    expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(321);
+    await page.screenshot({ path: '.local/screenshots/profile-avatar-preview-mobile.png' });
+    await page.getByRole('button', { name: '保存头像' }).click();
+    await expect(edit).toBeFocused();
+    await expect(page.getByText('头像已更新。', { exact: true })).toBeVisible();
+    await expect.poll(() => edit.locator('img').evaluate(img => (img as HTMLImageElement).naturalWidth)).toBe(320);
+    const url = (await edit.locator('img').getAttribute('src'))!;
+    await expect(page.locator('.account-link img')).toHaveAttribute('src', url);
+    await guest.goto('/profiles/' + user.id);
+    await expect(guest.locator('.profile-identity img')).toHaveAttribute('src', url);
+    await expect(guest.getByRole('button', { name: '更换头像' })).toHaveCount(0);
+    await page.reload();
+    await expect(edit.locator('img')).toHaveAttribute('src', url);
+    await edit.click();
+    await page.getByRole('button', { name: '恢复默认头像', exact: true }).click();
+    await page.getByRole('button', { name: '确认恢复默认头像', exact: true }).click();
+    await expect(page.getByText('已恢复默认头像。', { exact: true })).toBeVisible();
+    expect((await guest.request.get(url)).status()).toBe(404);
+    await guest.reload();
+    await expect(guest.locator('.profile-identity .student-avatar svg')).toBeVisible();
+  } finally { await guestContext.close(); }
+});

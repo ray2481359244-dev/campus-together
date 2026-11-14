@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { Link, useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { categories, PublishableRecruitmentSchema, RecruitmentDraftSchema } from '@campus/contracts';
+import { categories, IdSchema, PublishableRecruitmentSchema, RecruitmentDraftSchema } from '@campus/contracts';
 import type { RecruitmentDTO, RecruitmentDraft, TopicDTO, PostDTO } from '@campus/contracts';
 import { ArrowUpRight, Save } from 'lucide-react';
 import { api, ApiError } from '../lib/api';
@@ -17,7 +17,8 @@ export function RecruitmentEditor() {
   const { user, loading, error: authError, reload } = useAuth(), navigate = useNavigate(), location = useLocation(), client = useQueryClient();
   const [draft, setDraft] = useState(() => {
     const category = categories.find(c => c === params.get('category'));
-    return { ...emptyRecruitment(category), topicId: params.get('topicId') };
+    const topicId = IdSchema.safeParse(params.get('topicId'));
+    return { ...emptyRecruitment(category), topicId: topicId.success ? topicId.data : null };
   });
   const [skills, setSkills] = useState(''), [slotSkills, setSlotSkills] = useState<Record<string, string>>({});
   const [preview, setPreview] = useState<RecruitmentDraft | null>(null), [busy, setBusy] = useState(false), [error, setError] = useState(''), [hydrated, setHydrated] = useState('');
@@ -36,16 +37,14 @@ export function RecruitmentEditor() {
     }
   }, [id, record.data, hydrated]);
   useEffect(() => {
-    if (source.data && !prefilled.current && source.data.data.topic.active) {
+    if (source.data && !prefilled.current) {
       const p = source.data.data;
-      setDraft(d => ({ ...emptyRecruitment(p.topic.category, d.capacity), title: p.title, description: p.body.slice(0, 3000), topicId: p.topic.id, sourcePostId: p.id }));
+      setDraft(d => ({ ...emptyRecruitment(p.topic.category, d.capacity), title: p.title, description: p.body.slice(0, 3000),
+        topicId: p.topic.active ? p.topic.id : null, customTopic: p.topic.id && p.topic.active ? undefined : p.topic.name, sourcePostId: p.id,
+      }));
       prefilled.current = true;
     }
   }, [source.data]);
-  useEffect(() => {
-    if (id || sourceId || !topics.data) return;
-    setDraft(d => topics.data.data.some(t => t.id === d.topicId) ? d : { ...d, topicId: topics.data.data[0]?.id || null });
-  }, [topics.data, id, sourceId]);
   const hasDraft = !!id && hydrated === id && saved.current?.id === id;
   const unavailable = hasDraft && ((record.data && !record.data.data.canEditDraft) || (record.error instanceof ApiError && record.error.status === 404));
   const retryReads = () => { if (record.isError) void record.refetch(); if (source.isError) void source.refetch(); };
@@ -130,13 +129,17 @@ export function RecruitmentEditor() {
   }
   if (loading) return <Loading />;
   if (authError) return <ErrorState message={authError.message} retry={() => void reload()} />;
-  if (!user) return <LoginGate next={id ? '/recruitments/' + id + '/edit' : '/recruitments/new'} />;
-  if ((id && !hasDraft && (record.isPending || (record.data?.data.canEditDraft && hydrated !== id))) || (sourceId && source.isPending)) return <Loading label="正在读取招募草稿……" />;
+  if (!user) return <LoginGate next={location.pathname + location.search} />;
+  if ((id && !hasDraft && (record.isPending || (record.data?.data.canEditDraft && hydrated !== id))) || (sourceId && (source.isPending || source.data && !prefilled.current))) return <Loading label="正在读取招募草稿……" />;
   if ((record.isError && !hasDraft) || (source.isError && !prefilled.current)) return <><Link className="text-button" to="/recruitments">返回招募大厅</Link><ErrorState message={recruitmentError(record.error || source.error)} retry={retryReads} /></>;
   if (id && !hasDraft && record.data && !record.data.data.canEditDraft) return <ErrorState message="这条内容不是你可编辑的草稿；当前阶段已发布招募只读。" />;
 
   const locked = busy || unavailable || recoveryBlocked || !!publishAttempt.current;
   const confirmText = publishAttempt.current ? '核对发布结果' : '发布招募';
+  const priorTopic = saved.current?.topic ?? source.data?.data.topic;
+  const selectedTopicName = draft.topicId
+    ? topics.data?.data.find(topic => topic.id === draft.topicId)?.name ?? (priorTopic?.id === draft.topicId ? priorTopic?.name : undefined)
+    : undefined;
   return <section className="form-page quick-recruitment">
     <PageTitle title={preview ? '确认这份招募。' : '找搭子'} back={() => preview ? setPreview(null) : navigate('/recruitments')} />
     {!id && !sourceId && <div className="publish-modes"><Link to={'/publish?category=' + draft.category}>发布讨论</Link><span className="current">发起招募</span></div>}
@@ -152,7 +155,7 @@ export function RecruitmentEditor() {
     {preview ? <div className="paper form-stack" aria-label="招募发布预览">
       <h2>{preview.title}</h2>{preview.description && <p className="post-body">{preview.description}</p>}
       <dl className="recruitment-facts">
-        <div><dt>主题</dt><dd>{topics.data?.data.find(t => t.id === preview.topicId)?.name || '正在读取主题'}</dd></div>
+        <div><dt>主题</dt><dd>{preview.customTopic || selectedTopicName || '常用主题'}</dd></div>
         <div><dt>协作时间</dt><dd>{scheduleLabel(preview)}</dd></div>
         <div><dt>协作地点</dt><dd>{preview.mode === 'ONLINE' ? '线上' : preview.locationPublic}</dd></div>
         <div><dt>招募截止</dt><dd>{preview.joinDeadline || preview.startAt ? beijingTime(preview.joinDeadline || preview.startAt) : '发布后 7 天内'}</dd></div>
@@ -172,21 +175,20 @@ export function RecruitmentEditor() {
       </div>
     </div> : <form className="paper form-stack" noValidate onSubmit={e => { e.preventDefault(); void publish(); }}>
       <fieldset className="recruitment-fields" disabled={!!locked}>
-        <RecruitmentFields draft={draft} update={update} topics={topics.data?.data} sourceLocked={!!sourceId || !!draft.sourcePostId}
+        <RecruitmentFields draft={draft} update={update} topics={topics.data?.data} selectedTopicName={selectedTopicName} sourceLocked={!!sourceId || !!draft.sourcePostId}
           onCategory={category => {
-            const { title, description, capacity } = draft;
-            setDraft({ ...emptyRecruitment(category, capacity >= 2 ? capacity : 2), title, description });
+            const { title, description, capacity, customTopic } = draft;
+            setDraft({ ...emptyRecruitment(category, capacity >= 2 ? capacity : 2), title, description, customTopic });
             setSkills(''); setSlotSkills({}); setFields({}); setError('');
           }} skills={skills} onSkills={setSkills} slotSkills={slotSkills}
           onSlotSkills={(key, value) => setSlotSkills(v => ({ ...v, [key]: value }))} errors={fields} />
       </fieldset>
-      {topics.isError && <ErrorState message="读取主题失败" retry={() => void topics.refetch()} />}
       <p className="publish-school">{user.school.name} · {draft.allowCrossSchool ? '接受跨校' : '仅本校'}{draft.sourcePostId ? ' · 已关联来源讨论' : ''}</p>
       <FormError>{error}</FormError>
       <div className="button-row">
         <button className="button secondary" type="button" disabled={!!locked} onClick={() => void saveDraft()}><Save size={17} />保存私有草稿</button>
-        <button className="text-button" type="button" disabled={!!locked || topics.isError} onClick={() => { const data = validate(); if (data) setPreview(data); }}>预览并发布</button>
-        <button className="button" type="submit" disabled={busy || topics.isError || recoveryBlocked || unavailable && !publishAttempt.current}>{busy ? '正在提交……' : confirmText}<ArrowUpRight size={17} /></button>
+        <button className="text-button" type="button" disabled={!!locked} onClick={() => { const data = validate(); if (data) setPreview(data); }}>预览并发布</button>
+        <button className="button" type="submit" disabled={busy || recoveryBlocked || unavailable && !publishAttempt.current}>{busy ? '正在提交……' : confirmText}<ArrowUpRight size={17} /></button>
       </div>
     </form>}
   </section>;

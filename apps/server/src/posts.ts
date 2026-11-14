@@ -12,7 +12,9 @@ const postInclude = { images: { select: { id: true, width: true, height: true },
 type PostRecord = Prisma.PostGetPayload<{ include: typeof postInclude }>;
 function postDTO(post: PostRecord, userId?: string) {
   return { images: post.images, counts: { comments: post._count.comments, likes: post._count.reactions }, id: post.id, title: post.title, body: post.body, revision: post.revision,
-    topic: { id: post.topic.id, name: post.topic.name, category: post.topic.category, description: post.topic.description, active: post.topic.active },
+    topic: post.topic
+      ? { id: post.topic.id, name: post.topic.name, category: post.category, description: post.topic.description, active: post.topic.active }
+      : { id: null, name: post.customTopic!, category: post.category, description: '', active: true },
     school: { id: post.school.id, name: post.school.name, city: post.school.city, isDemo: post.school.isDemo },
     author: publicProfile(post.author), createdAt: post.createdAt.toISOString(), updatedAt: post.updatedAt.toISOString(), canEdit: userId === post.authorId };
 }
@@ -31,9 +33,9 @@ postsRouter.get('/posts', async (req, res) => {
     catch { throw new ApiError(400, 'INVALID_CURSOR', '分页位置无效，请重新加载。'); }
   }
   const where: Prisma.PostWhereInput = { status: 'PUBLISHED', schoolId: input.schoolId,
-    topicId: input.topicId, topic: input.category ? { category: input.category } : undefined,
+    topicId: input.topicId, category: input.category,
     AND: [
-      ...(input.q ? [{ OR: [{ title: { contains: input.q, mode: 'insensitive' as const } }, { body: { contains: input.q, mode: 'insensitive' as const } }, { topic: { name: { contains: input.q, mode: 'insensitive' as const } } }] }] : []),
+      ...(input.q ? [{ OR: [{ title: { contains: input.q, mode: 'insensitive' as const } }, { body: { contains: input.q, mode: 'insensitive' as const } }, { customTopic: { contains: input.q, mode: 'insensitive' as const } }, { topic: { name: { contains: input.q, mode: 'insensitive' as const } } }] }] : []),
       ...(after ? [{ OR: [{ createdAt: { lt: new Date(after.createdAt) } }, { createdAt: new Date(after.createdAt), id: { lt: after.id } }] }] : []),
     ],
   };
@@ -66,12 +68,15 @@ postsRouter.post('/posts', async (req, res) => {
     if (!await tx.user.findFirst({ where: { id: user.id, status: 'ACTIVE' } })) throw new ApiError(401,'AUTH_REQUIRED','账号不可用。');
     const existing = await tx.post.findUnique({ where, include: postInclude });
     if (existing) return { post: replay(existing), created: false };
-    const topic = await tx.topic.findFirst({ where: { id: content.topicId, active: true } });
-    if (!topic) throw new ApiError(422, 'TOPIC_UNAVAILABLE', '主题已停用或不存在，请重新选择。');
+    const topic = content.topicId ? await tx.topic.findFirst({ where: { id: content.topicId, active: true, category: content.category } }) : null;
+    if (content.topicId && !topic) throw new ApiError(422, 'TOPIC_UNAVAILABLE', '常用主题已停用或与兴趣区域不符，请重新选择或填写主题。');
     const profile = await tx.profile.findUnique({ where: { userId: user.id }, include: { school: true } });
     if (!profile?.school.active) throw new ApiError(422, 'PROFILE_INCOMPLETE', '请先完善有效的学校资料。');
-    const { imageIds, ...fields } = content;
-    const created = await tx.post.createMany({ data: [{ id: randomUUID(), ...fields, authorId: user.id, schoolId: profile.schoolId, createRequestKey: requestKey, createRequestHash: hash }], skipDuplicates: true });
+    const { imageIds, title, body, customTopic } = content;
+    const created = await tx.post.createMany({ data: [{
+      id: randomUUID(), title, body, category: topic?.category ?? content.category!, topicId: topic?.id, customTopic: customTopic || null,
+      authorId: user.id, schoolId: profile.schoolId, createRequestKey: requestKey, createRequestHash: hash,
+    }], skipDuplicates: true });
     const stored = await tx.post.findUniqueOrThrow({ where });
     if(created.count && imageIds) await attachImages(tx, stored.id, user.id, imageIds);
     const post = replay(await tx.post.findUniqueOrThrow({ where, include: postInclude }));

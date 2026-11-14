@@ -6,7 +6,7 @@ import type { ConversationMessage, Prisma } from './generated/prisma/client.js';
 import { db } from './db.js';
 import { csrfGuard, requireUser, writeLimit } from './auth.js';
 import { ApiError, parse } from './http.js';
-import { chatSearch, contextsFor, mentionNames, messageHash, quoted, readContext, sourceColumns, verifyImage, windowStart } from './chat-content.js';
+import { chatSearch, contextsFor, mentionNames, messageHash, quoted, readContext, senderAvatarVersions, sourceColumns, verifyImage, windowStart } from './chat-content.js';
 import { socialAccess } from './social-access.js';
 import { signalChats } from './chat-events.js';
 
@@ -22,8 +22,10 @@ async function messages(tx: Prisma.TransactionClient, rows: ConversationMessage[
   }) : []).map(row => [row.id, row]));
   const sources = await contextsFor(tx, rows.filter(row => row.sourcePostId || row.sourceRecruitmentId));
   const names = await mentionNames(tx, [...new Set(rows.flatMap(row => row.mentionIds))]);
+  const avatars = await senderAvatarVersions(tx, rows);
   return rows.map(row => ({
     id: row.id, seq: row.seq, senderId: row.senderId, kind: row.redactsMessageId ? 'SYSTEM' : 'TEXT', nickname: row.nickname,
+    senderAvatarVersion: row.senderId ? avatars.get(row.senderId) ?? null : null,
     body: row.deletedAt ? null : row.body, deleted: !!row.deletedAt, createdAt: row.createdAt.toISOString(),
     clientMessageId: row.senderId === viewer ? row.clientMessageId : undefined,
     redactsMessageId: row.redactsMessageId, imageId: row.deletedAt ? null : row.imageId,

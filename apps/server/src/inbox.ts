@@ -30,6 +30,7 @@ const views = (user: string) => Prisma.sql`
   WITH team_rows AS (
     SELECT t."id", 'TEAM' AS "kind", r."title", t."status"::text AS "status",
       t."captainUserId" = tm."userId" AS "captain", NULL::uuid AS "peerId",
+      NULL::integer AS "peerAvatarVersion",
       COALESCE(latest."body", '') AS "preview", COALESCE(latest."createdAt", tm."joinedAt") AS "activityAt",
       tm."chatPinnedAt" AS "pinnedAt", tm."chatMuted" AS "muted", (end_state.archived OR end_state.expired) AS "archived",
       end_state.expired AS "archiveExpired", NULL::text AS "request", COALESCE(unread.total, 0)::int AS "unreadCount",
@@ -68,7 +69,8 @@ const views = (user: string) => Prisma.sql`
   ), social_rows AS (
     SELECT c."id", c."kind"::text AS "kind", CASE WHEN c."kind" = 'DIRECT' THEN COALESCE(p."nickname", '校园用户') ELSE c."title" END AS "title",
       NULL::text AS "status", (c."kind" = 'DISCUSSION' AND c."ownerId" = cm."userId") AS "captain",
-      peer."userId" AS "peerId", COALESCE(latest."body", '') AS "preview", COALESCE(latest."createdAt", c."createdAt") AS "activityAt",
+      peer."userId" AS "peerId", CASE WHEN other."status" = 'ACTIVE' AND p."hasCustomAvatar" THEN p."avatarRevision" END AS "peerAvatarVersion",
+      COALESCE(latest."body", '') AS "preview", COALESCE(latest."createdAt", c."createdAt") AS "activityAt",
       cm."pinnedAt", cm."muted", (c."closedAt" IS NOT NULL OR (c."kind" = 'DISCUSSION' AND post."status" IS DISTINCT FROM 'PUBLISHED')) AS "archived",
       false AS "archiveExpired",
       CASE WHEN c."state" = 'REQUESTED' THEN CASE WHEN c."ownerId" = cm."userId" THEN 'OUTGOING' ELSE 'INCOMING' END END AS "request",

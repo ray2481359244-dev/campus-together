@@ -2,9 +2,12 @@ export * from './chat.js';
 export * from './social.js';
 export * from './assistance.js';
 import { z } from 'zod';
+import { CustomTopicSchema } from './topics.js';
+export * from './topics.js';
 export * from './recruitments.js';
 export * from './recruitment-copy.js';
 export * from './profile-album.js';
+export * from './profile-avatar.js';
 export * from './applications.js';
 export * from './teams.js';
 
@@ -37,11 +40,18 @@ export const ProfileSchema = z.object({
   interests: z.array(CategorySchema).max(4).refine(a => new Set(a).size === a.length, '兴趣不能重复'),
 }).strict();
 export const ProfileDetailsSchema = ProfileSchema.omit({ nickname: true });
-export const PostContentSchema = z.object({ topicId: IdSchema, title: z.string().trim().min(5, '标题至少 5 个字').max(60), body: z.string().trim().min(10, '正文至少 10 个字').max(5000), imageIds: z.array(IdSchema).max(6).refine(a => new Set(a).size === a.length).optional() }).strict();
+export const PostContentSchema = z.object({ title: z.string().trim().min(5, '标题至少 5 个字').max(60), body: z.string().trim().min(10, '正文至少 10 个字').max(5000), imageIds: z.array(IdSchema).max(6).refine(a => new Set(a).size === a.length).optional() }).strict();
 export type PostContent = z.infer<typeof PostContentSchema>;
-export const CreatePostSchema = PostContentSchema.extend({ requestKey: IdSchema }).strict();
+export const CreatePostSchema = z.object({ topicId: IdSchema.optional() }).extend(PostContentSchema.shape).extend({
+  category: CategorySchema.optional(), customTopic: CustomTopicSchema.optional(), requestKey: IdSchema,
+}).strict().superRefine((input, ctx) => {
+  if (Boolean(input.topicId) === Boolean(input.customTopic)) {
+    ctx.addIssue({ code: 'custom', path: ['customTopic'], message: '请填写一个讨论主题，或选用一个常用主题' });
+  }
+  if (input.customTopic && !input.category) ctx.addIssue({ code: 'custom', path: ['category'], message: '请选择兴趣区域' });
+});
 export type CreatePost = z.infer<typeof CreatePostSchema>;
-export const EditPostSchema = PostContentSchema.omit({ topicId: true }).extend({ revision: z.number().int().positive() }).strict();
+export const EditPostSchema = PostContentSchema.extend({ revision: z.number().int().positive() }).strict();
 export const DeletePostSchema = z.object({ revision: z.number().int().positive() }).strict();
 export const PostCursorSchema = z.object({ createdAt: z.iso.datetime(), id: IdSchema }).strict();
 export const PostsQuerySchema = z.object({
@@ -51,13 +61,13 @@ export const PostsQuerySchema = z.object({
 }).strict();
 export interface SchoolDTO { id: string; name: string; city: string; isDemo: boolean }
 export interface TopicDTO { id: string; category: Category; name: string; description: string; active: boolean }
-export interface PublicProfileDTO { id: string; nickname: string; bio: string; grade: string; skills: string[]; interests: Category[]; school: SchoolDTO; identityStatus: 'SELF_REPORTED' }
-export interface MeDTO extends PublicProfileDTO { email: string; emailVerified: false; role: 'USER' | 'ADMIN' }
+export interface PublicProfileDTO { id: string; nickname: string; avatarVersion: number | null; bio: string; grade: string; skills: string[]; interests: Category[]; school: SchoolDTO; identityStatus: 'SELF_REPORTED' }
+export interface MeDTO extends PublicProfileDTO { avatarRevision: number; email: string; emailVerified: false; role: 'USER' | 'ADMIN' }
 export interface ProfileActivityDTO { id: string; type: 'POST' | 'RECRUITMENT'; title: string; createdAt: string }
-export interface PostDTO { id: string; title: string; body: string; revision: number; topic: TopicDTO; school: SchoolDTO; author: PublicProfileDTO; createdAt: string; updatedAt: string; canEdit: boolean; images: { id: string; width: number; height: number }[]; counts: { comments: number; likes: number } }
+export interface PostDTO { id: string; title: string; body: string; revision: number; topic: Omit<TopicDTO, 'id'> & { id: string | null }; school: SchoolDTO; author: PublicProfileDTO; createdAt: string; updatedAt: string; canEdit: boolean; images: { id: string; width: number; height: number }[]; counts: { comments: number; likes: number } }
 export interface ApiErrorBody { error: { code: string; message: string; fields?: Record<string, string[]> }; requestId: string }
 export interface ApiResponse<T> { data: T; meta?: { nextCursor?: string | null; appMode?: 'DEMO' | 'STANDARD' } }
 
-export interface CommentDTO { id: string; authorId: string; body: string; replyId: string | null; reply: { body: string; nickname: string } | null; nickname: string; canDelete: boolean; createdAt: string }
+export interface CommentDTO { id: string; authorId: string; avatarVersion: number | null; body: string; replyId: string | null; reply: { body: string; nickname: string } | null; nickname: string; canDelete: boolean; createdAt: string }
 export interface CommunityDTO { likes: number; liked: boolean; saved: boolean; notificationsMuted: boolean; comments: CommentDTO[]; commentCount?: number; nextCursor: string | null }
 export interface SavedDTO { id: string; postId: string | null; recruitmentId: string | null; title: string; available: boolean }

@@ -9,7 +9,7 @@ import { requireUser, csrfGuard, writeLimit } from './auth.js';
 import { ApiError, parse } from './http.js';
 import { databaseNow } from './time.js';
 import { terminal } from './archive.js';
-import { chatSearch, contextsFor, mentionNames, messageHash, quoted, readContext, sourceColumns, verifyImage, windowStart } from './chat-content.js';
+import { chatSearch, contextsFor, mentionNames, messageHash, quoted, readContext, senderAvatarVersions, sourceColumns, verifyImage, windowStart } from './chat-content.js';
 import { signalChats, signalTeamChat } from './chat-events.js';
 
 const systemText: Record<string,string> = { MEMBER_JOINED: '新成员已加入队伍。', TEAM_CREATED: '队伍已创建。新成员可查看本队现有历史。', APPLICATION_APPROVED: '一位申请者已正式入队。', MEMBER_LEFT: '一位成员已退出队伍。', MEMBER_REMOVED: '一位成员已被移出队伍。', TEAM_TRANSFER: '队长身份已转交，双方岗位保持不变。', TEAM_START: '活动已开始，停止招人。', TEAM_COMPLETE: '活动已结束，群聊转为只读。', TEAM_CANCEL: '活动已取消，群聊转为只读。', TEAM_EXPIRED: '队伍已到期，群聊转为只读。', RECRUITMENT_CLOSED: '招募已关闭，现有成员继续协作。', TEAM_ANNOUNCEMENT_CHANGED: '队长更新了队伍公告。' };
@@ -27,8 +27,10 @@ async function messages(tx: Prisma.TransactionClient, rows: ChatMessage[], teamI
   }) : []).map(row => [row.id, row]));
   const contexts = await contextsFor(tx, rows.filter(row => row.sourcePostId || row.sourceRecruitmentId));
   const names = await mentionNames(tx, [...new Set(rows.flatMap(row => row.mentionIds))]);
+  const avatars = await senderAvatarVersions(tx, rows);
   return rows.map(row => ({
     ...messageDTO(row, viewer),
+    senderAvatarVersion: row.senderId ? avatars.get(row.senderId) ?? null : null,
     reply: row.replyToId && !row.deletedAt ? quoted(replies.get(row.replyToId)) : null,
     context: contexts.get(row.id),
     mentions: row.deletedAt ? [] : row.mentionIds.flatMap(id => names.has(id) ? [{ id, nickname: names.get(id)! }] : []),

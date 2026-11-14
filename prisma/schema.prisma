@@ -98,8 +98,18 @@ model Profile {
   skills    String[] @default([])
   grade     String   @default("") @db.VarChar(20)
   interests Category[] @default([])
+  avatar    ProfileAvatar?
+  hasCustomAvatar Boolean @default(false)
+  avatarRevision Int @default(0)
   createdAt DateTime @default(now()) @db.Timestamptz(3)
   updatedAt DateTime @updatedAt @db.Timestamptz(3)
+}
+
+model ProfileAvatar {
+  profileId   String   @id @db.Uuid
+  profile     Profile  @relation(fields: [profileId], references: [userId], onDelete: Cascade)
+  requestHash String   @db.Char(64)
+  bytes       Bytes
 }
 
 enum PhotoVisibility {
@@ -183,8 +193,10 @@ model Post {
   author    User          @relation(fields: [authorId], references: [id])
   schoolId  String        @db.Uuid
   school    School        @relation(fields: [schoolId], references: [id])
-  topicId   String        @db.Uuid
-  topic     Topic         @relation(fields: [topicId], references: [id])
+  topicId   String?       @db.Uuid
+  topic     Topic?        @relation(fields: [topicId], references: [id], onDelete: Restrict)
+  category  Category
+  customTopic String?    @db.VarChar(40)
   title     String        @db.VarChar(60)
   body      String        @db.VarChar(5000)
   status    ContentStatus @default(PUBLISHED)
@@ -202,6 +214,7 @@ model Post {
 
   @@unique([authorId, createRequestKey])
   @@index([schoolId, status, createdAt, id])
+  @@index([schoolId, category, status, createdAt, id])
   @@index([topicId, status, createdAt, id])
 }
 
@@ -241,6 +254,7 @@ model Recruitment {
   school School @relation(fields: [schoolId], references: [id], onDelete: Restrict)
   topicId String? @db.Uuid
   topic Topic? @relation(fields: [topicId], references: [id], onDelete: Restrict)
+  customTopic String? @db.VarChar(40)
   sourcePostId String? @db.Uuid
   sourcePost Post? @relation(fields: [sourcePostId], references: [id], onDelete: SetNull)
   category Category @default(COMPETITION)

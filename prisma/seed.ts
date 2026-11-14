@@ -32,7 +32,7 @@ try {
     for (let i = 0; i < posts.length; i++) {
       const [category, topicName, title, body] = posts[i];
       const topic = await db.topic.findUniqueOrThrow({ where: { category_normalizedName: { category, normalizedName: topicName } } });
-      await db.post.upsert({ where: { id: `20000000-0000-4000-8000-00000000000${i + 1}` }, update: {}, create: { id: `20000000-0000-4000-8000-00000000000${i + 1}`, authorId: author.id, schoolId: schools[0].id, topicId: topic.id, title, body } });
+      await db.post.upsert({ where: { id: `20000000-0000-4000-8000-00000000000${i + 1}` }, update: {}, create: { id: `20000000-0000-4000-8000-00000000000${i + 1}`, authorId: author.id, schoolId: schools[0].id, category, topicId: topic.id, title, body } });
     }
     console.log('DEMO seed ready: 2 fictional schools, 12 topics, 2 fictional accounts, 4 posts. Password documented in README; no real users.');
   } else console.log('Reference schools/topics only; demo users and posts skipped. Replace fictional schools before real trials.');

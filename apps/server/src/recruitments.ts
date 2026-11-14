@@ -18,7 +18,7 @@ function dto(row: Record, userId?: string): RecruitmentDTO {
   const draft = RecruitmentDraftSchema.parse(row.payload);
   return { id: row.id, publicationStatus: row.publicationStatus, revision: row.revision, title: row.title, description: row.description,
     category: row.category, school: { id: row.school.id, name: row.school.name, isDemo: row.school.isDemo },
-    topic: row.topic ? { id: row.topic.id, name: row.topic.name } : null,
+    topic: row.topic ? { id: row.topic.id, name: row.topic.name } : row.customTopic ? { id: null, name: row.customTopic } : null,
     author: { id: row.authorId, nickname: row.author.profile?.nickname || '校园用户' },
     canEditDraft: row.publicationStatus === 'DRAFT' && row.authorId === userId, sourceAvailable: row.sourcePost?.status === 'PUBLISHED',
     createdAt: row.createdAt.toISOString(), updatedAt: row.updatedAt.toISOString(), publishedAt: row.publishedAt?.toISOString() ?? null,
@@ -34,16 +34,16 @@ async function references(tx: Prisma.TransactionClient, userId: string, draft: R
   if (!user.profile?.school.active) throw new ApiError(422, 'PROFILE_INCOMPLETE', '请先设置有效的学校资料。');
   if (draft.topicId) {
     const topic = await tx.topic.findUnique({ where: { id: draft.topicId } });
-    if (!topic || topic.category !== draft.category || (publishing && !topic.active)) throw new ApiError(422, 'TOPIC_UNAVAILABLE', '请选择当前区域的有效主题。');
+    if (!topic || topic.category !== draft.category || (publishing && !topic.active)) throw new ApiError(422, 'TOPIC_UNAVAILABLE', '常用主题已停用或与招募区域不符，请重新选择或填写主题。');
   }
   if (draft.sourcePostId) {
-    const post = await tx.post.findFirst({ where: { id: draft.sourcePostId, status: 'PUBLISHED', topic: { category: draft.category } } });
+    const post = await tx.post.findFirst({ where: { id: draft.sourcePostId, status: 'PUBLISHED', category: draft.category } });
     if (!post) throw new ApiError(422, 'INVALID_SOURCE_POST', '只能关联当前区域的可见讨论，关联不会继承原作者身份。');
   }
   return user.profile.schoolId;
 }
 function columns(draft: RecruitmentDraft) {
-  return { category: draft.category, title: draft.title, description: draft.description, topicId: draft.topicId, sourcePostId: draft.sourcePostId,
+  return { category: draft.category, title: draft.title, description: draft.description, topicId: draft.topicId, customTopic: draft.customTopic || null, sourcePostId: draft.sourcePostId,
     payload: draft as Prisma.InputJsonValue, capacity: draft.capacity, allowCrossSchool: draft.allowCrossSchool };
 }
 async function ownedLocked(tx: Prisma.TransactionClient, id: string, userId: string) {
@@ -72,7 +72,7 @@ recruitmentsRouter.get('/recruitments', async (req, res) => {
     catch { throw new ApiError(400, 'INVALID_CURSOR', '分页位置无效，请重新加载。'); }
   }
   const rows = await db.recruitment.findMany({ where: { ...(input.includeCrossSchool === 'true' ? { OR: [{ schoolId: input.schoolId }, { allowCrossSchool: true }] } : { schoolId: input.schoolId }), category: input.category, topicId: input.topicId, publicationStatus: 'PUBLISHED', hiddenAt: null, AND: [
-    ...(input.q ? [{ OR: [{ title: { contains: input.q, mode: 'insensitive' as const } }, { description: { contains: input.q, mode: 'insensitive' as const } }, { payload: { path: ['competitionName'], string_contains: input.q, mode: 'insensitive' as const } }, { payload: { path: ['direction'], string_contains: input.q, mode: 'insensitive' as const } }] }] : []),
+    ...(input.q ? [{ OR: [{ title: { contains: input.q, mode: 'insensitive' as const } }, { description: { contains: input.q, mode: 'insensitive' as const } }, { customTopic: { contains: input.q, mode: 'insensitive' as const } }, { topic: { name: { contains: input.q, mode: 'insensitive' as const } } }, { payload: { path: ['competitionName'], string_contains: input.q, mode: 'insensitive' as const } }, { payload: { path: ['direction'], string_contains: input.q, mode: 'insensitive' as const } }] }] : []),
     ...(cursor ? [{ OR: [{ publishedAt: { lt: new Date(cursor.publishedAt) } }, { publishedAt: new Date(cursor.publishedAt), id: { lt: cursor.id } }] }] : []),
   ] }, include, orderBy: [{ publishedAt: 'desc' }, { id: 'desc' }], take: input.limit + 1 });
   const items = rows.slice(0, input.limit), last = items.at(-1);

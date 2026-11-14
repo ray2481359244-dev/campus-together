@@ -8,6 +8,7 @@ import { db } from './db.js';
 import { requireUser, csrfGuard, writeLimit } from './auth.js';
 import { parse, ApiError } from './http.js';
 import { notify } from './notices.js';
+import { avatarSelect, avatarVersion } from './dto.js';
 
 const hash = (value: string | Buffer) => createHash('sha256').update(value).digest('hex');
 export async function activeUser(tx: Prisma.TransactionClient, id: string) {
@@ -61,9 +62,9 @@ communityRouter.get('/community/:id',async(req,res)=>{
     const cursor=query.cursor ? await tx.comment.findFirst({where:{id:query.cursor,postId,status:'PUBLISHED'}}) : null;
     if(query.cursor&&!cursor) throw new ApiError(400,'INVALID_CURSOR','评论位置失效，请重新加载。');
     const target = !cursor && query.commentId ? await tx.comment.findFirst({where:{id:query.commentId,postId,status:'PUBLISHED'}}) : null;
-    const rows=await tx.comment.findMany({where:{postId,status:'PUBLISHED',...(cursor?{OR:[{createdAt:{gt:cursor.createdAt}},{createdAt:cursor.createdAt,id:{gt:cursor.id}}]}:target?{OR:[{createdAt:{gt:target.createdAt}},{createdAt:target.createdAt,id:{gte:target.id}}]}:{})},include:{author:{select:{profile:{select:{nickname:true}}}}},orderBy:[{createdAt:'asc'},{id:'asc'}],take:21});
+    const rows=await tx.comment.findMany({where:{postId,status:'PUBLISHED',...(cursor?{OR:[{createdAt:{gt:cursor.createdAt}},{createdAt:cursor.createdAt,id:{gt:cursor.id}}]}:target?{OR:[{createdAt:{gt:target.createdAt}},{createdAt:target.createdAt,id:{gte:target.id}}]}:{})},include:{author:{select:{profile:{select:{nickname:true,...avatarSelect}}}}},orderBy:[{createdAt:'asc'},{id:'asc'}],take:21});
     const replies=await tx.comment.findMany({where:{id:{in:rows.map(c=>c.replyId).filter((id):id is string=>!!id)},postId,status:'PUBLISHED'},select:{id:true,body:true,author:{select:{profile:{select:{nickname:true}}}}}});
-    return {commentCount:await tx.comment.count({where:{postId,status:'PUBLISHED'}}),notificationsMuted:!!userId&&!!await tx.postMute.findUnique({where:{userId_postId:{userId,postId}}}),likes:await tx.postReaction.count({where:{postId}}),liked:!!userId&&!!await tx.postReaction.findUnique({where:{userId_postId:{userId,postId}}}),saved:!!userId&&!!await tx.favorite.findUnique({where:{userId_postId:{userId,postId}}}),comments:rows.slice(0,20).map(c=>({id:c.id,authorId:c.authorId,body:c.body,replyId:c.replyId,reply:c.replyId ? (()=>{const original=replies.find(r=>r.id===c.replyId);return original ? { body: original.body.slice(0,120), nickname: original.author.profile?.nickname || '校园用户' } : null;})() : null,nickname:c.author.profile?.nickname || '校园用户',canDelete:c.authorId===userId,createdAt:c.createdAt.toISOString()})),nextCursor:rows.length>20?rows[19].id:null};
+    return {commentCount:await tx.comment.count({where:{postId,status:'PUBLISHED'}}),notificationsMuted:!!userId&&!!await tx.postMute.findUnique({where:{userId_postId:{userId,postId}}}),likes:await tx.postReaction.count({where:{postId}}),liked:!!userId&&!!await tx.postReaction.findUnique({where:{userId_postId:{userId,postId}}}),saved:!!userId&&!!await tx.favorite.findUnique({where:{userId_postId:{userId,postId}}}),comments:rows.slice(0,20).map(c=>({id:c.id,authorId:c.authorId,avatarVersion:avatarVersion(c.author.profile),body:c.body,replyId:c.replyId,reply:c.replyId ? (()=>{const original=replies.find(r=>r.id===c.replyId);return original ? { body: original.body.slice(0,120), nickname: original.author.profile?.nickname || '校园用户' } : null;})() : null,nickname:c.author.profile?.nickname || '校园用户',canDelete:c.authorId===userId,createdAt:c.createdAt.toISOString()})),nextCursor:rows.length>20?rows[19].id:null};
   }); res.json({data:result});
 });
 communityRouter.post('/community/:id/comments',writeLimit,csrfGuard,async(req,res)=>{

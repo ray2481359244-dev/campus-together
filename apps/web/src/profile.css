@@ -2,6 +2,7 @@
   width: min(100%, 940px);
   margin-inline: auto;
   display: grid;
+  align-content: start;
   gap: 18px;
   color: var(--ink, #332c3b);
 }
@@ -22,7 +23,8 @@
   gap: 16px;
   min-width: 0;
 }
-.profile-identity > .student-avatar {
+.profile-identity > .student-avatar,
+.profile-avatar-button > .student-avatar {
   width: clamp(60px, 9vw, 86px);
   aspect-ratio: 1;
   height: auto;
@@ -30,6 +32,45 @@
   border-radius: 23px;
   box-shadow: 2px 4px 0 #ac93be44;
 }
+.profile-avatar-button {
+  display: grid;
+  place-items: center;
+  position: relative;
+  flex: none;
+  padding: 0;
+  border: 0;
+  border-radius: 23px;
+  background: transparent;
+}
+.avatar-camera {
+  position: absolute;
+  right: -4px;
+  bottom: -4px;
+  display: grid;
+  width: 28px;
+  height: 28px;
+  place-items: center;
+  border: 1px solid #9877aa;
+  border-radius: 10px;
+  background: #fffdf8;
+  color: #574264;
+}
+.profile-avatar-button:hover .avatar-camera { background: #e9dcf4; }
+.profile-avatar-editor { padding: clamp(16px, 4vw, 28px); }
+.avatar-edit-row { display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: center; gap: 16px; }
+.avatar-preview { display: grid; justify-items: center; gap: 6px; color: #594b61; font-size: 12px; }
+.avatar-preview > img, .avatar-preview .student-avatar {
+  display: block;
+  width: clamp(64px, 12vw, 96px);
+  aspect-ratio: 1;
+  height: auto;
+  object-fit: cover;
+  border: 1px solid #9877aa;
+  border-radius: 19px;
+  background: #ede3f5;
+}
+.avatar-file-name { font-size: 13px; overflow-wrap: anywhere; }
+.avatar-select > .button { justify-self: start; min-height: 44px; }
 .profile-hero h1 {
   margin: 0 0 2px;
   font-size: clamp(25px, 4vw, 39px);

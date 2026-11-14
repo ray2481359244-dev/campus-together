@@ -8,7 +8,8 @@ test('轻量表单发布、手机直接入队并打开群聊', async ({ browser 
     const owner=f.pages[0], participant=f.pages[1];
     await owner.goto('/recruitments/new');
     await owner.getByRole('combobox',{name:'招募区域',exact:true}).selectOption('STUDY', { timeout: 8000 });
-    await owner.getByRole('combobox',{name:'招募主题',exact:true}).selectOption({index:1}, { timeout: 8000 });
+    await owner.getByRole('button',{name:'高等数学',exact:true}).click();
+    await expect(owner.getByLabel('招募主题',{exact:true})).toHaveValue('高等数学');
     await owner.getByLabel('再找几位学习搭子',{exact:true}).fill('1'); await expect(owner.getByText('你 + 1 位伙伴，共 2 人',{exact:true})).toBeVisible();
     await owner.getByLabel('招募标题',{exact:true}).fill('本周一起复习高等数学');
     await owner.getByRole('combobox',{name:'时间安排',exact:true}).selectOption('FIXED');

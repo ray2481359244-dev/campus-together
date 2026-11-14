@@ -5,12 +5,13 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { useQuery } from '@tanstack/react-query';
 import { categoryInfo, NicknameSchema, ProfileDetailsSchema } from '@campus/contracts';
 import type { MeDTO, ProfileActivityDTO, PublicProfileDTO } from '@campus/contracts';
-import { ArrowLeft, ArrowUpRight, Bookmark, Check, LogOut, Pencil, Settings, Users } from 'lucide-react';
+import { ArrowLeft, ArrowUpRight, Bookmark, Camera, Check, LogOut, Pencil, Settings, Users } from 'lucide-react';
 import { Link, Navigate, useLocation, useNavigate, useParams } from 'react-router-dom';
 import { StudentAvatar } from '../components/visual/StudentArtwork';
 import { ContactAction } from '../components/ContactAction';
 import { ContactPreferences } from '../components/ContactPreferences';
 import { ProfileAlbum } from '../components/ProfileAlbum';
+import { AvatarEditor } from '../components/AvatarEditor';
 import { SoftDisclosure } from '../components/SoftDisclosure';
 import { ErrorState, FormError, Loading, LoginGate } from '../components/UI';
 import { api, messageOf } from '../lib/api';
@@ -29,6 +30,7 @@ export function Profile() {
 
 function OwnProfile({ user }: { user: MeDTO }) {
   const [renaming, setRenaming] = useState(false);
+  const [editingAvatar, setEditingAvatar] = useState(false);
   const location = useLocation(), navigate = useNavigate();
   const [editing, setEditing] = useState(() => new URLSearchParams(location.search).has('edit'));
   const [notice, setNotice] = useState('');
@@ -36,16 +38,23 @@ function OwnProfile({ user }: { user: MeDTO }) {
   const [logoutError, setLogoutError] = useState('');
   const auth = useAuth();
   const renameButton = useRef<HTMLButtonElement>(null);
+  const avatarButton = useRef<HTMLButtonElement>(null);
   const closeRename = () => { setRenaming(false); renameButton.current?.focus(); };
+  const closeAvatar = () => { setEditingAvatar(false); avatarButton.current?.focus(); };
   return <section className="campus-profile" aria-label="我的主页">
     {location.state?.fromProfileLink && <button className="text-button" type="button" onClick={() => navigate(-1)}><ArrowLeft size={17} aria-hidden="true" />返回帖子</button>}
-    <ProfileHeader person={user}>
+    <ProfileHeader person={user} avatarAction={<button ref={avatarButton} className="profile-avatar-button" type="button" aria-label="更换头像"
+      aria-expanded={editingAvatar} aria-controls="edit-avatar" onClick={() => { setEditingAvatar(true); setNotice(''); }}>
+      <StudentAvatar seed={user.id} version={user.avatarVersion} /><span className="avatar-camera"><Camera size={16} aria-hidden="true" /></span>
+    </button>}>
       <button ref={renameButton} className="button secondary" type="button" aria-expanded={renaming} aria-controls="rename-profile"
         onClick={() => { setRenaming(value => !value); setNotice(''); }}><Pencil size={16} aria-hidden="true" />改昵称</button>
       <button className="button" type="button" aria-expanded={editing} aria-controls="profile-details"
         onClick={() => setEditing(value => !value)}>{editing ? '收起编辑' : '编辑主页'}</button>
     </ProfileHeader>
     {notice && <p className="success-notice" role="status">{notice}</p>}
+    <div id="edit-avatar" hidden={!editingAvatar}>{editingAvatar && <AvatarEditor user={user} close={closeAvatar}
+      saved={message => { closeAvatar(); setNotice(message); }} />}</div>
     <div id="rename-profile" hidden={!renaming}>{renaming && <NicknameEditor user={user} saved={() => { closeRename(); setNotice('昵称已更新。'); }}
       cancel={closeRename} />}</div>
     <div id="profile-details" hidden={!editing}><ProfileDetails key={user.id} user={user} /></div>
@@ -102,10 +111,10 @@ export function VisitorProfile() {
   </section>;
 }
 
-function ProfileHeader({ person, children }: { person: PublicProfileDTO; children: ReactNode }) {
+function ProfileHeader({ person, children, avatarAction }: { person: PublicProfileDTO; children: ReactNode; avatarAction?: ReactNode }) {
   return <header className="profile-hero">
     <div className="profile-identity">
-      <StudentAvatar seed={person.id} />
+      {avatarAction || <StudentAvatar seed={person.id} version={person.avatarVersion} />}
       <div>
         <h1>{person.nickname}</h1>
         <p className="profile-school">{person.school.name}（本人填写）{person.grade && ' · ' + person.grade}</p>

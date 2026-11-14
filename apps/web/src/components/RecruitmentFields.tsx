@@ -3,6 +3,7 @@ import { categories, categoryInfo, hasNamedSeats, isTabletop, recruitmentCopy } 
 import { CalendarDays, Plus } from 'lucide-react';
 import { beijingInput, fromBeijingInput } from '../lib/recruitments';
 import { SoftDisclosure } from './SoftDisclosure';
+import { TopicField } from './TopicField';
 
 const templates = { GAME: '今晚开黑', STUDY: '一起自习', COMPETITION: '找竞赛队友', OUTDOOR: '周末走走' };
 const platformNames = { ANY: '不限', PC: '电脑', CONSOLE: '主机', MOBILE: '手机' };
@@ -23,6 +24,7 @@ type Props = {
   update: (values: Partial<RecruitmentDraft>) => void;
   onCategory: (category: RecruitmentDraft['category']) => void;
   topics: TopicDTO[] | undefined;
+  selectedTopicName?: string;
   sourceLocked: boolean;
   skills: string;
   onSkills: (skills: string) => void;
@@ -31,7 +33,7 @@ type Props = {
   errors: Record<string, string>;
 };
 
-export function RecruitmentFields({ draft: d, update, onCategory, topics, sourceLocked, skills, onSkills, slotSkills, onSlotSkills, errors }: Props) {
+export function RecruitmentFields({ draft: d, update, onCategory, topics, selectedTopicName, sourceLocked, skills, onSkills, slotSkills, onSlotSkills, errors }: Props) {
   const plan = d.plan, fixed = !plan || plan.schedule === 'FIXED';
   const detailed = hasNamedSeats(d.slots);
   const copy = recruitmentCopy(d.category), tabletop = isTabletop(d);
@@ -72,13 +74,12 @@ export function RecruitmentFields({ draft: d, update, onCategory, topics, source
   }
   return <>
     <section className="form-chapter">
-      <div className="form-row">
+      <div className="form-row topic-editor-row">
         <label>招募区域<select value={d.category} disabled={sourceLocked} onChange={e => onCategory(e.target.value as RecruitmentDraft['category'])}>
           {categories.map(c => <option key={c} value={c}>{categoryInfo[c].name}</option>)}
         </select></label>
-        <label>招募主题<select value={d.topicId || ''} disabled={!topics} aria-invalid={!!errors.topicId} onChange={e => update({ topicId: e.target.value || null })}>
-          <option value="">请选择</option>{topics?.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
-        </select>{report('topicId')}</label>
+        <TopicField category={d.category} label="招募主题" value={d} topics={topics} selectedName={selectedTopicName}
+          onChange={update} error={errors.customTopic || errors.topicId} />
       </div>
       <label>招募标题<input value={d.title} maxLength={60} aria-invalid={!!errors.title} placeholder={'例如：' + templates[d.category]}
         onChange={e => update({ title: e.target.value })} />{report('title')}</label>

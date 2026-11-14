@@ -60,3 +60,28 @@ test('不同学校只在显式筛选跨校时出现；读者可关联可见讨�
   await write(0,'/recruitments/'+created.id+'/publish',{revision:1}).expect(201);
   expect((await read(1,'/post-recruitments/'+post.id).expect(200)).body.data[0].author.id).toBe(ids[0]);
 });
+
+test('自定义主题可直接发布、按主题搜索，并从讨论带入招募', async () => {
+  const post = (await write(0, '/posts', {
+    requestKey: randomUUID(), category: 'STUDY', customTopic: '  食堂英语角  ',
+    title: '想找同学一起练习口语', body: '我们每周可以挑一个中午，抽出半小时一起练习日常对话。',
+  }).expect(201)).body.data;
+  expect(post.topic).toMatchObject({ id: null, name: '食堂英语角', category: 'STUDY' });
+  const schoolQuery = 'schoolId=' + post.school.id + '&q=' + encodeURIComponent('英语角');
+  expect((await read(1, '/posts?' + schoolQuery + '&category=STUDY').expect(200)).body.data[0].id).toBe(post.id);
+  expect((await read(1, '/posts?' + schoolQuery + '&category=GAME').expect(200)).body.data).toEqual([]);
+
+  const key = randomUUID();
+  const draft = RecruitmentDraftSchema.parse({
+    category: 'STUDY', sourcePostId: post.id, customTopic: '午间口语练习', title: '找一位同学一起说英语',
+    capacity: 2, slots: [{ key, name: '成员', capacity: 2 }], captainSlotKey: key, plan: { schedule: 'FLEXIBLE' },
+    study: { subject: '', level: '', method: 'DISCUSS', methodRequired: false, frequency: '' },
+  });
+  const created = (await write(1, '/recruitments', { requestKey: randomUUID(), draft }).expect(201)).body.data;
+  const published = (await write(1, '/recruitments/' + created.id + '/publish', { revision: 1 }).expect(201)).body.data;
+  expect(published.topic).toEqual({ id: null, name: '午间口语练习' });
+  const search = '/recruitments?schoolId=' + post.school.id + '&category=STUDY&q=' + encodeURIComponent('午间口语');
+  expect((await read(0, search).expect(200)).body.data[0].id).toBe(created.id);
+  expect((await read(0, '/post-recruitments/' + post.id).expect(200)).body.data[0].id).toBe(created.id);
+  expect((await read(0, '/topics?category=STUDY').expect(200)).body.data).not.toContainEqual(expect.objectContaining({ name: '午间口语练习' }));
+});

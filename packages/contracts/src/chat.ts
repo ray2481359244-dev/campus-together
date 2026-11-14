@@ -13,7 +13,7 @@ export const SendMessageSchema = z.object({
 export const ReadChatSchema = z.object({ seq: z.number().int().min(0) }).strict();
 export const AnnouncementSchema = z.object({ revision: z.number().int().positive(), body: z.string().trim().max(2000) }).strict();
 export interface ChatMessageDTO {
-  id: string; seq: number; senderId: string | null; kind: string; nickname: string; body: string | null;
+  id: string; seq: number; senderId: string | null; senderAvatarVersion?: number | null; kind: string; nickname: string; body: string | null;
   createdAt: string; deleted: boolean; redactsMessageId: string | null;
   reply?: { id: string; seq: number; nickname: string; excerpt: string } | null;
   context?: { title: string; excerpt: string; href: string } | null;

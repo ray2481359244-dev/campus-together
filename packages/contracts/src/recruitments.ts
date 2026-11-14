@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { CustomTopicSchema } from './topics.js';
 
 const Id = z.uuid();
 const Skills = z.array(z.string().trim().min(1).max(30)).max(15);
@@ -14,7 +15,7 @@ const RecruitmentPlanSchema = z.object({
 
 export const RecruitmentDraftSchema = z.object({
   category: z.enum(['GAME', 'STUDY', 'COMPETITION', 'OUTDOOR']).default('COMPETITION'),
-  topicId: Id.nullable().default(null), sourcePostId: Id.nullable().default(null),
+  topicId: Id.nullable().default(null), customTopic: CustomTopicSchema.optional(), sourcePostId: Id.nullable().default(null),
   title: z.string().trim().max(60).default(''), description: z.string().trim().max(3000).default(''),
   mode: z.enum(['ONLINE', 'OFFLINE']).default('ONLINE'), locationPublic: z.string().trim().max(120).default(''),
   allowCrossSchool: z.boolean().default(false), joinMode: z.enum(['APPROVAL', 'AUTO']).default('APPROVAL'),
@@ -32,18 +33,18 @@ export const RecruitmentDraftSchema = z.object({
   game: z.object({ server: z.string().trim().max(80), platform: z.enum(['PC','CONSOLE','MOBILE','ANY']), playMode: z.string().trim().max(100), voice: z.string().trim().max(100).optional() }).strict().optional(),
   study: z.object({ subject: z.string().trim().max(100), level: z.string().trim().max(100), method: z.enum(['SELF','DISCUSS','TEACH']), methodRequired: z.boolean(), frequency: z.string().trim().max(200) }).strict().optional(),
   outdoor: z.object({ activity: z.string().trim().max(100), region: z.string().trim().max(120), budget: z.number().min(0).max(100000), distance: z.string().trim().max(100), intensity: z.enum(['LOW','MEDIUM']), experience: z.string().trim().max(200), equipment: z.string().trim().max(200) }).strict().optional(),
-}).strict();
+}).strict().refine(draft => !draft.topicId || !draft.customTopic, { path: ['customTopic'], message: '请选择一个招募主题' });
 export type RecruitmentDraft = z.infer<typeof RecruitmentDraftSchema>;
 export const PublishableRecruitmentSchema = RecruitmentDraftSchema.superRefine((v, ctx) => {
   const issue = (path: string, message: string) => ctx.addIssue({ code: 'custom', path: [path], message });
-  if (!v.topicId) issue('topicId', '请选择有效主题');
+  if (!v.topicId && !v.customTopic) issue('customTopic', '请填写一个招募主题，或选用一个常用主题');
   if (v.plan) {
     if (v.title.length < 3) issue('title', '请用至少 3 个字说明想一起做什么');
     if (v.plan.schedule === 'FIXED' && !v.startAt) issue('startAt', '请选择开始时间');
     if (v.plan.schedule !== 'FIXED' && (v.startAt || v.endAt)) issue('startAt', '时间待商量或长期招募请填写安排说明');
     if (v.endAt && !v.startAt) issue('startAt', '请先选择开始时间');
     if (v.category === 'GAME') {
-      if (!v.game) issue('game', '请选择游戏主题');
+      if (!v.game) issue('game', '请设置游玩方式');
       if (v.mode === 'OFFLINE' && (v.plan.serverRequired || v.plan.platformRequired)) issue('game', '线下桌游按地点报名，请取消线上区服与平台限制');
       if (v.plan.serverRequired && (!v.game?.server || v.game.server === '不限')) issue('server', '请填写必须匹配的大区');
       if (v.plan.platformRequired && (!v.game?.platform || v.game.platform === 'ANY')) issue('platform', '请选择必须匹配的平台');
@@ -88,7 +89,7 @@ export const RecruitmentCursorSchema = z.object({ publishedAt: z.iso.datetime(),
 
 export interface RecruitmentDTO {
   id: string; publicationStatus: 'DRAFT' | 'PUBLISHED'; revision: number; title: string; description: string;
-  category: RecruitmentDraft['category']; school: { id: string; name: string; isDemo: boolean }; topic: { id: string; name: string } | null;
+  category: RecruitmentDraft['category']; school: { id: string; name: string; isDemo: boolean }; topic: { id: string | null; name: string } | null;
   author: { id: string; nickname: string }; canEditDraft: boolean; sourceAvailable: boolean; createdAt: string; updatedAt: string; publishedAt: string | null;
   joinClosesAt: string | null;
   draft: RecruitmentDraft;

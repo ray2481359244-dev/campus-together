@@ -22,6 +22,7 @@ import { socialChatRouter } from './social-chat.js';
 import { discussionsRouter } from './discussion-groups.js';
 import { chatImagesRouter } from './chat-images.js';
 import { profileAlbumRouter } from './profile-album.js';
+import { profileAvatarRouter } from './profile-avatar.js';
 import { teamsRouter } from './teams.js';
 import { expiryFallback } from './expiry.js';
 import { resolve } from 'node:path';
@@ -33,7 +34,7 @@ if(process.env.TRUST_PROXY === 'loopback')app.set('trust proxy','loopback');
 app.use(helmet());
 app.use((_req, res, next) => { res.locals.requestId = randomUUID(); res.setHeader('X-Request-Id', res.locals.requestId); next(); });
 const readJson = express.json({ limit: '64kb' });
-app.use((req, res, next) => req.path === '/api/v1/media' || req.method === 'POST' && /^\/api\/v1\/me\/album\/?$/.test(req.path) || /^\/api\/v1\/chat-images\/(TEAM|SOCIAL)\/[^/]+\/?$/.test(req.path)
+app.use((req, res, next) => req.path === '/api/v1/media' || req.method === 'POST' && /^\/api\/v1\/me\/album\/?$/.test(req.path) || req.method === 'PUT' && /^\/api\/v1\/me\/avatar\/?$/i.test(req.path) || /^\/api\/v1\/chat-images\/(TEAM|SOCIAL)\/[^/]+\/?$/.test(req.path)
   ? next() : readJson(req, res, next));
 app.use(cookieParser());
 app.get('/api/v1/health', (_req, res) => res.setHeader('Cache-Control', 'no-store').json({ data: { status: 'ok', appMode: config.demo ? 'DEMO' : 'STANDARD', registrationMinimum, milestone: 'PREDEPLOY_CORE', ...(!config.production && process.env.CAMPUS_DEV_INSTANCE ? { devInstance: process.env.CAMPUS_DEV_INSTANCE } : {}), ...(!config.production && config.demo && process.env.CAMPUS_DEMO_INSTANCE ? { demoInstance: process.env.CAMPUS_DEMO_INSTANCE } : {}) } }));
@@ -47,6 +48,7 @@ app.get('/api/v1/schools', async (_req, res) => res.json({ data: await db.school
 app.use('/api/v1/auth', authRouter);
 app.use('/api/v1', profileRouter);
 app.use('/api/v1', profileAlbumRouter);
+app.use('/api/v1', profileAvatarRouter);
 app.use('/api/v1', moderationRouter);
 app.use('/api/v1', communityRouter);
 app.use('/api/v1', postsRouter);

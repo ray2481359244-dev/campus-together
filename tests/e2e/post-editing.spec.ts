@@ -9,6 +9,7 @@ test('discussion drafts survive refetches and failures, and conflicts require ex
   await page.getByRole('button', { name: '创建账号，开始碰个头' }).click();
   await expect(page).toHaveURL(/\/discover/);
   await page.goto('/publish');
+  await page.getByLabel('讨论主题', { exact: true }).fill('讨论编辑体验');
   await page.getByLabel('标题', { exact: true }).fill('需要在两个标签页编辑的讨论');
   await page.getByLabel('正文', { exact: true }).fill('最初保存在服务器上的内容，用于核对本地编辑与后续修改之间的区别。');
   await page.getByRole('button', { name: '发布讨论', exact: true }).click();
